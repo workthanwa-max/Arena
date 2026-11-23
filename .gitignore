@@ -1,0 +1,30 @@
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Dependencies & Build Artifacts
+node_modules/
+dist/
+dist-ssr/
+bin/
+
+# Local Databases & Runtime Data
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# Logs & OS / Editor Files
+logs/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.sw?

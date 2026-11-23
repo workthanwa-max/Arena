@@ -1,0 +1,83 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: pulsearena-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pulsearena}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pulsearena}
+      POSTGRES_DB: ${POSTGRES_DB:-pulsearena}
+    command:
+      - "postgres"
+      - "-c"
+      - "shared_buffers=512MB"
+      - "-c"
+      - "effective_cache_size=1536MB"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "max_connections=100"
+      - "-c"
+      - "max_worker_processes=8"
+      - "-c"
+      - "max_parallel_workers=8"
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - pulsearena_pgdata:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pulsearena} -d ${POSTGRES_DB:-pulsearena}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  backend:
+    build:
+      context: ./go-backend
+      dockerfile: Dockerfile
+    container_name: pulsearena-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: "7777"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-pulsearena}:${POSTGRES_PASSWORD:-pulsearena}@postgres:5432/${POSTGRES_DB:-pulsearena}?sslmode=disable"
+      ALLOWED_ORIGINS: "${ALLOWED_ORIGINS:-http://localhost:5555,http://127.0.0.1:5555,https://arene.kitsakorn.com,http://arene.kitsakorn.com,https://arena.kitsakorn.com,http://arena.kitsakorn.com,https://loykrathong.kitsakorn.com,http://loykrathong.kitsakorn.com}"
+      SHARE_BASE_URL: "${SHARE_BASE_URL:-http://localhost:5555}"
+      TICK_RATE_HZ: "${TICK_RATE_HZ:-60}"
+      MAX_PLAYERS_PER_ROOM: "${MAX_PLAYERS_PER_ROOM:-5}"
+      GOGC: "200"
+    ports:
+      - "${BACKEND_PORT:-7777}:7777"
+      - "${WT_PORT:-8443}:8443/udp"
+      - "${WT_PORT:-8443}:8443/tcp"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:7777/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+  frontend:
+    build:
+      context: ./Example-Game
+      dockerfile: Dockerfile
+    container_name: pulsearena-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-5555}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+
+volumes:
+  pulsearena_pgdata:

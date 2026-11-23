@@ -1,0 +1,345 @@
+package state
+
+import "encoding/json"
+
+// SkillDef describes one active ability exposed to the UI and enforced by the server.
+type SkillDef struct {
+	Slot        int     `json:"slot"`
+	KeyHint     string  `json:"keyHint"`
+	Name        string  `json:"name"`
+	Description string  `json:"description"`
+	CooldownSec float64 `json:"cooldownSec"`
+	CastRange   float64 `json:"castRange"`
+	AoeRadius   float64 `json:"aoeRadius"`
+	AimType     string  `json:"aimType"` // "line" | "cone" | "ground" | "self" | "lockon" | "target_pick"
+	AccentColor string  `json:"accentColor"`
+	IconURL     string  `json:"iconUrl"`
+}
+
+// CharacterDef defines a playable character template (default + anime-inspired heroes).
+type CharacterDef struct {
+	ID          string     `json:"id"`
+	AnilistID   int        `json:"anilistId"`
+	ImageURL    string     `json:"imageUrl,omitempty"`
+	DisplayName string     `json:"displayName"`
+	AnimeTitle  string     `json:"animeTitle"`
+	AnimeRef    string     `json:"animeRef"`
+	RoleTag     string     `json:"roleTag"`
+	VoiceLine   string     `json:"voiceLine,omitempty"`
+	Color       string     `json:"color"`
+	AccentColor string     `json:"accentColor"`
+	MaxHP       int        `json:"maxHp"`
+	MoveSpeed   float64    `json:"moveSpeed"`
+	AdminOnly   bool       `json:"adminOnly,omitempty"`
+	Skills      []SkillDef `json:"skills"`
+}
+
+var characterCatalog = []CharacterDef{
+	{
+		ID:          "default",
+		AnilistID:   0,
+		ImageURL:    "/app-icon.png?v=20261120v2",
+		DisplayName: "Default",
+		AnimeTitle:  "ผู้ท้าทายทั่วไป",
+		AnimeRef:    "Classic Challenger",
+		RoleTag:     "Combat Initiate",
+		VoiceLine:   "Combat systems online! Challenger ready for battle!",
+		Color:       "#64748B",
+		AccentColor: "#CBD5E1",
+		MaxHP:       240,
+		MoveSpeed:   260,
+		Skills:      []SkillDef{},
+	},
+	{
+		ID:          "pa",
+		AnilistID:   2514,
+		ImageURL:    "/characters/pa.png",
+		DisplayName: "ป๊ะ",
+		AnimeTitle:  "กิลกาเมซ (Gilgamesh)",
+		AnimeRef:    "Fate Series",
+		RoleTag:     "King of Heroes • Siege Zoner",
+		VoiceLine:   "王の財宝、ゲート・オブ・バビロン！雑種、我の前にひざまずけ！",
+		Color:       "#EAB308",
+		AccentColor: "#FEF08A",
+		MaxHP:       225,
+		MoveSpeed:   250,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Gate of Babylon", Description: "เปิดมิติยิงศาสตราทองคำ 5 เล่มกวาดเป็นพัด (13 dmg/เล่ม)", CooldownSec: 1.0, CastRange: 620, AoeRadius: 48, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/pa_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Enkidu (ทุ่งโซ่สวรรค์ Slow)", Description: "วางทุ่งโซ่สวรรค์ในวง 640px ตรึงและ Slow ศัตรูทั้งหมดในวง 155px (12 dmg/ฮิต)", CooldownSec: 5.0, CastRange: 640, AoeRadius: 155, AimType: "ground", AccentColor: "#F59E0B", IconURL: "/skills/pa_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "พิรุณศาสตราแห่งบาบิโลน", Description: "เปิดประตูฟ้าโปรยฝนดาบทองคำถล่มพื้นที่ 195px นาน 2.4 วิ + Slow (16 dmg/ฮิต)", CooldownSec: 8.5, CastRange: 680, AoeRadius: 195, AimType: "ground", AccentColor: "#EF4444", IconURL: "/skills/pa_3.png"},
+		},
+	},
+	{
+		ID:          "boy",
+		AnilistID:   246,
+		ImageURL:    "/characters/boy.png",
+		DisplayName: "บอย",
+		AnimeTitle:  "ซง โกคู (Goku)",
+		AnimeRef:    "Dragon Ball",
+		RoleTag:     "Saiyan Brawler",
+		VoiceLine:   "オッス！おめえ、なかなかやるな！全力のかめはめ波、いくぞっ！",
+		Color:       "#F97316",
+		AccentColor: "#38BDF8",
+		MaxHP:       250,
+		MoveSpeed:   265,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Rapid Ki Barrage", Description: "ยิงลูกคิแฝด 2 นัดไว + ซัดกระเด็น (14 dmg/นัด)", CooldownSec: 0.65, CastRange: 540, AoeRadius: 34, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/boy_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "หมัดทะลวงมังกร", Description: "พุ่งต่อยสตั้นวงเล็ก 105px (0.95 วิ, 30 dmg) — ถ้าต่อยโดนตีไวขึ้น 2 วิ!", CooldownSec: 4.2, CastRange: 380, AoeRadius: 105, AimType: "line", AccentColor: "#60A5FA", IconURL: "/skills/boy_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Kamehameha", Description: "ลำแสงคลื่นเต่า 920px เจาะทะลุทั้งแนว + ซัดปลิว (72 dmg)", CooldownSec: 7.8, CastRange: 920, AoeRadius: 62, AimType: "line", AccentColor: "#0EA5E9", IconURL: "/skills/boy_3.png"},
+		},
+	},
+	{
+		ID:          "ole",
+		AnilistID:   14,
+		ImageURL:    "/characters/ole.png",
+		DisplayName: "โอเล่",
+		AnimeTitle:  "อุจิวะ อิทาจิ (Itachi)",
+		AnimeRef:    "Naruto",
+		RoleTag:     "Sharingan Trickster",
+		VoiceLine:   "許せ…お前はすでに、俺の月読の中だ。",
+		Color:       "#DC2626",
+		AccentColor: "#A855F7",
+		MaxHP:       225,
+		MoveSpeed:   254,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Crow Boomerang", Description: "ปาดาวกระจายอีกา 3 แฉก วนคืนกลับมาฟันซ้ำ 2 รอบ (13 dmg/ฮิต)", CooldownSec: 1.0, CastRange: 440, AoeRadius: 40, AimType: "line", AccentColor: "#EF4444", IconURL: "/skills/ole_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Tsukuyomi (อ่านจันทรา)", Description: "วางวงลวงตาจันทราแดงในระยะ 460px Stun 1.5 วิ (26 dmg)", CooldownSec: 5.2, CastRange: 460, AoeRadius: 145, AimType: "ground", AccentColor: "#A855F7", IconURL: "/skills/ole_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Amaterasu (เทวีสุริยา)", Description: "จุดแนวไฟดำเคลื่อนที่ในจุดที่วาง เผาต่อเนื่อง 3.8 วิ (11 dmg/ฮิต)", CooldownSec: 8.0, CastRange: 420, AoeRadius: 120, AimType: "ground", AccentColor: "#EF4444", IconURL: "/skills/ole_3.png"},
+		},
+	},
+	{
+		ID:          "thanwa",
+		AnilistID:   62,
+		ImageURL:    "/characters/thanwa.png",
+		DisplayName: "ธันวา",
+		AnimeTitle:  "โรโรโนอา โซโล (Zoro)",
+		AnimeRef:    "One Piece",
+		RoleTag:     "Three-Sword Vanguard",
+		VoiceLine:   "三刀流！俺の剣に、斬れねえものなど何一つねえ！",
+		Color:       "#10B981",
+		AccentColor: "#6EE7B7",
+		MaxHP:       255,
+		MoveSpeed:   255,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "108 Pound Ho", Description: "คลื่นดาบเสี้ยวกว้างเจาะทะลุศัตรูทุกตัวในแนว 580px (28 dmg)", CooldownSec: 0.9, CastRange: 580, AoeRadius: 52, AimType: "line", AccentColor: "#34D399", IconURL: "/skills/thanwa_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Shishi Sonson", Description: "เลือกจุดพุ่งฟันอิไอจัตสึในวง 310px ทะลุเป้าหมาย (42 dmg)", CooldownSec: 3.8, CastRange: 310, AoeRadius: 50, AimType: "ground", AccentColor: "#10B981", IconURL: "/skills/thanwa_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "สามพันโลก (Sanzen Sekai)", Description: "พายุสามดาบดูดศัตรูรอบตัว 195px แล้วฟันระเบิด (74 dmg)", CooldownSec: 7.5, CastRange: 195, AoeRadius: 195, AimType: "self", AccentColor: "#059669", IconURL: "/skills/thanwa_3.png"},
+		},
+	},
+	{
+		ID:          "ajarn_au",
+		AnilistID:   27,
+		ImageURL:    "/characters/ajarn_au.png",
+		DisplayName: "อาจารย์อู๋",
+		AnimeTitle:  "คิรัวร์ โซลดิ๊ก (Killua)",
+		AnimeRef:    "Hunter x Hunter",
+		RoleTag:     "Godspeed Chainer",
+		VoiceLine:   "神速、カンムル！俺の雷撃に、ついてこられるかよ！",
+		Color:       "#06B6D4",
+		AccentColor: "#A5F3FC",
+		MaxHP:       225,
+		MoveSpeed:   270,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Solo Lightning Blitz", Description: "ฟันสายฟ้าประชิดรอบตัว 175px พร้อมอมตะ i-frame 0.5 วิ (28 dmg + Stun)", CooldownSec: 2.2, CastRange: 175, AoeRadius: 175, AimType: "self", AccentColor: "#22D3EE", IconURL: "/skills/ajarn_au_1.png?v=leap2"},
+			{Slot: 2, KeyHint: "E", Name: "Godspeed (พุ่งชนสตั้น)", Description: "ความเร็วเทพ 1.85 เท่า 3.5 วิ พุ่งชนศัตรูเพื่อช็อตและ Stun ทันที 1.2 วิ", CooldownSec: 5.6, CastRange: 85, AoeRadius: 85, AimType: "self", AccentColor: "#67E8F9", IconURL: "/skills/ajarn_au_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Narukami (อัสนีพิฆาต 2 สเต็ป)", Description: "สเต็ป 1 ฟาดฟ้าผ่าแรงในวง 500px (54 dmg + Stun 1.4 วิ) แล้วสเต็ป 2 แตกสายฟ้า 6 แฉก (16 dmg/แฉก)", CooldownSec: 8.2, CastRange: 500, AoeRadius: 165, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/ajarn_au_3.png"},
+		},
+	},
+	{
+		ID:          "ajarn_boy",
+		AnilistID:   133701,
+		ImageURL:    "/characters/ajarn_boy.png",
+		DisplayName: "อาจารย์บอย",
+		AnimeTitle:  "เรียวเมน สุคุนะ (Sukuna)",
+		AnimeRef:    "Jujutsu Kaisen",
+		RoleTag:     "King of Curses",
+		VoiceLine:   "身の程を知れ、痴れ者が！領域展開、伏魔御厨子！",
+		Color:       "#991B1B",
+		AccentColor: "#FB7185",
+		MaxHP:       245,
+		MoveSpeed:   252,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Dismantle X-Cut", Description: "คมมีดตัดมิติไขว้กากบาทเจาะทะลุ 2 สายระยะ 640px (16 dmg/สาย)", CooldownSec: 0.75, CastRange: 640, AoeRadius: 44, AimType: "line", AccentColor: "#F43F5E", IconURL: "/skills/ajarn_boy_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Fuga (ศรเพลิงคำสาป)", Description: "ศรไฟระยะ 660px ระเบิด 140px + ทิ้งบ่อลาวาเผาต่อเนื่อง", CooldownSec: 4.5, CastRange: 660, AoeRadius: 140, AimType: "line", AccentColor: "#FB923C", IconURL: "/skills/ajarn_boy_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "อาณาเขตสังหาร (Malevolent Shrine)", Description: "นั่งบัลลังก์กลางอาณาเขตอยู่กับที่ 270px ฟันแรง + Slow + อมตะเมื่อศัตรูโดนสกิล!", CooldownSec: 9.0, CastRange: 270, AoeRadius: 270, AimType: "self", AccentColor: "#BE123C", IconURL: "/skills/ajarn_boy_3.png"},
+		},
+	},
+	{
+		ID:          "kaem",
+		AnilistID:   101280,
+		ImageURL:    "/characters/kaem.png",
+		DisplayName: "แก้ม",
+		AnimeTitle:  "ริมุรุ เทมเพสต์ (Rimuru)",
+		AnimeRef:    "Tensura Slime",
+		RoleTag:     "Demon Lord • Tempest Sage",
+		VoiceLine:   "真なる魔王の力、見せてやるよ！喰らい尽くせ、ベルゼビュート！",
+		Color:       "#38BDF8",
+		AccentColor: "#FACC15",
+		MaxHP:       235,
+		MoveSpeed:   262,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Black Lightning (สายฟ้าดำ)", Description: "วางจุดฟาดสายฟ้าดำทมิฬในวง 560px รอ 0.22 วิ Stun 0.7 วิ (30 dmg)", CooldownSec: 2.0, CastRange: 560, AoeRadius: 110, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/kaem_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Black Flame (เคียวเพลิงนิล)", Description: "ปล่อยคลื่นเปลวเพลิงนิลทมิฬ 3 สายทะลุเป้าหมายระยะ 540px (16 dmg/สาย)", CooldownSec: 4.2, CastRange: 540, AoeRadius: 56, AimType: "line", AccentColor: "#A855F7", IconURL: "/skills/kaem_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Beelzebuth (ราชันแห่งความตะกละ)", Description: "เปิดหลุมดำกลืนกินระยะ 440px ดูดศัตรูเข้ากลาง 180px + ฟื้นฟู +20 HP (18 dmg/ฮิต)", CooldownSec: 8.5, CastRange: 440, AoeRadius: 180, AimType: "ground", AccentColor: "#FACC15", IconURL: "/skills/kaem_3.png"},
+		},
+	},
+	{
+		ID:          "frame",
+		AnilistID:   2040,
+		ImageURL:    "/characters/frame.png",
+		DisplayName: "เฟรม",
+		AnimeTitle:  "โจสตาร์ & แสตนไออ้วน (Joestar)",
+		AnimeRef:    "JoJo's Bizarre Adventure",
+		RoleTag:     "Stand Master • Lock-On CC",
+		VoiceLine:   "やれやれだぜ…出てこい、デブ猫スタンド！オラオラオラァ！",
+		Color:       "#A855F7",
+		AccentColor: "#FACC15",
+		MaxHP:       250,
+		MoveSpeed:   256,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "ไออ้วน ล็อกเป้าขย้ำ (Lock Pounce)", Description: "ล็อกเป้าศัตรูระยะ 560px ส่งแสตนไออ้วนพุ่งติดตามขย้ำ (24 dmg + Stun 1.25 วิ)", CooldownSec: 3.4, CastRange: 560, AoeRadius: 120, AimType: "lockon", AccentColor: "#C084FC", IconURL: "/skills/frame_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "ORA! เมี้ยว รัวหมัด (Ora Barrage)", Description: "แสตนไออ้วนรัวหมัดอุ้งเท้าดูดเข้ากลาง 320px Stun ต่อเนื่อง 4 ฮิต (8 dmg/ฮิต)", CooldownSec: 4.8, CastRange: 320, AoeRadius: 140, AimType: "line", AccentColor: "#FACC15", IconURL: "/skills/frame_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "ไออ้วน: The World (หยุดเวลาล็อกเป้า)", Description: "ล็อกเป้ากางโดเมนหยุดเวลาระยะ 500px รอ 0.28 วิ แช่แข็ง Stun 2.0 วิ + ดูดรวม (58 dmg รวม)", CooldownSec: 9.0, CastRange: 500, AoeRadius: 210, AimType: "lockon", AccentColor: "#FDE047", IconURL: "/skills/frame_3.png"},
+		},
+	},
+	{
+		ID:          "luangphi_sorn",
+		AnilistID:   3010,
+		ImageURL:    "/characters/luangphi_sorn.png",
+		DisplayName: "หลวงพี่ศร",
+		AnimeTitle:  "ไซตามะ (One-Punch Man)",
+		AnimeRef:    "One-Punch Man • Admin Exclusive",
+		RoleTag:     "Admin • One-Punch Annihilator",
+		VoiceLine:   "マジ殴り一発で十分だ。南無阿弥陀仏、安らかに眠れ。",
+		Color:       "#F59E0B",
+		AccentColor: "#DC2626",
+		MaxHP:       320,
+		MoveSpeed:   285,
+		AdminOnly:   true,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "หมัดเอาจริงปิดฉาก (Serious Death Punch)", Description: "เลือกตัวละครศัตรูที่จะต่อยได้เลย แบบล็อกเป้าตาย 100% (ยกเว้นเป้าหมายที่มีสกิลอมตะป้องกัน)", CooldownSec: 20.0, CastRange: 3600, AoeRadius: 160, AimType: "target_pick", AccentColor: "#DC2626", IconURL: "/skills/luangphi_sorn_1.png"},
+		},
+	},
+	{
+		ID:          "sia_mon",
+		AnilistID:   4044,
+		ImageURL:    "/characters/sia_mon.png",
+		DisplayName: "เสี่ยม่อน",
+		AnimeTitle:  "โกะโจ ซาโตรุ (Gojo Satoru)",
+		AnimeRef:    "Jujutsu Kaisen",
+		RoleTag:     "Honored One • Infinity & Void",
+		VoiceLine:   "天上天下、唯我独尊！領域展開、無量空処！",
+		Color:       "#38BDF8",
+		AccentColor: "#A855F7",
+		MaxHP:       255,
+		MoveSpeed:   262,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "อาคมหมุนทวน: อาคะ (Red)", Description: "ยิงลูกบอลสีแดงไปทิศที่เลือกช้าๆ (22 dmg) หากยิงสีครามตามมาชนกันจะระเบิดเป็น Hollow Purple!", CooldownSec: 3.8, CastRange: 880, AoeRadius: 95, AimType: "line", AccentColor: "#EF4444", IconURL: "/skills/sia_mon_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "อาคมหมุนตาม: อาโอะ (Blue)", Description: "ยิงลูกบอลสีครามอย่างรวดเร็ว (18 dmg + ดึง) ชนลูกบอลสีแดงกลางอากาศเพื่อผสานพลังระเบิดวงกว้าง", CooldownSec: 4.5, CastRange: 920, AoeRadius: 110, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/sia_mon_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "กางอาณาเขต: พรมแดนไร้ขีดจำกัด (Infinite Void)", Description: "กางอาณาเขตปิดพาศัตรูในเขตเข้าสู่อีกโลกหนึ่ง หยุดเดิน/ขยับไม่ได้ 5 วิ โดยเสี่ยม่อนโจมตีได้อิสระ!", CooldownSec: 12.0, CastRange: 265, AoeRadius: 265, AimType: "self", AccentColor: "#C084FC", IconURL: "/skills/sia_mon_3.png"},
+		},
+	},
+	{
+		ID:          "ko",
+		AnilistID:   129131,
+		ImageURL:    "/characters/ko.png",
+		DisplayName: "โก้",
+		AnimeTitle:  "อากาซึมะ เซ็นอิซึ (Zenitsu)",
+		AnimeRef:    "Demon Slayer",
+		RoleTag:     "Thunder Breath • Flash Dash",
+		VoiceLine:   "雷の呼吸、壱ノ型、霹靂一閃！俺が必ず、守り抜く！",
+		Color:       "#F59E0B",
+		AccentColor: "#FEF08A",
+		MaxHP:       235,
+		MoveSpeed:   272,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Hekireki Issen (สายฟ้าพุ่งทะยาน)", Description: "ปราณอัสนีกระบวนท่าที่ 1 พุ่ง Dash ความเร็วสายฟ้า 420px ทะลุฟันทุกเป้าหมายในเส้นทาง (28 dmg)", CooldownSec: 1.8, CastRange: 420, AoeRadius: 56, AimType: "line", AccentColor: "#FACC15", IconURL: "/skills/ko_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Sixfold Blitz (อัสนีพุ่งซิกแซก 6 สาย)", Description: "พุ่ง Dash ระยะไกล 540px ทะลุฟัน 22 dmg + ระเบิดไฟฟ้าวง 95px Stun 0.7 วิ (+วิ่งไว 1.8 วิ!)", CooldownSec: 4.0, CastRange: 540, AoeRadius: 95, AimType: "ground", AccentColor: "#FEF08A", IconURL: "/skills/ko_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Dimensional Star (อัสนีปาดดาว 5 แฉก)", Description: "แยกเงาสับปาดเป็นรูปดาว 5 แฉกตามลำดับ 1→5 (18 dmg/เส้น + อมตะระหว่างร่ายเหมือนมูราด!)", CooldownSec: 7.5, CastRange: 245, AoeRadius: 245, AimType: "self", AccentColor: "#F59E0B", IconURL: "/skills/ko_3.png"},
+		},
+	},
+	{
+		ID:          "noone",
+		AnilistID:   0,
+		ImageURL:    "/characters/noone.png?v=mcu1",
+		DisplayName: "noone",
+		AnimeTitle:  "Marvel Infinity War (Thanos)",
+		AnimeRef:    "Thanos • Mad Titan",
+		RoleTag:     "Infinity Collector",
+		VoiceLine:   "I am inevitable. One snap seals your fate.",
+		Color:       "#9333EA",
+		AccentColor: "#FACC15",
+		MaxHP:       265,
+		MoveSpeed:   244,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "1", Name: "Power Stone (ระเบิดอุกกาบาตพลังทำลาย)", Description: "มณีแห่งพลังสีม่วง: ทุบระเบิดคลื่นพลาสมา 38 dmg + ผลักศัตรูกระเด็น + Stun 0.45 วิ", CooldownSec: 3.2, CastRange: 420, AoeRadius: 115, AimType: "ground", AccentColor: "#A855F7", IconURL: "/skills/noone_1.png"},
+			{Slot: 2, KeyHint: "2", Name: "Space Stone (วาร์ปหลุมดำดึงศัตรู)", Description: "มณีแห่งอวกาศสีน้ำเงิน: วาร์ปทะลุมิติไปยังจุดเป้าหมาย ดึงรวบศัตรู + 26 dmg + Stun 0.65 วิ", CooldownSec: 4.5, CastRange: 500, AoeRadius: 140, AimType: "ground", AccentColor: "#3B82F6", IconURL: "/skills/noone_2.png"},
+			{Slot: 3, KeyHint: "3", Name: "Reality Stone (คลื่นผลึกมิติสีแดง)", Description: "มณีแห่งความจริงสีแดง: ยิงผลึกอีเธอร์ 5 สายกวาดเป็นพัด 16 dmg/สาย + Slow 2.0 วิ", CooldownSec: 3.8, CastRange: 440, AoeRadius: 105, AimType: "cone", AccentColor: "#EF4444", IconURL: "/skills/noone_3.png"},
+			{Slot: 4, KeyHint: "4", Name: "Time Stone (มณฑลเวลาฟื้นฟู)", Description: "มณีแห่งเวลาสีเขียว: ตรึงเวลาหยุดศัตรูรอบตัว Stun 1.25 วิ + ฟื้นพลังชีวิตตนเอง 55 HP", CooldownSec: 6.5, CastRange: 230, AoeRadius: 230, AimType: "self", AccentColor: "#10B981", IconURL: "/skills/noone_4.png"},
+			{Slot: 5, KeyHint: "5", Name: "Mind Stone (ลำแสงจิตจักรพรรดิ)", Description: "มณีแห่งจิตสีทอง: ยิงลำแสงจิตเจาะทะลุเส้นตรงระยะไกล 42 dmg + Stun 0.75 วิ", CooldownSec: 5.0, CastRange: 640, AoeRadius: 56, AimType: "line", AccentColor: "#F59E0B", IconURL: "/skills/noone_5.png"},
+		},
+	},
+}
+
+var (
+	allCharactersJSON    []byte
+	publicCharactersJSON []byte
+)
+
+func init() {
+	bAll, _ := json.Marshal(struct {
+		Characters []CharacterDef `json:"characters"`
+	}{
+		Characters: characterCatalog,
+	})
+	allCharactersJSON = bAll
+
+	pub := CharactersForRole("player")
+	bPub, _ := json.Marshal(struct {
+		Characters []CharacterDef `json:"characters"`
+	}{
+		Characters: pub,
+	})
+	publicCharactersJSON = bPub
+}
+
+// AllCharacters returns a copy of all selectable character definitions (including admin heroes).
+func AllCharacters() []CharacterDef {
+	out := make([]CharacterDef, len(characterCatalog))
+	copy(out, characterCatalog)
+	return out
+}
+
+// CharactersForRole returns only the heroes accessible to the given user role ("admin" sees all).
+func CharactersForRole(role string) []CharacterDef {
+	if role == "admin" {
+		return AllCharacters()
+	}
+	out := make([]CharacterDef, 0, len(characterCatalog))
+	for _, c := range characterCatalog {
+		if !c.AdminOnly {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// AllCharactersJSON returns the full character catalog JSON.
+func AllCharactersJSON() []byte {
+	return allCharactersJSON
+}
+
+// PublicCharactersJSON returns the non-admin character catalog JSON for GET /api/characters.
+func PublicCharactersJSON() []byte {
+	return publicCharactersJSON
+}
+
+// GetCharacter resolves a character ID safely, falling back to "default".
+func GetCharacter(id string) CharacterDef {
+	for _, c := range characterCatalog {
+		if c.ID == id {
+			return c
+		}
+	}
+	return characterCatalog[0]
+}

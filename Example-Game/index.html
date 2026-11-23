@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="preload" as="image" href="/fx/auth_gojo_sukuna_bg.jpg" />
+    <link rel="preload" as="image" href="/fx/saitama_dead.jpg" />
+    <link rel="preload" as="image" href="/fx/iconic_domain_clash.jpg" />
+    <link rel="icon" type="image/png" href="/app-icon.png?v=20261120v2" />
+    <link rel="apple-touch-icon" href="/app-icon.png?v=20261120v2" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0B192C" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="PulseArena" />
+    <title>PulseArena — 2.5D Sci-Fi MOBA Arena</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        min-height: 100dvh;
+        background-color: #0b192c;
+        color: #f8fafc;
+        font-family: 'Inter', 'Noto Sans Thai', sans-serif;
+      }
+      #boot-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background:
+          radial-gradient(ellipse 85% 55% at 50% 15%, rgba(6, 182, 212, 0.24), transparent 65%),
+          radial-gradient(circle at 50% 50%, #122746 0%, #0b192c 60%, #07111f 100%);
+      }
+      #boot-splash .pls-core {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        text-align: center;
+        padding: 24px;
+      }
+      #boot-splash .pls-rings {
+        position: relative;
+        width: 108px;
+        height: 108px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #boot-splash .pls-ring {
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        border: 3px solid rgba(56, 189, 248, 0.16);
+        border-top-color: #38bdf8;
+        border-right-color: #22d3ee;
+        animation: pls-spin 1s linear infinite;
+      }
+      #boot-splash .pls-ring.inner {
+        inset: 10px;
+        border-width: 2.5px;
+        border-top-color: transparent;
+        border-bottom-color: #facc15;
+        animation: pls-spin-rev 1.4s linear infinite;
+      }
+      #boot-splash .pls-emblem {
+        width: 68px;
+        height: 68px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(165, 243, 252, 0.85);
+        box-shadow: 0 0 26px rgba(56, 189, 248, 0.45);
+      }
+      #boot-splash .pls-title {
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        color: #f0f9ff;
+      }
+      #boot-splash .pls-sub {
+        font-size: 14px;
+        color: #bae6fd;
+      }
+      #boot-splash .pls-bar {
+        width: min(260px, 72vw);
+        height: 6px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.2);
+        overflow: hidden;
+      }
+      #boot-splash .pls-bar > span {
+        display: block;
+        height: 100%;
+        width: 45%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, #0284c7, #22d3ee, #7dd3fc);
+        animation: pls-sweep 1.2s ease-in-out infinite;
+      }
+      @keyframes pls-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes pls-spin-rev {
+        to {
+          transform: rotate(-360deg);
+        }
+      }
+      @keyframes pls-sweep {
+        0% {
+          transform: translateX(-110%);
+        }
+        100% {
+          transform: translateX(260%);
+        }
+      }
+    </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700;800&family=Rajdhani:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root">
+      <div id="boot-splash">
+        <div class="pls-core">
+          <div class="pls-rings">
+            <div class="pls-ring"></div>
+            <div class="pls-ring inner"></div>
+            <img src="/app-icon.png?v=20261120v2" alt="PulseArena" class="pls-emblem" />
+          </div>
+          <div class="pls-title">PULSE ARENA</div>
+          <div class="pls-sub">กำลังเตรียมระบบสมรภูมิ 2.5D...</div>
+          <div class="pls-bar"><span></span></div>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
