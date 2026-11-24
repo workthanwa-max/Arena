@@ -187,6 +187,8 @@ func NewRouter(
 			apperrors.WriteJSON(w, http.StatusUnauthorized, apperrors.CodeUnauthenticated, auth.ErrUnauthenticated.Error())
 			return
 		}
+		// Refresh 1-year cookie cleanly even when authenticated via persisted Bearer token
+		auth.SetSessionCookie(w, r, tok)
 		writeJSON(w, http.StatusOK, map[string]any{
 			"user":  prof,
 			"token": tok,

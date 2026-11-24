@@ -11,10 +11,56 @@ interface ApiErrorBody {
   message?: string
 }
 
+const SESSION_TOKEN_KEY = 'pulsearena_session_token_v1'
+const SESSION_EXPIRES_KEY = 'pulsearena_session_expires_v1'
+const SESSION_TTL_MS = 365 * 24 * 60 * 60 * 1000 // 1 year persistent login
+
+export function getStoredSessionToken(): string {
+  if (typeof window === 'undefined') return ''
+  try {
+    const tok = window.localStorage.getItem(SESSION_TOKEN_KEY) ?? ''
+    if (!tok) return ''
+    const expRaw = window.localStorage.getItem(SESSION_EXPIRES_KEY)
+    const exp = expRaw ? Number(expRaw) : 0
+    if (exp > 0 && Date.now() > exp) {
+      window.localStorage.removeItem(SESSION_TOKEN_KEY)
+      window.localStorage.removeItem(SESSION_EXPIRES_KEY)
+      return ''
+    }
+    return tok
+  } catch {
+    return ''
+  }
+}
+
+export function saveStoredSessionToken(token: string): void {
+  if (typeof window === 'undefined' || !token) return
+  try {
+    window.localStorage.setItem(SESSION_TOKEN_KEY, token)
+    window.localStorage.setItem(SESSION_EXPIRES_KEY, String(Date.now() + SESSION_TTL_MS))
+  } catch {
+    // Ignore storage restrictions
+  }
+}
+
+export function clearStoredSessionToken(): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(SESSION_TOKEN_KEY)
+    window.localStorage.removeItem(SESSION_EXPIRES_KEY)
+  } catch {
+    // Ignore storage restrictions
+  }
+}
+
 async function requestJSON<T>(url: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers)
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
+  }
+  const storedToken = getStoredSessionToken()
+  if (storedToken && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${storedToken}`)
   }
 
   const res = await fetch(url, {

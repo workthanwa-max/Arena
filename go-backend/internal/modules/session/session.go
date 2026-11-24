@@ -41,6 +41,13 @@ type InboundMessage struct {
 	MapID       string  `json:"mapId"`
 	CharacterID string  `json:"characterId"`
 	TargetID    string  `json:"targetId"`
+	SignalType  string  `json:"signalType"`
+	SDP         string  `json:"sdp"`
+	Candidate   string  `json:"candidate"`
+	MicOn       bool    `json:"micOn"`
+	SpeakerOn   bool    `json:"speakerOn"`
+	Speaking    bool    `json:"speaking"`
+	AudioChunk  string  `json:"audioChunk"`
 }
 
 // InputHandler handles validated client commands inside the owning room.
@@ -239,7 +246,7 @@ func (s *Session) readPump(handler InputHandler) {
 		}
 
 		switch msg.Type {
-		case "input", "skill", "attack", "dash", "rct", "snap", "respawn", "emote", "select_team", "select_map", "select_character", "toggle_ready", "start_match", "return_lobby", "switch_character", "reset_cooldowns":
+		case "input", "skill", "attack", "dash", "rct", "snap", "respawn", "emote", "select_team", "select_map", "select_character", "toggle_ready", "start_match", "return_lobby", "switch_character", "reset_cooldowns", "voice_signal":
 			handler.HandleInput(s.playerID, msg)
 		case "ping":
 			s.syncer.SendPong(s, msg.TS)

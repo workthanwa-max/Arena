@@ -4,16 +4,19 @@ import { soundEngine } from './audio/soundEngine'
 import { ArenaSkillDock, ArenaTopBar } from './components/ArenaHudPanels'
 import { BattleResultModal } from './components/BattleResultModal'
 import { IconicBgmPlayer } from './components/IconicBgmPlayer'
+import { adminAutoAi } from './game/adminAutoAi'
 import { gameEventBus } from './game/core/eventBus'
 import { PhaserArenaView } from './game/PhaserArenaView'
 import { AuthPage } from './pages/AuthPage'
 import { BattleSetupPage } from './pages/BattleSetupPage'
 import { HeroesPage } from './pages/HeroesPage'
 import { HomePage } from './pages/HomePage'
+import { JoinHeroSelectPage } from './pages/JoinHeroSelectPage'
 import { RoomLobbyPage } from './pages/RoomLobbyPage'
 import { preloadMatchAssets } from './services/assetPreloader'
-import { useGameStore } from './store/useGameStore'
+import { getSimoLiveAimDirection, setSimoSnipeCharging, useGameStore } from './store/useGameStore'
 import './styles/arena.css'
+import './styles/mlbb-theme.css'
 
 export function App() {
   const [soundMuted, setSoundMuted] = useState(() => soundEngine.isMuted())
@@ -30,6 +33,9 @@ export function App() {
   })
 
   const authChecked = useGameStore((s) => s.authChecked)
+  const authUser = useGameStore((s) => s.authUser)
+  const adminAiEnabled = useGameStore((s) => s.adminAiEnabled)
+  const toggleAdminAi = useGameStore((s) => s.toggleAdminAi)
   const currentView = useGameStore((s) => s.currentView)
   const characters = useGameStore((s) => s.characters)
   const selectedCharId = useGameStore((s) => s.selectedCharId)
@@ -192,6 +198,20 @@ export function App() {
     }
   }, [])
 
+  // Admin-Only Grandmaster Autonomous AI lifecycle sync (strictly gated to role === 'admin')
+  useEffect(() => {
+    const shouldRun =
+      authUser?.role === 'admin' &&
+      adminAiEnabled &&
+      currentView === 'arena' &&
+      connected &&
+      matchPhase === 'playing'
+    adminAutoAi.setEnabled(shouldRun)
+    return () => {
+      if (!shouldRun) adminAutoAi.stop()
+    }
+  }, [authUser?.role, adminAiEnabled, currentView, connected, matchPhase])
+
   // Seamless Battlefield BGM controller in Arena (YouTube plays primary track in ICONIC mode)
   useEffect(() => {
     if (currentView === 'arena' && connected) {
@@ -226,6 +246,11 @@ export function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.repeat) return
       soundEngine.unlock()
+      if (e.code === 'F9' && authUser?.role === 'admin') {
+        e.preventDefault()
+        toggleAdminAi()
+        return
+      }
       if (e.code === 'KeyQ' || e.code === 'Digit1') {
         e.preventDefault()
         castSkill(1)
@@ -233,6 +258,33 @@ export function App() {
       }
       if (e.code === 'KeyE' || e.code === 'Digit2') {
         e.preventDefault()
+        if (myLiveCharId === 'simo') {
+          if (e.repeat || keysRef.current.__simoSnipeCharging) return
+          keysRef.current.__simoSnipeCharging = true
+          setSimoSnipeCharging(true)
+          const startAt = performance.now()
+          const stepKeySnipe = () => {
+            if (!keysRef.current.__simoSnipeCharging) return
+            const ratio = Math.min(1, (performance.now() - startAt) / 1150)
+            const liveDir = getSimoLiveAimDirection()
+            gameEventBus.emitAimPreview({
+              active: true,
+              slot: 2,
+              dirX: liveDir.dirX,
+              dirY: liveDir.dirY,
+              rangeFactor: 1,
+              castRange: 2800,
+              aoeRadius: 44,
+              aimType: 'line',
+              cancel: false,
+              chargeRatio: ratio,
+            })
+            window.requestAnimationFrame(stepKeySnipe)
+          }
+          ;(keysRef.current as Record<string, unknown>).__simoSnipeStartMs = startAt
+          window.requestAnimationFrame(stepKeySnipe)
+          return
+        }
         castSkill(2)
         return
       }
@@ -297,6 +349,29 @@ export function App() {
     }
 
     const onKeyUp = (e: KeyboardEvent) => {
+      if ((e.code === 'KeyE' || e.code === 'Digit2') && keysRef.current.__simoSnipeCharging) {
+        delete keysRef.current.__simoSnipeCharging
+        setSimoSnipeCharging(false)
+        const startMs =
+          ((keysRef.current as Record<string, unknown>).__simoSnipeStartMs as number) ||
+          performance.now()
+        delete (keysRef.current as Record<string, unknown>).__simoSnipeStartMs
+        const pct = Math.min(100, Math.round(((performance.now() - startMs) / 1150) * 100))
+        gameEventBus.emitAimPreview({
+          active: false,
+          slot: 2,
+          dirX: 1,
+          dirY: 0,
+          rangeFactor: 1,
+          castRange: 2800,
+          aoeRadius: 44,
+          aimType: 'line',
+          cancel: false,
+        })
+        castSkill(2, { worldX: 0, worldY: 0, targetId: `charge:${pct}` })
+        syncKeyMovement()
+        return
+      }
       if (keysRef.current[e.code]) {
         delete keysRef.current[e.code]
         syncKeyMovement()
@@ -305,6 +380,7 @@ export function App() {
 
     const onBlur = () => {
       keysRef.current = {}
+      setSimoSnipeCharging(false)
       sendMovementVector(0, 0, true)
     }
 
@@ -324,6 +400,8 @@ export function App() {
       keysRef.current = {}
     }
   }, [
+    authUser?.role,
+    toggleAdminAi,
     currentView,
     connected,
     matchPhase,
@@ -752,6 +830,8 @@ export function App() {
         </div>
       ) : currentView === 'room_lobby' && connected ? (
         <RoomLobbyPage />
+      ) : currentView === 'join_select' ? (
+        <JoinHeroSelectPage />
       ) : currentView === 'battle_setup' ? (
         <BattleSetupPage />
       ) : currentView === 'heroes' ? (

@@ -1,12 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { animateShowroomSwap } from '../animations/gsapPresets'
 import { CHARACTER_VOICES, soundEngine } from '../audio/soundEngine'
+import { Hero3dPreview } from '../components/Hero3dPreview'
+import { HERO_CLASS_FILTERS, type HeroClassFilter } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
 
 export function HeroesPage() {
+  const [classFilter, setClassFilter] = useState<HeroClassFilter>('all')
   const authUser = useGameStore((s) => s.authUser)
   const rawCharacters = useGameStore((s) => s.characters)
-  const characters = rawCharacters.filter((c) => !c.adminOnly || authUser?.role === 'admin')
+  const allCharacters = rawCharacters.filter((c) => !c.adminOnly || authUser?.role === 'admin')
+  const characters =
+    classFilter === 'all' ? allCharacters : allCharacters.filter((c) => c.heroClass === classFilter)
   const viewingCharId = useGameStore((s) => s.viewingCharId)
   const inspectCharacter = useGameStore((s) => s.inspectCharacter)
   const startPracticeMode = useGameStore((s) => s.startPracticeMode)
@@ -17,12 +22,10 @@ export function HeroesPage() {
   const swapDirRef = useRef(1)
   const touchSwipeStartX = useRef<number | null>(null)
 
-  const activeId = viewingCharId || characters[0]?.id || 'pa'
-  const selectedIndex = Math.max(
-    0,
-    characters.findIndex((c) => c.id === activeId),
-  )
-  const activeChar = characters[selectedIndex] ?? characters[0]
+  const activeId = viewingCharId || characters[0]?.id || allCharacters[0]?.id || 'pa'
+  const foundIdx = characters.findIndex((c) => c.id === activeId)
+  const selectedIndex = foundIdx >= 0 ? foundIdx : 0
+  const activeChar = characters[selectedIndex] ?? allCharacters[0]
 
   useEffect(() => {
     animateShowroomSwap(showroomContentRef.current, swapDirRef.current)
@@ -43,62 +46,84 @@ export function HeroesPage() {
   }
 
   return (
-    <div className="lobby-backdrop heroes-page-wrap">
-      <div className="heroes-page-shell">
-        <header className="top-header heroes-header">
-          <div className="brand-group">
+    <div className="mlbb-dark-page heroes-page-wrap">
+      <div className="mlbb-page-shell heroes-page-shell">
+        <header className="mlbb-sub-topbar heroes-header">
+          <div className="mlbb-sub-left">
             <button
               type="button"
-              className="btn-pill secondary compact page-back-btn"
+              className="mlbb-glass-btn compact page-back-btn"
               onClick={goBack}
               aria-label="ย้อนกลับ"
             >
               ← ย้อนกลับ
             </button>
-            <div>
-              <h1 className="brand-title">ตัวละครที่ฉันมี (My Characters)</h1>
-              <p className="brand-subtitle">
-                ดูรายชื่อฮีโร่ที่คุณครอบครองและรายละเอียดสกิลทั้งหมด • เลือกตัวเล่นจริงได้เมื่ออยู่ในห้อง
-              </p>
-            </div>
+            <h1 className="mlbb-sub-title brand-title">🦸 คลังฮีโร่ 5 ประเภท ({allCharacters.length})</h1>
           </div>
 
-          <div className="heroes-header-actions">
-            <span className="pill-badge online">✓ ครอบครอง {characters.length} ตัวละคร</span>
+          <div className="mlbb-sub-right heroes-header-actions">
             {activeChar && (
               <button
                 type="button"
-                className="btn-pill secondary compact"
+                className="mlbb-glass-btn compact"
                 onClick={() => {
                   soundEngine.unlock()
                   void startPracticeMode(activeChar.id)
                 }}
               >
-                🎯 ทดลอง {activeChar.displayName} กับ Dummy
+                🎯 ซ้อม {activeChar.displayName}
               </button>
             )}
             <button
               type="button"
-              className="btn-pill primary compact"
+              className="mlbb-gold-cta mini"
               onClick={() => {
                 soundEngine.unlock()
                 setView('battle_setup')
               }}
             >
-              ⚔️ ไปหน้าสร้างห้องเข้าสมรภูมิ →
+              ⚔️ สร้างห้อง →
             </button>
           </div>
         </header>
 
-        <main className="my-heroes-split">
-          {/* Left: Collectible Grid of Owned Characters */}
-          <section className="surface-card owned-collection-panel" aria-label="รายการตัวละครที่ฉันมี">
-            <div className="sidebar-title-row">
-              <span className="field-label">คอลเลกชันของคุณ ({characters.length})</span>
-              <span className="collection-hint">แตะเพื่อดูรายละเอียด</span>
+        <main className="mlbb-heroes-split">
+          {/* Left: 5-Archetype Filter Bar + Clean Dark Esports Hero Grid */}
+          <section className="mlbb-glass-card mlbb-heroes-grid-panel" aria-label="รายการตัวละครที่ฉันมี">
+            <div className="mlbb-class-filter-bar" role="tablist" aria-label="กรองฮีโร่ตาม 5 ประเภท">
+              {HERO_CLASS_FILTERS.map((cls) => {
+                const count =
+                  cls.id === 'all'
+                    ? allCharacters.length
+                    : allCharacters.filter((c) => c.heroClass === cls.id).length
+                const isActive = classFilter === cls.id
+                return (
+                  <button
+                    key={cls.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    className={`mlbb-class-pill ${isActive ? 'active' : ''}`}
+                    style={{ '--class-accent': cls.color } as React.CSSProperties}
+                    title={cls.traitSummary}
+                    onClick={() => {
+                      setClassFilter(cls.id)
+                      const nextList =
+                        cls.id === 'all' ? allCharacters : allCharacters.filter((c) => c.heroClass === cls.id)
+                      if (nextList.length > 0 && !nextList.some((c) => c.id === activeChar?.id)) {
+                        inspectHero(nextList[0].id, 1)
+                      }
+                    }}
+                  >
+                    <span>{cls.icon}</span>
+                    <span>{cls.name}</span>
+                    <em className="mlbb-class-count">{count}</em>
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="owned-collection-grid" role="listbox" aria-label="รายชื่อฮีโร่ของฉัน">
+            <div className="mlbb-hero-pick-grid heroes-sidebar-grid" role="listbox" aria-label="รายชื่อฮีโร่ของฉัน">
               {characters.map((ch, idx) => {
                 const isActive = ch.id === activeChar?.id
                 return (
@@ -107,31 +132,35 @@ export function HeroesPage() {
                     type="button"
                     role="option"
                     aria-selected={isActive}
-                    className={`owned-hero-tile ${isActive ? 'active' : ''}`}
+                    className={`mlbb-hero-pick-tile owned-hero-tile ${isActive ? 'active' : ''}`}
                     style={{ '--hero-accent': ch.color } as React.CSSProperties}
                     onClick={() => inspectHero(ch.id, idx >= selectedIndex ? 1 : -1)}
                   >
-                    <div className="owned-tile-art-wrap">
-                      <img src={ch.imageUrl} alt={ch.displayName} className="owned-tile-art" />
-                      <span className="owned-tile-badge">
-                        {ch.adminOnly ? '👑 ADMIN' : 'OWNED'}
-                      </span>
+                    <div className="mlbb-pick-thumb-wrap">
+                      <img src={ch.imageUrl} alt={ch.displayName} className="mlbb-pick-thumb" />
+                      {ch.classIcon && (
+                        <span
+                          className="mlbb-hero-class-pip"
+                          style={{ borderColor: ch.classColor || '#38bdf8' }}
+                          title={`${ch.className}: ${ch.classTraitLabel}`}
+                        >
+                          {ch.classIcon}
+                        </span>
+                      )}
+                      {ch.adminOnly && <span className="moba-crown-tag">👑</span>}
                     </div>
-                    <div className="owned-tile-body">
-                      <div className="owned-tile-name">{ch.displayName}</div>
-                      <div className="owned-tile-anime">{ch.animeTitle}</div>
-                    </div>
+                    <span className="mlbb-pick-name">{ch.displayName}</span>
                   </button>
                 )
               })}
             </div>
           </section>
 
-          {/* Right: Full Hero Profile & Skills Inspector */}
-          <section className="showroom-card hero-detail-panel" aria-label="รายละเอียดตัวละคร">
+          {/* Right: 3D Model Turntable Showroom + Hero Info + Skills */}
+          <section className="mlbb-glass-card mlbb-hero-showroom" aria-label="รายละเอียดตัวละครและโมเดล 3D">
             {activeChar && (
               <div
-                className="showroom-stage"
+                className="mlbb-showroom-stage"
                 onTouchStart={(e) => {
                   touchSwipeStartX.current = e.touches[0].clientX
                 }}
@@ -145,53 +174,58 @@ export function HeroesPage() {
                 }}
               >
                 <div
-                  className="showroom-spotlight"
+                  className="mlbb-showroom-glow"
                   style={{
-                    background: `radial-gradient(circle at 32% 40%, ${activeChar.color}, transparent 68%)`,
+                    background: `radial-gradient(circle at 30% 45%, ${activeChar.color}55, transparent 65%)`,
                   }}
                 />
-                <div className="showroom-holo-base" />
 
-                <button
-                  type="button"
-                  className="showroom-nav-btn prev"
-                  aria-label="ตัวละครก่อนหน้า"
-                  onClick={() => stepHero(-1)}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="showroom-nav-btn next"
-                  aria-label="ตัวละครถัดไป"
-                  onClick={() => stepHero(1)}
-                >
-                  ›
-                </button>
-
-                <div className="showroom-top-meta">
-                  <span className="showroom-counter">
-                    #{String(selectedIndex + 1).padStart(2, '0')} / {String(characters.length).padStart(2, '0')} • มีในครอบครอง
+                <div className="mlbb-showroom-meta-bar">
+                  <span className="mlbb-meta-pill">
+                    #{String(selectedIndex + 1).padStart(2, '0')} / {String(characters.length).padStart(2, '0')}
                   </span>
-                  <span className="showroom-role-badge" style={{ borderColor: activeChar.color }}>
+                  <div className="mlbb-showroom-nav-arrows">
+                    <button
+                      type="button"
+                      className="mlbb-glass-btn icon-only"
+                      aria-label="ตัวละครก่อนหน้า"
+                      onClick={() => stepHero(-1)}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      className="mlbb-glass-btn icon-only"
+                      aria-label="ตัวละครถัดไป"
+                      onClick={() => stepHero(1)}
+                    >
+                      ›
+                    </button>
+                  </div>
+                  <span className="mlbb-meta-pill accent" style={{ borderColor: activeChar.color }}>
                     {activeChar.roleTag}
                   </span>
                 </div>
 
-                <div ref={showroomContentRef} className="showroom-center-row">
-                  <div className="showroom-portrait-wrap" style={{ borderColor: activeChar.color }}>
-                    <img
-                      src={activeChar.imageUrl}
-                      alt={activeChar.displayName}
-                      className="showroom-portrait-img"
-                    />
-                  </div>
+                <div ref={showroomContentRef} className="mlbb-showroom-center">
+                  {/* Live Interactive 3D Hero Model Turntable */}
+                  <Hero3dPreview character={activeChar} size="lg" />
 
-                  <div className="showroom-info-col">
-                    <h2 className="showroom-hero-name">{activeChar.displayName}</h2>
-                    <p className="showroom-hero-anime">
-                      {activeChar.animeTitle} • {activeChar.animeRef}
-                    </p>
+                  <div className="mlbb-showroom-info">
+                    <div className="mlbb-showroom-title-row">
+                      <img
+                        src={activeChar.imageUrl}
+                        alt={activeChar.displayName}
+                        className="mlbb-showroom-portrait-chip"
+                        style={{ borderColor: activeChar.color }}
+                      />
+                      <div>
+                        <h2 className="showroom-hero-name">{activeChar.displayName}</h2>
+                        <p className="showroom-hero-anime">
+                          {activeChar.animeTitle} • {activeChar.animeRef}
+                        </p>
+                      </div>
+                    </div>
 
                     <button
                       type="button"
@@ -201,9 +235,28 @@ export function HeroesPage() {
                       🔊 “{activeChar.voiceLine || CHARACTER_VOICES[activeChar.id]?.quote || ''}”
                     </button>
 
+                    {activeChar.className && (
+                      <div
+                        className="mlbb-class-trait-card"
+                        style={{ '--class-accent': activeChar.classColor || '#38bdf8' } as React.CSSProperties}
+                      >
+                        <div className="mlbb-class-trait-head">
+                          <strong>
+                            {activeChar.classIcon} {activeChar.className}
+                          </strong>
+                          {activeChar.classStatKey && (
+                            <code className="mlbb-class-var-chip">
+                              {activeChar.classStatKey}: {activeChar.classStatValue}
+                            </code>
+                          )}
+                        </div>
+                        <div className="mlbb-class-trait-desc">{activeChar.classTraitLabel}</div>
+                      </div>
+                    )}
+
                     <div className="spec-bars">
                       <div className="spec-row">
-                        <span>พลังชีวิต</span>
+                        <span>HP</span>
                         <div className="spec-track">
                           <div
                             className="spec-fill"
@@ -216,7 +269,7 @@ export function HeroesPage() {
                         <span>{activeChar.maxHp}</span>
                       </div>
                       <div className="spec-row">
-                        <span>ความเร็ว</span>
+                        <span>Speed</span>
                         <div className="spec-track">
                           <div
                             className="spec-fill"
@@ -228,19 +281,6 @@ export function HeroesPage() {
                         </div>
                         <span>{activeChar.moveSpeed}</span>
                       </div>
-                      <div className="spec-row">
-                        <span>สกิลหลัก</span>
-                        <div className="spec-track">
-                          <div
-                            className="spec-fill"
-                            style={{
-                              width: `${Math.min(100, (activeChar.skills.length / 5) * 100)}%`,
-                              background: activeChar.color,
-                            }}
-                          />
-                        </div>
-                        <span>{activeChar.skills.length} ท่า</span>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -248,19 +288,15 @@ export function HeroesPage() {
             )}
 
             {activeChar && (
-              <div className="skill-preview-box">
-                <div className="sidebar-title-row">
-                  <span className="field-label">รายละเอียดสกิลของ {activeChar.displayName}</span>
-                  <span className="collection-hint">ตีธรรมดา Lock-On + Dash ทุกตัว</span>
-                </div>
+              <div className="mlbb-skill-grid-box">
                 {activeChar.skills.length === 0 ? (
-                  <div className="no-skill-notice">
-                    ตัวละครเริ่มต้นเน้นการโจมตีปกติแบบล็อกเป้า (J / Spacebar / คลิก) และ Dash คล่องตัว
+                  <div className="mlbb-no-skill-notice">
+                    โจมตีปกติแบบล็อกเป้า (J / Spacebar) + Dash (Shift)
                   </div>
                 ) : (
-                  <div className="skill-preview-list">
+                  <div className="mlbb-skill-cards">
                     {activeChar.skills.map((sk) => (
-                      <div key={sk.slot} className="skill-preview-item">
+                      <div key={sk.slot} className="mlbb-skill-card skill-preview-item">
                         <div className="skill-preview-head">
                           <div className="skill-preview-head-left">
                             <img
@@ -280,10 +316,6 @@ export function HeroesPage() {
                 )}
               </div>
             )}
-
-            <div className="hero-room-pick-hint">
-              💡 การเลือกฮีโร่ลงสนามให้ไปเลือกได้ทันทีเมื่อเข้าห้องรอเล่น (Room Lobby)
-            </div>
           </section>
         </main>
       </div>

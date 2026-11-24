@@ -18,20 +18,116 @@ type SkillDef struct {
 
 // CharacterDef defines a playable character template (default + anime-inspired heroes).
 type CharacterDef struct {
-	ID          string     `json:"id"`
-	AnilistID   int        `json:"anilistId"`
-	ImageURL    string     `json:"imageUrl,omitempty"`
-	DisplayName string     `json:"displayName"`
-	AnimeTitle  string     `json:"animeTitle"`
-	AnimeRef    string     `json:"animeRef"`
-	RoleTag     string     `json:"roleTag"`
-	VoiceLine   string     `json:"voiceLine,omitempty"`
-	Color       string     `json:"color"`
-	AccentColor string     `json:"accentColor"`
-	MaxHP       int        `json:"maxHp"`
-	MoveSpeed   float64    `json:"moveSpeed"`
-	AdminOnly   bool       `json:"adminOnly,omitempty"`
-	Skills      []SkillDef `json:"skills"`
+	ID              string     `json:"id"`
+	AnilistID       int        `json:"anilistId"`
+	ImageURL        string     `json:"imageUrl,omitempty"`
+	DisplayName     string     `json:"displayName"`
+	AnimeTitle      string     `json:"animeTitle"`
+	AnimeRef        string     `json:"animeRef"`
+	RoleTag         string     `json:"roleTag"`
+	HeroClass       string     `json:"heroClass"`       // "sovereign" | "chronos" | "deadeye" | "vanguard" | "cataclysm"
+	ClassName       string     `json:"className"`       // Unique Thai archetype title
+	ClassIcon       string     `json:"classIcon"`       // Emblem icon
+	ClassColor      string     `json:"classColor"`      // Archetype accent color
+	ClassTraitLabel string     `json:"classTraitLabel"` // Distinguishing mechanical rule
+	ClassStatKey    string     `json:"classStatKey"`    // Engine variable key
+	ClassStatValue  float64    `json:"classStatValue"`  // Numeric distinguishing variable enforced by Go engine
+	VoiceLine       string     `json:"voiceLine,omitempty"`
+	Color           string     `json:"color"`
+	AccentColor     string     `json:"accentColor"`
+	MaxHP           int        `json:"maxHp"`
+	MoveSpeed       float64    `json:"moveSpeed"`
+	AdminOnly       bool       `json:"adminOnly,omitempty"`
+	Skills          []SkillDef `json:"skills"`
+}
+
+const (
+	ClassSovereign = "sovereign"
+	ClassChronos   = "chronos"
+	ClassDeadeye   = "deadeye"
+	ClassVanguard  = "vanguard"
+	ClassCataclysm = "cataclysm"
+)
+
+type classMeta struct {
+	id         string
+	name       string
+	icon       string
+	color      string
+	traitLabel string
+	statKey    string
+	statValue  float64
+}
+
+var heroClassTable = map[string]classMeta{
+	ClassSovereign: {
+		id:         ClassSovereign,
+		name:       "ราชันย์อาณาเขต",
+		icon:       "👑",
+		color:      "#A855F7",
+		traitLabel: "ขยายรัศมีโซน/อาณาเขต +15%",
+		statKey:    "zoneRadiusScale",
+		statValue:  1.15,
+	},
+	ClassChronos: {
+		id:         ClassChronos,
+		name:       "ผู้แหวกมิติเวลา",
+		icon:       "⚡",
+		color:      "#FACC15",
+		traitLabel: "Dash คูลดาวน์ -28% & พุ่งไกลขึ้น +18%",
+		statKey:    "dashCooldownScale",
+		statValue:  0.72,
+	},
+	ClassDeadeye: {
+		id:         ClassDeadeye,
+		name:       "เพชฌฆาตเส้นเล็ง",
+		icon:       "🎯",
+		color:      "#38BDF8",
+		traitLabel: "ความเร็ววิถีกระสุน/สกิลพุ่ง +20%",
+		statKey:    "projectileSpeedScale",
+		statValue:  1.20,
+	},
+	ClassVanguard: {
+		id:         ClassVanguard,
+		name:       "ผู้ทลายขีดจำกัด",
+		icon:       "🔥",
+		color:      "#10B981",
+		traitLabel: "HP < 45% โจมตีและสกิลแรงขึ้น +25%",
+		statKey:    "lowHpDamageBonus",
+		statValue:  1.25,
+	},
+	ClassCataclysm: {
+		id:         ClassCataclysm,
+		name:       "ผู้กุมชะตาโลก",
+		icon:       "💎",
+		color:      "#F43F5E",
+		traitLabel: "ปิดฉากศัตรู HP < 12% ทันที + ต้าน Slow 30%",
+		statKey:    "executionThreshold",
+		statValue:  0.12,
+	},
+}
+
+var heroClassAssignment = map[string]string{
+	"sia_mon":       ClassSovereign,
+	"ajarn_boy":     ClassSovereign,
+	"pa":            ClassSovereign,
+	"kaem":          ClassSovereign,
+	"jinwoo":        ClassSovereign,
+	"ko":            ClassChronos,
+	"ajarn_au":      ClassChronos,
+	"frame":         ClassChronos,
+	"sanji":         ClassChronos,
+	"simo":          ClassDeadeye,
+	"ole":           ClassDeadeye,
+	"ben10":         ClassDeadeye,
+	"thanwa":        ClassVanguard,
+	"boy":           ClassVanguard,
+	"default":       ClassVanguard,
+	"naruto":        ClassVanguard,
+	"luffy":         ClassVanguard,
+	"noone":         ClassCataclysm,
+	"diablo":        ClassCataclysm,
+	"luangphi_sorn": ClassCataclysm,
 }
 
 var characterCatalog = []CharacterDef{
@@ -279,6 +375,139 @@ var characterCatalog = []CharacterDef{
 			{Slot: 5, KeyHint: "5", Name: "Mind Stone (ลำแสงจิตจักรพรรดิ)", Description: "มณีแห่งจิตสีทอง: ยิงลำแสงจิตเจาะทะลุเส้นตรงระยะไกล 42 dmg + Stun 0.75 วิ", CooldownSec: 5.0, CastRange: 640, AoeRadius: 56, AimType: "line", AccentColor: "#F59E0B", IconURL: "/skills/noone_5.png"},
 		},
 	},
+	{
+		ID:          "simo",
+		AnilistID:   146028,
+		ImageURL:    "/characters/simo.png",
+		DisplayName: "ชีโม่",
+		AnimeTitle:  "ซีโม่ แฮวแฮ (Simo Häyhä)",
+		AnimeRef:    "มหาศึกคนชนเทพ (Record of Ragnarok)",
+		RoleTag:     "White Death • Elsu Sniper",
+		VoiceLine:   "白い死神からは逃げられない…照準完了、一撃必殺！",
+		Color:       "#38BDF8",
+		AccentColor: "#F8FAFC",
+		MaxHP:       220,
+		MoveSpeed:   264,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Sentinel Recon (เรดาร์หิมะสอดแนม)", Description: "วางทุ่นเรดาร์หิมะสอดแนมแบบเอลสุ 5 วิ ปล่อยคลื่นสแกนน้ำแข็งทำดาเมจ 10 dmg/ระลอก + Slow ศัตรู 1.4 วิ", CooldownSec: 4.0, CastRange: 460, AoeRadius: 145, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/simo_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "White Death Snipe (ชาร์จซุ่มยิง 50% HP)", Description: "ยืนนิ่งตั้งป้อมและขยายหน้าจอเต็มแมพ กดค้างบีบเส้นเล็งแบบเอลสุ: ชาร์จไม่เสร็จกระสุนจะเบี้ยวออกข้าง ชาร์จเต็ม 100% ยิงทะลุแมพทำดาเมจ 50% ของ HP ศัตรู!", CooldownSec: 4.2, CastRange: 2800, AoeRadius: 44, AimType: "line", AccentColor: "#EF4444", IconURL: "/skills/simo_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Tactical Backflip (ดีดตัวถอยหลังยิงสกัด)", Description: "ตีลังกากระโดดถอยหลัง 240px (อมตะ 0.4 วิ + วิ่งไว 1.8 วิ) พร้อมยิงกระสุนสไนเปอร์น้ำแข็งสกัดไปข้างหน้า 44 dmg + Slow 1.8 วิ", CooldownSec: 6.5, CastRange: 560, AoeRadius: 68, AimType: "line", AccentColor: "#E0F2FE", IconURL: "/skills/simo_3.png"},
+		},
+	},
+	{
+		ID:          "jinwoo",
+		AnilistID:   151807,
+		ImageURL:    "/characters/jinwoo.png",
+		DisplayName: "ซองจินอู",
+		AnimeTitle:  "Sung Jin-Woo (Shadow Monarch)",
+		AnimeRef:    "Solo Leveling",
+		RoleTag:     "Shadow Monarch • Domain Army",
+		VoiceLine:   "起きろ…影の君主の軍勢よ、全てを喰らい尽くせ！",
+		Color:       "#7C3AED",
+		AccentColor: "#38BDF8",
+		MaxHP:       235,
+		MoveSpeed:   265,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Dagger Rush (มีดสั้นจักรพรรดิเงา)", Description: "พุ่งฟันมีดคู่ Knight Killer ทะลุศัตรู 32 dmg + Slow 0.9 วิ", CooldownSec: 3.4, CastRange: 420, AoeRadius: 64, AimType: "line", AccentColor: "#8B5CF6", IconURL: "/skills/jinwoo_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Ruler's Authority (หัตถ์จักรพรรดิ)", Description: "พลังจิตดึงรวบศัตรูเข้าจุดศูนย์กลาง + Stun 0.85 วิ + 28 dmg", CooldownSec: 5.2, CastRange: 500, AoeRadius: 145, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/jinwoo_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "ARISE! (จงตื่นขึ้น — กองทัพเงา)", Description: "กางอาณาเขตอัญเชิญกองทัพเงาฟันต่อเนื่อง 4 ระลอก (13 dmg/ครั้ง + Slow 1.2 วิ ขยายรัศมี +15%)", CooldownSec: 10.5, CastRange: 440, AoeRadius: 195, AimType: "ground", AccentColor: "#6D28D9", IconURL: "/skills/jinwoo_3.png"},
+		},
+	},
+	{
+		ID:          "naruto",
+		AnilistID:   20,
+		ImageURL:    "/characters/naruto.png",
+		DisplayName: "นารูโตะ",
+		AnimeTitle:  "Uzumaki Naruto (Kurama Sage)",
+		AnimeRef:    "Naruto Shippuden",
+		RoleTag:     "Nine-Tails • Transform Fighter",
+		VoiceLine:   "俺は絶対に諦めねえ！九尾チャクラモード、いくってばよ！",
+		Color:       "#F97316",
+		AccentColor: "#FACC15",
+		MaxHP:       245,
+		MoveSpeed:   260,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Rasengan (กระสุนวงจักร)", Description: "พุ่งอัดกระสุนวงจักร 36 dmg + ผลักกระเด็น (ร่างเก้าหาง: 50 dmg + Stun 0.6 วิ!)", CooldownSec: 3.6, CastRange: 360, AoeRadius: 92, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/naruto_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Rasenshuriken (ดาวกระจายวงจักร)", Description: "ขว้างดาวกระจายลมระยะไกลระเบิด 135px ทำดาเมจ 38 dmg + Slow 1.2 วิ (ร่างเก้าหาง: 48 dmg)", CooldownSec: 5.5, CastRange: 640, AoeRadius: 135, AimType: "line", AccentColor: "#7DD3FC", IconURL: "/skills/naruto_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Kurama Mode (แปลงร่างเก้าหาง 6 วิ)", Description: "แปลงร่างโหมดจักระเก้าหาง 6 วิ! ฟื้นเลือด +30 HP + วิ่งไว + ตีไว + ออร่าเผารอบตัว + เสริมพลัง Q/E!", CooldownSec: 12.5, CastRange: 170, AoeRadius: 170, AimType: "self", AccentColor: "#F97316", IconURL: "/skills/naruto_3.png"},
+		},
+	},
+	{
+		ID:          "sanji",
+		AnilistID:   305,
+		ImageURL:    "/characters/sanji.png",
+		DisplayName: "ซันจิ",
+		AnimeTitle:  "Vinsmoke Sanji (Black Leg)",
+		AnimeRef:    "One Piece",
+		RoleTag:     "Ifrit Jambe • Kick Assassin",
+		VoiceLine:   "悪魔風脚！黒足のサンジ、熱々の一撃をお見舞いしてやるぜ！",
+		Color:       "#F59E0B",
+		AccentColor: "#38BDF8",
+		MaxHP:       235,
+		MoveSpeed:   272,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Sky Walk Kick (เดินชมจันทร์เตะพุ่ง)", Description: "พุ่งลูกเตะไฟเร็วสูง + อมตะ 0.25 วิ + 30 dmg + ผลักกระเด็น", CooldownSec: 3.0, CastRange: 380, AoeRadius: 85, AimType: "line", AccentColor: "#F97316", IconURL: "/skills/sanji_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Diable Jambe (ขาปีศาจเพลิงผลาญ)", Description: "หมุนเตะพายุเพลิงรอบตัว 36 dmg + พื้นไฟเผาต่อเนื่อง + วิ่งไว 1.5 วิ", CooldownSec: 5.0, CastRange: 155, AoeRadius: 155, AimType: "self", AccentColor: "#EF4444", IconURL: "/skills/sanji_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Ifrit Jambe (อิฟรีท เพลิงสายฟ้าคราม)", Description: "พุ่งลูกเตะเพลิงสีฟ้าความร้อนสูงทะลุเป้าหมาย 58 dmg + Stun 1.0 วิ + กระเด็นแรง!", CooldownSec: 9.8, CastRange: 440, AoeRadius: 125, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/sanji_3.png"},
+		},
+	},
+	{
+		ID:          "luffy",
+		AnilistID:   40,
+		ImageURL:    "/characters/luffy.png",
+		DisplayName: "ลูฟี่",
+		AnimeTitle:  "Monkey D. Luffy (Gear 5)",
+		AnimeRef:    "One Piece",
+		RoleTag:     "Sun God Nika • Rubber Brawler",
+		VoiceLine:   "海賊王に、俺はなる！ゴムゴムの全力バトルだっ！",
+		Color:       "#EF4444",
+		AccentColor: "#FACC15",
+		MaxHP:       255,
+		MoveSpeed:   258,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Gomu Gomu Pistol (หมัดยางยืด)", Description: "ยืดแขนต่อยระยะไกลทะลุเป้าหมาย 30 dmg + ผลักศัตรูกระเด็น", CooldownSec: 2.8, CastRange: 560, AoeRadius: 56, AimType: "line", AccentColor: "#EF4444", IconURL: "/skills/luffy_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Gomu Gomu Gatling (หมัดปืนกลฮาคิ)", Description: "รัวหมัดเคลือบฮาคิสีดำ-แดงด้านหน้า 4 ระลอก (12 dmg/ครั้ง + Slow 0.8 วิ)", CooldownSec: 4.8, CastRange: 340, AoeRadius: 120, AimType: "cone", AccentColor: "#DC2626", IconURL: "/skills/luffy_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Gear 5: Bajrang Gun (หมัดยักษ์เทพนิกะ)", Description: "ชาร์จหมัดยักษ์เมฆขาวทุบพื้น 185px ทำดาเมจ 62 dmg + Stun 1.15 วิ + อมตะ 0.5 วิ!", CooldownSec: 10.5, CastRange: 460, AoeRadius: 185, AimType: "ground", AccentColor: "#F8FAFC", IconURL: "/skills/luffy_3.png"},
+		},
+	},
+	{
+		ID:          "ben10",
+		AnilistID:   0,
+		ImageURL:    "/characters/ben10.png",
+		DisplayName: "Ben 10",
+		AnimeTitle:  "Ben Tennyson (Omnitrix)",
+		AnimeRef:    "Ben 10: Alien Force",
+		RoleTag:     "Omnitrix • Alien Tech Marksman",
+		VoiceLine:   "It's hero time! Omnitrix locked and loaded!",
+		Color:       "#22C55E",
+		AccentColor: "#A3E635",
+		MaxHP:       240,
+		MoveSpeed:   260,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Heatblast Fireball (บอลไฟฮีทบลาสต์)", Description: "ยิงลูกไฟพลาสมาความเร็วสูง (+20% Deadeye) ระเบิด 95px ทำดาเมจ 34 dmg + เผาพื้น", CooldownSec: 3.2, CastRange: 640, AoeRadius: 95, AimType: "line", AccentColor: "#F97316", IconURL: "/skills/ben10_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "XLR8 Hyper Blitz (พุ่งความเร็วแสง)", Description: "แปลง Omnitrix พุ่งตัดผ่านศัตรู 460px ทำดาเมจ 28 dmg + Slow 1.0 วิ + วิ่งไว 1.8 วิ!", CooldownSec: 4.8, CastRange: 460, AoeRadius: 90, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/ben10_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Way Big Cosmic Ray (ลำแสงคอสมิก)", Description: "ยิงลำแสงพลังงาน Omnitrix เส้นตรงไกล 860px ทำดาเมจ 60 dmg + Stun 0.75 วิ + กระเด็น!", CooldownSec: 10.0, CastRange: 860, AoeRadius: 72, AimType: "line", AccentColor: "#22C55E", IconURL: "/skills/ben10_3.png"},
+		},
+	},
+	{
+		ID:          "diablo",
+		AnilistID:   108511,
+		ImageURL:    "/characters/diablo.png",
+		DisplayName: "เดียโบว์",
+		AnimeTitle:  "Diablo (Primordial Noir)",
+		AnimeRef:    "Tensura (เกิดใหม่ทั้งทีก็เป็นสไลม์)",
+		RoleTag:     "Primordial Demon • Executioner",
+		VoiceLine:   "クフフフ…原初の黒、ディアブロがお相手いたしましょう。",
+		Color:       "#DC2626",
+		AccentColor: "#FACC15",
+		MaxHP:       235,
+		MoveSpeed:   262,
+		Skills: []SkillDef{
+			{Slot: 1, KeyHint: "Q", Name: "Despair Time (คมกรงเล็บปีศาจดำ)", Description: "ปล่อยคลื่นกรงเล็บปีศาจสีดำ-แดง 3 แฉก 22 dmg/สาย + Slow 0.9 วิ", CooldownSec: 3.2, CastRange: 540, AoeRadius: 95, AimType: "cone", AccentColor: "#DC2626", IconURL: "/skills/diablo_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Temptation World (โลกกิเลสลวงตา)", Description: "เปิดมิติลวงตาดึงศัตรูเข้าจุดศูนย์กลาง + Stun 1.1 วิ + 32 dmg", CooldownSec: 5.6, CastRange: 460, AoeRadius: 150, AimType: "ground", AccentColor: "#F59E0B", IconURL: "/skills/diablo_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "End of World (จุดจบแห่งสรรพสิ่ง)", Description: "ระเบิดสุริยุปราคาดำ-แดง 205px ทำดาเมจ 60 dmg (ปิดชีพทันทีเมื่อเลือดศัตรู ≤ 12%!)", CooldownSec: 11.0, CastRange: 480, AoeRadius: 205, AimType: "ground", AccentColor: "#991B1B", IconURL: "/skills/diablo_3.png"},
+		},
+	},
 }
 
 var (
@@ -287,6 +516,22 @@ var (
 )
 
 func init() {
+	for i := range characterCatalog {
+		cid := characterCatalog[i].ID
+		clsID := heroClassAssignment[cid]
+		meta, ok := heroClassTable[clsID]
+		if !ok {
+			meta = heroClassTable[ClassVanguard]
+		}
+		characterCatalog[i].HeroClass = meta.id
+		characterCatalog[i].ClassName = meta.name
+		characterCatalog[i].ClassIcon = meta.icon
+		characterCatalog[i].ClassColor = meta.color
+		characterCatalog[i].ClassTraitLabel = meta.traitLabel
+		characterCatalog[i].ClassStatKey = meta.statKey
+		characterCatalog[i].ClassStatValue = meta.statValue
+	}
+
 	bAll, _ := json.Marshal(struct {
 		Characters []CharacterDef `json:"characters"`
 	}{

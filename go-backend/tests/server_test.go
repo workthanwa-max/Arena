@@ -57,8 +57,8 @@ func registerTestUser(t *testing.T, srvURL, username, displayName string) (strin
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		t.Fatalf("decode register %s: %v", username, err)
 	}
-	if len(out.User.OwnedCharacterIDs) != 12 || out.Token == "" {
-		t.Fatalf("expected 12 public starter heroes and session token on register, got %+v", out)
+	if len(out.User.OwnedCharacterIDs) != 19 || out.Token == "" {
+		t.Fatalf("expected 19 public starter heroes and session token on register, got %+v", out)
 	}
 	return out.User.ID, out.Token
 }
@@ -128,15 +128,22 @@ func TestEngineMovementBoundsAndRandomSpawn(t *testing.T) {
 		t.Fatalf("expected non-lethal sword rain damage from single ult tick: alive=%v hp=%d hits=%d", rsTest.Players["def1"].Alive, rsTest.Players["def1"].HP, len(hits))
 	}
 
-	// Verify each of the 9 characters executes a distinct Basic Attack and deals damage cleanly
-	for _, cid := range []string{"default", "pa", "boy", "ole", "thanwa", "ajarn_au", "ajarn_boy", "kaem", "frame", "ko"} {
+	// Verify each character executes a distinct Basic Attack and deals damage cleanly (including Simo at long range 460px!)
+	for _, cid := range []string{"default", "pa", "boy", "ole", "thanwa", "ajarn_au", "ajarn_boy", "kaem", "frame", "ko", "simo"} {
 		attacker := &state.PlayerState{ID: "atk-" + cid, Name: cid, CharacterID: cid, X: 500, Y: 500, HP: 220, MaxHP: 220, Alive: true}
-		target := &state.PlayerState{ID: "tgt-" + cid, Name: "Tgt", CharacterID: "default", X: 575, Y: 500, HP: 240, MaxHP: 240, Alive: true}
+		dist := 75.0
+		if cid == "simo" {
+			dist = 440.0
+		}
+		target := &state.PlayerState{ID: "tgt-" + cid, Name: "Tgt", CharacterID: "default", X: 500 + dist, Y: 500, HP: 240, MaxHP: 240, Alive: true}
 		rBasic := state.NewRoomState("basic-"+cid, 5, cfg)
 		rBasic.Players[attacker.ID] = attacker
 		rBasic.Players[target.ID] = target
 		if _, ok := eng.CastBasicAttack(rBasic, attacker, target.X, target.Y, now); !ok {
 			t.Fatalf("expected basic attack to succeed for %s", cid)
+		}
+		if cid == "simo" && target.HP != 222 {
+			t.Fatalf("expected Simo long-range lock-on basic attack to deal 18 dmg (240->222), got HP=%d", target.HP)
 		}
 		if len(rBasic.Projectiles) == 0 && len(rBasic.Beams) == 0 {
 			t.Fatalf("expected basic attack visual/projectile spawned for %s", cid)
@@ -147,6 +154,22 @@ func TestEngineMovementBoundsAndRandomSpawn(t *testing.T) {
 		if target.HP >= 240 {
 			t.Fatalf("expected basic attack of %s to deal damage, got hp=%d", cid, target.HP)
 		}
+	}
+
+	// Verify Simo Skill 2 (Elsu Snipe): Uncharged shot veers off-side (misses straight target), 100% charged shot deals 50% of enemy HP!
+	rSimo := state.NewRoomState("simo-snipe", 5, cfg)
+	simoP := &state.PlayerState{ID: "simo1", Name: "Simo", CharacterID: "simo", X: 400, Y: 500, HP: 220, MaxHP: 220, Alive: true}
+	foeP := &state.PlayerState{ID: "foe1", Name: "Foe", CharacterID: "default", X: 1100, Y: 500, HP: 240, MaxHP: 240, Alive: true}
+	rSimo.Players[simoP.ID] = simoP
+	rSimo.Players[foeP.ID] = foeP
+	outOff := eng.CastSkillFull(rSimo, simoP, 2, foeP.X, foeP.Y, "charge:30", now)
+	if !outOff.OK || foeP.HP != 240 {
+		t.Fatalf("expected uncharged Simo snipe (charge:30) to veer off to the side and miss distant straight target, got HP=%d", foeP.HP)
+	}
+	simoP.CooldownUntil = [5]time.Time{}
+	outMax := eng.CastSkillFull(rSimo, simoP, 2, foeP.X, foeP.Y, "charge:100", now.Add(5*time.Second))
+	if !outMax.OK || foeP.HP != 120 {
+		t.Fatalf("expected 100%% charged Simo snipe to hit straight target for 50%% HP (240->120), got HP=%d", foeP.HP)
 	}
 	defXBefore := rsTest.Players["def1"].X
 	if !eng.CastDash(rsTest, rsTest.Players["def1"], 860, 500, now) || rsTest.Players["def1"].X <= defXBefore {
@@ -195,8 +218,8 @@ func TestCharactersCatalogAndSkillsCombat(t *testing.T) {
 	if err := json.NewDecoder(charResp.Body).Decode(&charPayload); err != nil {
 		t.Fatalf("decode characters: %v", err)
 	}
-	if len(charPayload.Characters) != 12 {
-		t.Fatalf("expected 12 public characters, got %d", len(charPayload.Characters))
+	if len(charPayload.Characters) != 19 {
+		t.Fatalf("expected 19 public characters, got %d", len(charPayload.Characters))
 	}
 	for _, c := range charPayload.Characters {
 		if c.AdminOnly {
@@ -1058,8 +1081,8 @@ func TestAdminSaitamaAndGojoHeroes(t *testing.T) {
 	if err := json.NewDecoder(adminCharsResp.Body).Decode(&adminChars); err != nil {
 		t.Fatalf("decode admin characters: %v", err)
 	}
-	if len(adminChars.Characters) != 13 {
-		t.Fatalf("expected 13 heroes for admin, got %d", len(adminChars.Characters))
+	if len(adminChars.Characters) != 20 {
+		t.Fatalf("expected 20 heroes for admin, got %d", len(adminChars.Characters))
 	}
 
 	// 3. Saitama (luangphi_sorn): 1 skill with 20s CD, guaranteed instant kill unless target is Invulnerable
@@ -2037,5 +2060,227 @@ func TestBinaryProtocolAndTransportInfo(t *testing.T) {
 	}
 	if !sawPong || !sawState {
 		t.Fatalf("expected both binary pong (%v) and binary state (%v) frames over ?proto=bin1", sawPong, sawState)
+	}
+}
+
+func TestSisaketIslandWaterHazardAndFiveHeroArchetypes(t *testing.T) {
+	eng := engine.NewEngine()
+	cfg := state.MapConfigFor(state.MapSisaket)
+	if cfg.ID != state.MapSisaket || len(cfg.Pillars) != 7 {
+		t.Fatalf("expected sisaket_island map config with 7 landmarks, got %+v", cfg)
+	}
+
+	// Verify real dry-land geometry vs surrounding Huai Nam Kham reservoir water
+	if !state.IsOnDryLand(cfg, 1320, 1060) {
+		t.Fatalf("expected central island plaza (1320,1060) to be dry land")
+	}
+	if !state.IsOnDryLand(cfg, 650, 900) {
+		t.Fatalf("expected West Khmer bridge (650,900) to be dry land")
+	}
+	if !state.IsOnDryLand(cfg, 2700, 900) {
+		t.Fatalf("expected East Sisaket Aquarium bank (2700,900) to be dry land")
+	}
+	if state.IsOnDryLand(cfg, 700, 300) {
+		t.Fatalf("expected Huai Nam Kham reservoir corner (700,300) to be water")
+	}
+
+	// Verify Water Hazard drains -5 HP periodically and kills/drowns player when HP hits 0
+	rs := state.NewRoomState("sisaket-water", 4, cfg)
+	rs.Phase = state.PhasePlaying
+	now := time.Now()
+	swimmer := &state.PlayerState{ID: "sw1", Name: "Swimmer", CharacterID: "pa", X: 700, Y: 300, HP: 12, MaxHP: 225, Alive: true}
+	safeHero := &state.PlayerState{ID: "safe1", Name: "Safe", CharacterID: "boy", X: 1320, Y: 1060, HP: 250, MaxHP: 250, Alive: true}
+	rs.Players[swimmer.ID] = swimmer
+	rs.Players[safeHero.ID] = safeHero
+
+	// First call arms grace window (0.45s) without instant damage
+	changed0, hits0 := eng.StepWaterHazard(rs, now)
+	if changed0 || len(hits0) != 0 || swimmer.HP != 12 {
+		t.Fatalf("expected initial water grace window before first -5 tick, got changed=%v hp=%d", changed0, swimmer.HP)
+	}
+	// After 0.50s -> drains -5 HP (12 -> 7), safeHero untouched
+	changed1, hits1 := eng.StepWaterHazard(rs, now.Add(500*time.Millisecond))
+	if !changed1 || len(hits1) != 0 || swimmer.HP != 7 || safeHero.HP != 250 {
+		t.Fatalf("expected first -5 water tick (hp=7), got changed=%v hp=%d safe=%d", changed1, swimmer.HP, safeHero.HP)
+	}
+	// After another 0.80s -> drains -5 HP (7 -> 2)
+	changed2, _ := eng.StepWaterHazard(rs, now.Add(1300*time.Millisecond))
+	if !changed2 || swimmer.HP != 2 {
+		t.Fatalf("expected second -5 water tick (hp=2), got changed=%v hp=%d", changed2, swimmer.HP)
+	}
+	// After another 0.80s -> drowns (2 -> 0) and emits HitEvent
+	changed3, hits3 := eng.StepWaterHazard(rs, now.Add(2100*time.Millisecond))
+	if !changed3 || swimmer.Alive || swimmer.HP != 0 || len(hits3) != 1 || !strings.Contains(swimmer.KilledBy, "ตกน้ำ") {
+		t.Fatalf("expected player to drown on 3rd tick, got alive=%v hp=%d hits=%+v killedBy=%q", swimmer.Alive, swimmer.HP, hits3, swimmer.KilledBy)
+	}
+
+	// Verify all 14 heroes belong cleanly to the 5 distinct archetypes with non-empty distinguishing variables
+	allChars := state.AllCharacters()
+	classCounts := map[string]int{}
+	for _, ch := range allChars {
+		if ch.HeroClass == "" || ch.ClassName == "" || ch.ClassStatKey == "" || ch.ClassStatValue <= 0 {
+			t.Fatalf("character %s missing archetype metadata: %+v", ch.ID, ch)
+		}
+		classCounts[ch.HeroClass]++
+	}
+	for _, cls := range []string{state.ClassSovereign, state.ClassChronos, state.ClassDeadeye, state.ClassVanguard, state.ClassCataclysm} {
+		if classCounts[cls] == 0 {
+			t.Fatalf("expected at least 1 hero in archetype %q, got counts=%+v", cls, classCounts)
+		}
+	}
+
+	// 1) Sovereign (zoneRadiusScale=1.15): Kaem skill 1 zone radius expanded by 15% (110 -> 126)
+	rsArch := state.NewRoomState("arch-test", 4, state.DefaultMapConfig())
+	rsArch.Phase = state.PhasePlaying
+	sov := &state.PlayerState{ID: "sov", Name: "Kaem", CharacterID: "kaem", X: 600, Y: 600, HP: 235, MaxHP: 235, Alive: true}
+	rsArch.Players[sov.ID] = sov
+	if _, ok := eng.CastSkill(rsArch, sov, 1, 720, 600, now); !ok || len(rsArch.Zones) == 0 {
+		t.Fatalf("expected sovereign kaem zone cast")
+	}
+	if rsArch.Zones[0].Radius < 126 {
+		t.Fatalf("expected sovereign +15%% zone radius (~126 vs base 110), got %v", rsArch.Zones[0].Radius)
+	}
+
+	// 2) Chronos (dashCooldownScale=0.72): Ko dash CD < 3.0s and dash distance > 280px
+	chr := &state.PlayerState{ID: "chr", Name: "Ko", CharacterID: "ko", X: 500, Y: 900, HP: 235, MaxHP: 235, Alive: true}
+	rsArch.Players[chr.ID] = chr
+	if !eng.CastDash(rsArch, chr, 1000, 900, now) {
+		t.Fatalf("expected chronos dash")
+	}
+	if chr.X < 790 || chr.DashUntil.Sub(now) >= 3100*time.Millisecond {
+		t.Fatalf("expected chronos extended dash (x~800) & reduced CD (~2.73s), got x=%v cd=%v", chr.X, chr.DashUntil.Sub(now))
+	}
+
+	// 3) Deadeye (projectileSpeedScale=1.20): Ole skill 1 projectile speed boosted +20% (580 -> 696)
+	de := &state.PlayerState{ID: "de", Name: "Ole", CharacterID: "ole", X: 500, Y: 500, HP: 225, MaxHP: 225, Alive: true}
+	rsArch.Players[de.ID] = de
+	if _, ok := eng.CastSkill(rsArch, de, 1, 900, 500, now); !ok || len(rsArch.Projectiles) == 0 {
+		t.Fatalf("expected deadeye projectile cast")
+	}
+	pr := rsArch.Projectiles[len(rsArch.Projectiles)-1]
+	if math.Hypot(pr.VX, pr.VY) < 690 {
+		t.Fatalf("expected deadeye +20%% projectile speed (~696 vs base 580), got %v", math.Hypot(pr.VX, pr.VY))
+	}
+
+	// 4) Vanguard (lowHpDamageBonus=1.25): Boy deals +25% bonus basic damage when below 45% HP
+	van := &state.PlayerState{ID: "van", Name: "Boy", CharacterID: "boy", X: 1400, Y: 500, HP: 250, MaxHP: 250, Alive: true}
+	foeV := &state.PlayerState{ID: "fv", Name: "FoeV", CharacterID: "default", X: 1500, Y: 500, HP: 240, MaxHP: 240, Alive: true}
+	rsArch.Players[van.ID] = van
+	rsArch.Players[foeV.ID] = foeV
+	eng.CastBasicAttack(rsArch, van, foeV.X, foeV.Y, now)
+	fullHpDmg := 240 - foeV.HP
+	foeV.HP = 240
+	van.HP = 80 // 32% HP (<45%)
+	eng.CastBasicAttack(rsArch, van, foeV.X, foeV.Y, now.Add(2*time.Second))
+	lowHpDmg := 240 - foeV.HP
+	if lowHpDmg <= fullHpDmg {
+		t.Fatalf("expected vanguard low-HP berserk bonus (%d > %d)", lowHpDmg, fullHpDmg)
+	}
+
+	// 5) Cataclysm (executionThreshold=0.12): Thanos executes non-dummy foe dropping to <=12% HP
+	cat := &state.PlayerState{ID: "cat", Name: "Thanos", CharacterID: "noone", X: 1800, Y: 500, HP: 300, MaxHP: 300, Alive: true}
+	foeC := &state.PlayerState{ID: "fc", Name: "FoeC", CharacterID: "default", X: 1880, Y: 500, HP: 40, MaxHP: 240, Alive: true}
+	rsArch.Players[cat.ID] = cat
+	rsArch.Players[foeC.ID] = foeC
+	hitsExec, ok := eng.CastBasicAttack(rsArch, cat, foeC.X, foeC.Y, now)
+	if !ok || foeC.Alive || len(hitsExec) == 0 {
+		t.Fatalf("expected cataclysm execution threshold to finish enemy <=12%% HP, got alive=%v hp=%d", foeC.Alive, foeC.HP)
+	}
+}
+
+func TestSCPSiteCircularMapMedkitsAndSixNewHeroes(t *testing.T) {
+	eng := engine.NewEngine()
+	cfg := state.MapConfigFor(state.MapSCP)
+	if cfg.ID != state.MapSCP || len(cfg.Pillars) != 4 {
+		t.Fatalf("expected scp_site circular map with 4 containment pillars, got %+v", cfg)
+	}
+
+	rs := state.NewRoomState("scp-test", 6, cfg)
+	rs.Phase = state.PhasePlaying
+	now := time.Now()
+
+	// 1. Verify strict circular containment boundary (r=840 around 1500,900)
+	pOut := &state.PlayerState{ID: "p1", Name: "Tester", CharacterID: "jinwoo", X: 1500, Y: 900, HP: 150, MaxHP: 235, Alive: true, InputDX: 1, InputDY: 0}
+	rs.Players[pOut.ID] = pOut
+	for i := 0; i < 120; i++ {
+		eng.StepPlayer(pOut, 0.05, cfg, now)
+	}
+	distFromCenter := math.Hypot(pOut.X-state.SCPCenterX, pOut.Y-state.SCPCenterY)
+	if distFromCenter > state.SCPRadius-cfg.PlayerRadius+1.0 {
+		t.Fatalf("expected circular SCP wall clamp <= %.1f, got %.1f", state.SCPRadius-cfg.PlayerRadius, distFromCenter)
+	}
+
+	// 2. Verify 6 glowing green bio-medkit orbs spawn and heal +45 balanced HP on pickup + respawn timer
+	if !eng.StepMapPickups(rs, now) {
+		t.Fatalf("expected initial 6 SCP medkit orbs to spawn")
+	}
+	orbCount := 0
+	for _, z := range rs.Zones {
+		if z.Kind == "scp_medkit_orb" {
+			orbCount++
+		}
+	}
+	if orbCount != 6 {
+		t.Fatalf("expected 6 active scp_medkit_orb zones, got %d", orbCount)
+	}
+	// Move injured player onto medkit slot 0 (1500, 290) -> heals +45 HP (150 -> 195)
+	pOut.X, pOut.Y = engine.SCPMedkitSpots[0][0], engine.SCPMedkitSpots[0][1]
+	if !eng.StepMapPickups(rs, now.Add(100*time.Millisecond)) || pOut.HP != 195 {
+		t.Fatalf("expected +45 balanced medkit heal (150 -> 195), got hp=%d", pOut.HP)
+	}
+	// Full HP player must NOT consume medkit slot 1
+	pOut.HP = pOut.MaxHP
+	pOut.X, pOut.Y = engine.SCPMedkitSpots[1][0], engine.SCPMedkitSpots[1][1]
+	if eng.StepMapPickups(rs, now.Add(200*time.Millisecond)) {
+		t.Fatalf("expected full-HP player not to waste green medkit orb")
+	}
+
+	// 3. Verify all 6 new heroes exist, have valid 5-archetype assignments, and cast all 3 skills + Naruto Kurama transform
+	for _, cid := range []string{"jinwoo", "naruto", "sanji", "luffy", "ben10", "diablo"} {
+		ch := state.GetCharacter(cid)
+		if ch.ID != cid || len(ch.Skills) != 3 || ch.HeroClass == "" {
+			t.Fatalf("invalid new hero %s: %+v", cid, ch)
+		}
+		rsH := state.NewRoomState("hero-"+cid, 4, cfg)
+		rsH.Phase = state.PhasePlaying
+		hero := &state.PlayerState{ID: "h", Name: ch.DisplayName, CharacterID: cid, X: 1350, Y: 900, HP: ch.MaxHP - 40, MaxHP: ch.MaxHP, Alive: true}
+		foe := &state.PlayerState{ID: "f", Name: "Foe", CharacterID: "default", X: 1520, Y: 900, HP: 240, MaxHP: 240, Alive: true}
+		rsH.Players[hero.ID] = hero
+		rsH.Players[foe.ID] = foe
+		for slot := 1; slot <= 3; slot++ {
+			if _, ok := eng.CastSkill(rsH, hero, slot, foe.X, foe.Y, now); !ok {
+				t.Fatalf("expected hero %s slot %d to cast cleanly", cid, slot)
+			}
+		}
+		if cid == "naruto" {
+			// Verify Kurama Mode transformation heals +30 HP and activates BuffUntil + RapidAttackUntil + kurama aura!
+			if hero.HP != ch.MaxHP-10 || !hero.BuffUntil.After(now) || !hero.RapidAttackUntil.After(now) {
+				t.Fatalf("expected Naruto Kurama transform buff & +30 heal, got hp=%d buff=%v", hero.HP, hero.BuffUntil.After(now))
+			}
+		}
+	}
+
+	// 4. Verify Central Dimensional Aegis Core Objective spawns after 10s & grants +40 HP + overdrive + 25% skill CDR
+	pOut.HP = 120
+	pOut.X, pOut.Y = 1200, 900
+	pOut.CooldownUntil[0] = now.Add(20 * time.Second)
+	if !eng.StepMapPickups(rs, now.Add(11*time.Second)) {
+		t.Fatalf("expected Central Aegis Core orb to spawn after 10s")
+	}
+	pOut.X, pOut.Y = 1500, 900
+	if !eng.StepMapPickups(rs, now.Add(12*time.Second)) || pOut.HP != 160 || !pOut.BuffUntil.After(now.Add(12*time.Second)) {
+		t.Fatalf("expected Central Aegis Core pickup to heal +40 HP (120->160) & grant overdrive, got hp=%d", pOut.HP)
+	}
+
+	// 5. Verify Kill Momentum Reward: real enemy takedown restores +18% MaxHP and resets Dash cooldown!
+	pOut.HP = 100
+	pOut.DashUntil = now.Add(5 * time.Second)
+	victim := &state.PlayerState{ID: "v1", Name: "Victim", CharacterID: "default", X: 1520, Y: 900, HP: 10, MaxHP: 240, Alive: true}
+	rs.Players[victim.ID] = victim
+	if _, ok := eng.CastBasicAttack(rs, pOut, victim.X, victim.Y, now.Add(13*time.Second)); !ok {
+		t.Fatalf("expected basic attack to execute low-HP victim")
+	}
+	if victim.Alive || pOut.HP <= 100 || !pOut.DashUntil.IsZero() {
+		t.Fatalf("expected Kill Momentum Reward (+18%% HP & instant Dash CD reset), got alive=%v hp=%d dashUntil=%v", victim.Alive, pOut.HP, pOut.DashUntil)
 	}
 }

@@ -1,8 +1,10 @@
 export type GameMode = 'iconic' | 'duel_1v1' | 'ffa' | 'tdm_3v3' | 'practice'
-export type MapId = 'shibuya' | 'konoha'
+export type MapId = 'shibuya' | 'konoha' | 'sisaket_island' | 'scp_site'
+export type HeroClassId = 'sovereign' | 'chronos' | 'deadeye' | 'vanguard' | 'cataclysm'
 export type MatchPhase = 'waiting' | 'playing' | 'finished'
 export type TeamSide = 'ffa' | 'blue' | 'red'
-export type ScreenView = 'auth' | 'home' | 'heroes' | 'battle_setup' | 'room_lobby' | 'arena'
+export type ScreenView = 'auth' | 'home' | 'heroes' | 'battle_setup' | 'join_select' | 'room_lobby' | 'arena'
+export type GraphicsQuality = 'pixel' | 'fine_pixel' | 'hd' | 'ultra'
 
 export interface UserProfile {
   id: string
@@ -52,6 +54,13 @@ export interface CharacterDef {
   animeTitle: string
   animeRef: string
   roleTag: string
+  heroClass?: HeroClassId
+  className?: string
+  classIcon?: string
+  classColor?: string
+  classTraitLabel?: string
+  classStatKey?: string
+  classStatValue?: number
   voiceLine?: string
   color: string
   accentColor: string
@@ -169,6 +178,12 @@ export interface RecentRoom {
   lastJoinedAt: number
 }
 
+export interface PeerVoiceState {
+  micOn: boolean
+  speakerOn: boolean
+  speaking: boolean
+}
+
 export type ServerMessage =
   | {
       type: 'welcome'
@@ -250,6 +265,18 @@ export type ServerMessage =
       mode: GameMode
       instantWin: boolean
       killedCount: number
+    }
+  | {
+      type: 'voice_signal'
+      fromId: string
+      fromName: string
+      targetId?: string
+      signalType: 'join' | 'state' | 'offer' | 'answer' | 'ice'
+      sdp?: string
+      candidate?: string
+      micOn: boolean
+      speakerOn: boolean
+      speaking: boolean
     }
   | {
       type: 'error'

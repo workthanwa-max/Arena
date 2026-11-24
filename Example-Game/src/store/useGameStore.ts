@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { CHARACTER_VOICES, soundEngine } from '../audio/soundEngine'
+import { voiceChatEngine } from '../audio/voiceChatEngine'
 import { gameEventBus } from '../game/core/eventBus'
 import {
   cacheCharacters,
@@ -10,7 +11,12 @@ import {
   recordRecentRoom,
   savePreference,
 } from '../local-db/sqliteCache'
-import { apiClient } from '../services/apiClient'
+import {
+  apiClient,
+  clearStoredSessionToken,
+  getStoredSessionToken,
+  saveStoredSessionToken,
+} from '../services/apiClient'
 import { releaseUnusedMatchAssets, warmupSingleHeroAssets } from '../services/assetPreloader'
 import {
   BIN_CLIENT_RCT,
@@ -32,12 +38,15 @@ import type {
   BeamEffect,
   CharacterDef,
   GameMode,
+  GraphicsQuality,
   MapConfig,
   MapId,
   MatchPhase,
+  PeerVoiceState,
   PlayerState,
   Projectile,
   RecentRoom,
+  RoomInfo,
   ScreenView,
   ServerMessage,
   SkillAimType,
@@ -54,6 +63,28 @@ function getWSBase(): string {
 function getInitialRoomFromURL(): string {
   const params = new URLSearchParams(window.location.search)
   return (params.get('room') ?? '').trim()
+}
+
+const GFX_QUALITY_STORAGE_KEY = 'pulsearena_gfx_quality'
+const LEGACY_PIXEL_STORAGE_KEY = 'pulsearena_pixel_mode'
+
+function normalizeGraphicsQuality(raw: string | null | undefined): GraphicsQuality {
+  if (raw === 'pixel' || raw === 'fine_pixel' || raw === 'hd' || raw === 'ultra') {
+    return raw
+  }
+  return 'pixel'
+}
+
+function getInitialGraphicsQuality(): GraphicsQuality {
+  try {
+    const saved = window.localStorage.getItem(GFX_QUALITY_STORAGE_KEY)
+    if (saved) return normalizeGraphicsQuality(saved)
+    const legacy = window.localStorage.getItem(LEGACY_PIXEL_STORAGE_KEY)
+    if (legacy === '0' || legacy === 'false') return 'hd'
+  } catch {
+    // Ignore storage read blocks in restricted contexts
+  }
+  return 'pixel'
 }
 
 const DEFAULT_MAP: MapConfig = {
@@ -78,10 +109,12 @@ interface GameStoreState {
   viewingCharId: string
   playerName: string
   roomInput: string
+  pendingJoinRoom: RoomInfo | null
   recentRooms: RecentRoom[]
   selectedMode: GameMode
   selectedMapId: MapId
   joining: boolean
+  checkingJoinRoom: boolean
   arenaReady: boolean
   assetsReady: boolean
   preloadProgress: number
@@ -140,9 +173,19 @@ interface GameStoreState {
   pingMs: number | null
   transportMode: TransportKind
   fps: number
+  graphicsQuality: GraphicsQuality
+  voiceMicEnabled: boolean
+  voiceSpeakerEnabled: boolean
+  voiceSpeaking: boolean
+  peerVoiceStates: Record<string, PeerVoiceState>
+  adminAiEnabled: boolean
   error: string
 
   bootstrap: () => Promise<void>
+  setGraphicsQuality: (quality: GraphicsQuality) => void
+  toggleAdminAi: (forceState?: boolean) => void
+  toggleVoiceMic: () => Promise<void>
+  toggleVoiceSpeaker: () => void
   setView: (view: ScreenView) => void
   goBack: () => void
   inspectCharacter: (id?: string) => void
@@ -161,6 +204,8 @@ interface GameStoreState {
   setPreloadStatus: (pct: number, stage: string) => void
   startPracticeMode: (charIdOverride?: string, mapOverride?: MapId) => Promise<void>
   createAndJoinRoom: (mode?: GameMode, mapId?: MapId) => Promise<void>
+  prepareJoinRoom: (roomIdOverride?: string) => Promise<void>
+  confirmPendingJoin: (charIdOverride?: string) => Promise<void>
   joinRoom: (roomIdOverride?: string, charIdOverride?: string, skipRoomCheck?: boolean) => Promise<void>
   leaveRoom: (targetView?: ScreenView) => void
   selectTeam: (team: 'blue' | 'red') => void
@@ -171,7 +216,7 @@ interface GameStoreState {
   toggleReady: () => void
   startMatch: () => void
   returnToWaitingLobby: () => void
-  sendMovementVector: (dx: number, dy: number, force?: boolean) => void
+  sendMovementVector: (dx: number, dy: number, force?: boolean, worldSpace?: boolean) => void
   castSkill: (
     slot: 1 | 2 | 3 | 4 | 5,
     target?: {
@@ -206,22 +251,63 @@ interface GameStoreState {
 }
 
 let activeTransport: RealtimeTransport | null = null
-let memSessionToken = ''
+let memSessionToken = getStoredSessionToken()
 let seqCounter = 0
 let lastInputVec = { dx: 0, dy: 0 }
 let lastInputChangedAtMs = 0
 let latestPlayers = new Map<string, PlayerState>()
 const playersByNetId = new Map<number, PlayerState>()
 let latestRecvTick = 0
+let simoSnipeCharging = false
+
+export function isSimoSnipeCharging(): boolean {
+  return simoSnipeCharging
+}
+
+export function setSimoSnipeCharging(active: boolean): void {
+  if (simoSnipeCharging === active) return
+  simoSnipeCharging = active
+  if (active) {
+    useGameStore.getState().sendMovementVector(0, 0, true)
+  }
+}
+
+export function getSimoLiveAimDirection(): { dirX: number; dirY: number } {
+  const st = useGameStore.getState()
+  const me = latestPlayers.get(st.myPlayerId)
+  if (!me) return { dirX: 1, dirY: 0 }
+  if (mouseWorld.active) {
+    const dx = mouseWorld.x - me.x
+    const dy = mouseWorld.y - me.y
+    const d = Math.hypot(dx, dy)
+    if (d > 4) return { dirX: dx / d, dirY: dy / d }
+  }
+  const isTeam = isTeamMatchMode(st.roomMode)
+  let bestDist = Infinity
+  let bestDir = { dirX: me.aimDx || 1, dirY: me.aimDy || 0 }
+  for (const other of latestPlayers.values()) {
+    if (other.id === st.myPlayerId || !other.alive) continue
+    if (isTeam && me.team && other.team === me.team) continue
+    const dx = other.x - me.x
+    const dy = other.y - me.y
+    const d = Math.hypot(dx, dy)
+    if (d > 4 && d < bestDist) {
+      bestDist = d
+      bestDir = { dirX: dx / d, dirY: dy / d }
+    }
+  }
+  return bestDir
+}
 
 export function getLocalMoveInput(): { dx: number; dy: number } {
+  if (simoSnipeCharging) return { dx: 0, dy: 0 }
   return lastInputVec
 }
 
 export function getLocalMoveInputState(): { dx: number; dy: number; seq: number; changedAtMs: number } {
   return {
-    dx: lastInputVec.dx,
-    dy: lastInputVec.dy,
+    dx: simoSnipeCharging ? 0 : lastInputVec.dx,
+    dy: simoSnipeCharging ? 0 : lastInputVec.dy,
     seq: seqCounter,
     changedAtMs: lastInputChangedAtMs,
   }
@@ -277,11 +363,16 @@ export function hasWaitingLobby(mode: GameMode): boolean {
 }
 
 export function getBasicAttackRange(characterId?: string): number {
+  if (characterId === 'simo') return 480
+  if (characterId === 'ben10') return 320
   if (characterId === 'pa' || characterId === 'ole' || characterId === 'default') return 300
   if (characterId === 'kaem') return 316
+  if (characterId === 'diablo') return 265
   if (characterId === 'ajarn_au') return 240
-  if (characterId === 'ko') return 195
+  if (characterId === 'luffy') return 225
+  if (characterId === 'ko' || characterId === 'jinwoo') return 195
   if (characterId === 'noone') return 190
+  if (characterId === 'naruto' || characterId === 'sanji') return 185
   return 175
 }
 
@@ -352,6 +443,13 @@ const LOCAL_PORTRAITS: Record<string, { anilistId: number; imageUrl: string }> =
   sia_mon: { anilistId: 4044, imageUrl: '/characters/sia_mon.png' },
   ko: { anilistId: 129131, imageUrl: '/characters/ko.png' },
   noone: { anilistId: 0, imageUrl: '/characters/noone.png?v=mcu1' },
+  simo: { anilistId: 146028, imageUrl: '/characters/simo.png' },
+  jinwoo: { anilistId: 129928, imageUrl: '/characters/jinwoo.png' },
+  naruto: { anilistId: 17, imageUrl: '/characters/naruto.png' },
+  sanji: { anilistId: 305, imageUrl: '/characters/sanji.png' },
+  luffy: { anilistId: 40, imageUrl: '/characters/luffy.png' },
+  ben10: { anilistId: 0, imageUrl: '/characters/ben10.png' },
+  diablo: { anilistId: 132541, imageUrl: '/characters/diablo.png' },
 }
 
 const DEFAULT_SKILL_META: Record<
@@ -415,6 +513,41 @@ const DEFAULT_SKILL_META: Record<
     { castRange: 440, aoeRadius: 105, aimType: 'cone' },
     { castRange: 230, aoeRadius: 230, aimType: 'self' },
     { castRange: 640, aoeRadius: 56, aimType: 'line' },
+  ],
+  simo: [
+    { castRange: 460, aoeRadius: 145, aimType: 'ground' },
+    { castRange: 2800, aoeRadius: 44, aimType: 'line' },
+    { castRange: 560, aoeRadius: 68, aimType: 'line' },
+  ],
+  jinwoo: [
+    { castRange: 380, aoeRadius: 65, aimType: 'line' },
+    { castRange: 440, aoeRadius: 150, aimType: 'ground' },
+    { castRange: 260, aoeRadius: 260, aimType: 'self' },
+  ],
+  naruto: [
+    { castRange: 360, aoeRadius: 72, aimType: 'line' },
+    { castRange: 560, aoeRadius: 118, aimType: 'line' },
+    { castRange: 210, aoeRadius: 210, aimType: 'self' },
+  ],
+  sanji: [
+    { castRange: 360, aoeRadius: 78, aimType: 'line' },
+    { castRange: 210, aoeRadius: 165, aimType: 'self' },
+    { castRange: 440, aoeRadius: 96, aimType: 'line' },
+  ],
+  luffy: [
+    { castRange: 470, aoeRadius: 56, aimType: 'line' },
+    { castRange: 330, aoeRadius: 115, aimType: 'cone' },
+    { castRange: 430, aoeRadius: 185, aimType: 'ground' },
+  ],
+  ben10: [
+    { castRange: 560, aoeRadius: 105, aimType: 'line' },
+    { castRange: 420, aoeRadius: 66, aimType: 'line' },
+    { castRange: 860, aoeRadius: 68, aimType: 'line' },
+  ],
+  diablo: [
+    { castRange: 540, aoeRadius: 54, aimType: 'cone' },
+    { castRange: 450, aoeRadius: 155, aimType: 'ground' },
+    { castRange: 480, aoeRadius: 180, aimType: 'ground' },
   ],
 }
 
@@ -510,10 +643,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   viewingCharId: 'pa',
   playerName: '',
   roomInput: getInitialRoomFromURL(),
+  pendingJoinRoom: null,
   recentRooms: [],
   selectedMode: 'ffa',
   selectedMapId: 'shibuya',
   joining: false,
+  checkingJoinRoom: false,
   arenaReady: false,
   assetsReady: false,
   preloadProgress: 0,
@@ -557,6 +692,12 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   pingMs: null,
   transportMode: 'ws-binary',
   fps: 60,
+  graphicsQuality: getInitialGraphicsQuality(),
+  voiceMicEnabled: false,
+  voiceSpeakerEnabled: voiceChatEngine.isSpeakerEnabled(),
+  voiceSpeaking: false,
+  peerVoiceStates: {},
+  adminAiEnabled: false,
   error: '',
 
   bootstrap: async () => {
@@ -571,10 +712,19 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       const prefs = loadPreferences()
       const cachedChars = applyPortraitDefaults(getCachedCharacters())
       const recents = getRecentRooms(4)
+      let hasExplicitLsGfx = false
+      try {
+        hasExplicitLsGfx =
+          window.localStorage.getItem(GFX_QUALITY_STORAGE_KEY) !== null ||
+          window.localStorage.getItem(LEGACY_PIXEL_STORAGE_KEY) !== null
+      } catch {
+        hasExplicitLsGfx = false
+      }
       set((state) => ({
         localDbReady: true,
         playerName: prefs.playerName || state.playerName,
         selectedCharId: prefs.characterId || state.selectedCharId,
+        graphicsQuality: hasExplicitLsGfx ? state.graphicsQuality : prefs.graphicsQuality,
         characters: cachedChars.length > 0 ? cachedChars : state.characters,
         recentRooms: recents,
       }))
@@ -595,7 +745,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
     try {
       const meRes = await apiClient.fetchCurrentUser()
-      memSessionToken = meRes.token ?? ''
+      memSessionToken = meRes.token || getStoredSessionToken()
+      if (memSessionToken) saveStoredSessionToken(memSessionToken)
       const u = meRes.user
       void savePreference('playerName', u.displayName)
       void savePreference('characterId', u.selectedCharacterId || 'pa')
@@ -607,13 +758,41 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         currentView: 'home',
       })
       void prefetchTransportInfo()
-    } catch {
+      // Refresh role-aware character list (unlocks Admin heroes immediately on reload)
+      if (u.role === 'admin') {
+        void apiClient
+          .fetchCharacters()
+          .then((d) => {
+            if (d.characters?.length) {
+              const merged = applyPortraitDefaults(d.characters)
+              set({ characters: merged })
+              void cacheCharacters(merged)
+            }
+          })
+          .catch(() => undefined)
+      }
+    } catch (err) {
+      const status = (err as { status?: number } | null)?.status
+      if (status === 401) {
+        memSessionToken = ''
+        clearStoredSessionToken()
+      }
       set({
         authChecked: true,
         authUser: null,
         currentView: 'auth',
       })
     }
+  },
+
+  toggleAdminAi: (forceState) => {
+    const { authUser, adminAiEnabled } = get()
+    if (authUser?.role !== 'admin') {
+      if (adminAiEnabled) set({ adminAiEnabled: false })
+      return
+    }
+    const next = typeof forceState === 'boolean' ? forceState : !adminAiEnabled
+    set({ adminAiEnabled: next })
   },
 
   setView: (view) =>
@@ -631,6 +810,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
     if (currentView === 'arena') {
       leaveRoom('home')
+      return
+    }
+    if (currentView === 'join_select') {
+      set({
+        previousView: 'join_select',
+        currentView: 'home',
+        pendingJoinRoom: null,
+        error: '',
+      })
       return
     }
     if (currentView === 'battle_setup') {
@@ -672,6 +860,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     try {
       const res = await apiClient.register({ username, password, displayName })
       memSessionToken = res.token ?? ''
+      if (memSessionToken) saveStoredSessionToken(memSessionToken)
       const u = res.user
       void savePreference('playerName', u.displayName)
       void savePreference('characterId', u.selectedCharacterId || 'pa')
@@ -708,6 +897,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     try {
       const res = await apiClient.login({ username, password })
       memSessionToken = res.token ?? ''
+      if (memSessionToken) saveStoredSessionToken(memSessionToken)
       const u = res.user
       void savePreference('playerName', u.displayName)
       void savePreference('characterId', u.selectedCharacterId || 'pa')
@@ -746,6 +936,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     } catch {
       // Clear client auth state regardless of transient network errors
     }
+    clearStoredSessionToken()
     window.history.replaceState(null, '', '/')
     const resetHero = get().selectedCharId === 'luangphi_sorn' ? 'pa' : get().selectedCharId
     set({
@@ -754,6 +945,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       selectedCharId: resetHero,
       characters: get().characters.filter((c) => !c.adminOnly),
       roomInput: '',
+      pendingJoinRoom: null,
       error: '',
     })
   },
@@ -782,6 +974,29 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   setError: (err) => set({ error: err }),
   setFPS: (fps) => {
     if (get().fps !== fps) set({ fps })
+  },
+  setGraphicsQuality: (quality) => {
+    const clean = normalizeGraphicsQuality(quality)
+    try {
+      window.localStorage.setItem(GFX_QUALITY_STORAGE_KEY, clean)
+    } catch {
+      // Ignore storage write errors
+    }
+    void savePreference('graphicsQuality', clean)
+    set({ graphicsQuality: clean })
+  },
+  toggleVoiceMic: async () => {
+    soundEngine.unlock()
+    await voiceChatEngine.toggleMic()
+    set({
+      voiceMicEnabled: voiceChatEngine.isMicEnabled(),
+      voiceSpeaking: voiceChatEngine.isSpeaking(),
+    })
+  },
+  toggleVoiceSpeaker: () => {
+    soundEngine.unlock()
+    const enabled = voiceChatEngine.toggleSpeaker()
+    set({ voiceSpeakerEnabled: enabled })
   },
   setArenaReady: (ready) => set({ arenaReady: ready }),
   setAssetsReady: (ready) => set({ assetsReady: ready }),
@@ -843,6 +1058,73 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         joining: false,
       })
     }
+  },
+
+  prepareJoinRoom: async (roomIdOverride) => {
+    soundEngine.unlock()
+    const { authUser, roomInput, joinRoom } = get()
+    if (!authUser) {
+      set({ currentView: 'auth', error: 'กรุณาเข้าสู่ระบบก่อนเข้าร่วมห้อง' })
+      return
+    }
+    const targetRoomId = (roomIdOverride ?? roomInput).trim()
+    set({ error: '' })
+    if (!/^\d{6}$/.test(targetRoomId)) {
+      set({ error: 'กรุณากรอกรหัสห้องเป็นตัวเลข 6 หลัก (เช่น 482915)', joining: false })
+      return
+    }
+
+    set({ checkingJoinRoom: true })
+    try {
+      const [info] = await Promise.all([apiClient.getRoomInfo(targetRoomId), prefetchTransportInfo()])
+      if (info.isFull) {
+        set({
+          checkingJoinRoom: false,
+          error: `ห้องหมายเลข #${targetRoomId} เต็มแล้ว (${info.currentPlayers}/${info.maxPlayers} คน)`,
+        })
+        return
+      }
+      if (info.mode !== 'ffa' && info.phase !== 'waiting') {
+        set({
+          checkingJoinRoom: false,
+          error: `ห้องหมายเลข #${targetRoomId} เริ่มเกมไปแล้ว ไม่สามารถเข้าร่วมระหว่างแข่งได้`,
+        })
+        return
+      }
+      if (info.mode === 'iconic') {
+        // ICONIC mode auto-randomizes Gojo vs Sukuna inside the waiting lobby
+        set({ checkingJoinRoom: false })
+        await joinRoom(info.roomId, undefined, true)
+        return
+      }
+      set({
+        checkingJoinRoom: false,
+        pendingJoinRoom: info,
+        roomInput: info.roomId,
+        previousView: get().currentView,
+        currentView: 'join_select',
+        error: '',
+      })
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : 'ไม่พบห้องหมายเลขนี้',
+        checkingJoinRoom: false,
+      })
+    }
+  },
+
+  confirmPendingJoin: async (charIdOverride) => {
+    soundEngine.unlock()
+    const { pendingJoinRoom, selectedCharId, equipCharacter, joinRoom } = get()
+    if (!pendingJoinRoom) {
+      set({ currentView: 'home', error: 'ไม่พบข้อมูลห้องที่ต้องการเข้าร่วม' })
+      return
+    }
+    const heroId = charIdOverride || selectedCharId || 'pa'
+    void equipCharacter(heroId)
+    const targetId = pendingJoinRoom.roomId
+    set({ pendingJoinRoom: null })
+    await joinRoom(targetId, heroId, true)
   },
 
   joinRoom: async (roomIdOverride, charIdOverride, skipRoomCheck = false) => {
@@ -1185,6 +1467,29 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             zones: msg.zones ?? [],
           })
 
+          voiceChatEngine.initRoomSession(
+            msg.playerId,
+            Array.from(latestPlayers.values())
+              .filter((p) => !p.isDummy)
+              .map((p) => p.id),
+            (sig) => {
+              if (activeTransport === transport && transport.isOpen()) {
+                transport.sendReliableJson(sig)
+              }
+            },
+            () => {
+              set({
+                voiceMicEnabled: voiceChatEngine.isMicEnabled(),
+                voiceSpeakerEnabled: voiceChatEngine.isSpeakerEnabled(),
+                voiceSpeaking: voiceChatEngine.isSpeaking(),
+                peerVoiceStates: voiceChatEngine.getPeerStatesSnapshot(),
+              })
+            },
+            (errMsg) => {
+              set({ error: errMsg })
+            },
+          )
+
           lastSyncAtMs = performance.now()
           lastDummyHPMap.clear()
           for (const p of latestPlayers.values()) {
@@ -1266,6 +1571,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             playersByNetId.set(p.netId, p)
           }
           set({ roster: sortRosterByKills(latestPlayers.values()) })
+          voiceChatEngine.syncRoomPeers(
+            Array.from(latestPlayers.values())
+              .filter((pl) => !pl.isDummy)
+              .map((pl) => pl.id),
+          )
           gameEventBus.emitSync({
             players: Array.from(latestPlayers.values()),
             projectiles: [],
@@ -1280,6 +1590,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           }
           latestPlayers.delete(msg.player.id)
           set({ roster: sortRosterByKills(latestPlayers.values()) })
+          voiceChatEngine.syncRoomPeers(
+            Array.from(latestPlayers.values())
+              .filter((pl) => !pl.isDummy)
+              .map((pl) => pl.id),
+          )
           gameEventBus.emitSync({
             players: Array.from(latestPlayers.values()),
             projectiles: [],
@@ -1400,6 +1715,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             snapOverlayTimer = null
             set({ snapOverlay: null })
           }, 2200)
+        } else if (msg.type === 'voice_signal') {
+          void voiceChatEngine.handleSignal(msg)
         } else if (msg.type === 'pong') {
           set({ pingMs: Math.max(1, Date.now() - msg.ts) })
         } else if (msg.type === 'error') {
@@ -1409,12 +1726,16 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       onClose: () => {
         if (activeTransport !== transport) return
         clearTimers()
+        voiceChatEngine.leaveRoom()
         activeTransport = null
         const { authUser: currentAuth } = get()
         set({
           connected: false,
           joining: false,
           arenaReady: false,
+          voiceMicEnabled: false,
+          voiceSpeaking: false,
+          peerVoiceStates: {},
           currentView: currentAuth ? 'home' : 'auth',
         })
       },
@@ -1430,6 +1751,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
   leaveRoom: (targetView) => {
     clearTimers()
+    voiceChatEngine.leaveRoom()
     closeSocketSafely(activeTransport)
     activeTransport = null
     latestPlayers.clear()
@@ -1452,8 +1774,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       preloadProgress: 0,
       preloadStage: '',
       connected: false,
+      voiceMicEnabled: false,
+      voiceSpeaking: false,
+      peerVoiceStates: {},
+      adminAiEnabled: false,
       previousView: currentView !== resolvedView ? currentView : null,
       currentView: resolvedView,
+      pendingJoinRoom: null,
       activeRoomId: '',
       myPlayerId: '',
       myAlive: true,
@@ -1515,11 +1842,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     activeTransport?.sendReliableJson({ type: 'return_lobby' })
   },
 
-  sendMovementVector: (dx, dy, force = false) => {
-    let mdx = dx
-    let mdy = dy
-    if (get().roomMode === 'iconic' && (dx !== 0 || dy !== 0)) {
-      const rot = rotateScreenVecToIconicWorld(dx, dy)
+  sendMovementVector: (dx, dy, force = false, worldSpace = false) => {
+    const effDx = simoSnipeCharging ? 0 : dx
+    const effDy = simoSnipeCharging ? 0 : dy
+    let mdx = effDx
+    let mdy = effDy
+    if (!worldSpace && get().roomMode === 'iconic' && (effDx !== 0 || effDy !== 0)) {
+      const rot = rotateScreenVecToIconicWorld(effDx, effDy)
       mdx = rot.wx
       mdy = rot.wy
     }
@@ -1554,6 +1883,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const me = latestPlayers.get(myPlayerId)
     if (!me || !myAlive || matchPhase !== 'playing') return
     if (me.characterId === 'noone' && !(me.infinityStones ?? []).includes(slot)) return
+    // 180ms Skill Input Buffer Queue: if skill cooldown is within its final 180ms, queue and auto-fire on ready!
+    const remCdMs = me.cooldownsMs?.[slot - 1] ?? 0
+    if (remCdMs > 0 && remCdMs <= 180) {
+      window.setTimeout(() => {
+        useGameStore.getState().castSkill(slot, target)
+      }, remCdMs + 12)
+      return
+    }
     const charDef = characters.find((c) => c.id === me.characterId)
     const sk = charDef?.skills.find((s) => s.slot === slot)
     const castRange = sk?.castRange ?? 360
@@ -1573,6 +1910,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       isTeamMatchMode(roomMode),
     )
     if (activeTransport?.isOpen()) {
+      const cdMs = me.cooldownsMs?.[slot - 1] ?? 0
+      if (cdMs <= 0 && !me.stunned && !me.seated && !me.inVoid) {
+        soundEngine.speakSkillCallout(me.characterId, slot, sk?.name)
+      }
       if (activeTransport.supportsBinary()) {
         activeTransport.sendReliableBinary(encodeBinarySkill(slot, tx, ty, target?.targetId ?? ''))
       } else {
@@ -1648,6 +1989,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     if (activeTransport?.isOpen()) {
       try {
         soundEngine.playEffectSound('rct_heal')
+        if ((me.rctCooldownMs ?? 0) <= 0) {
+          soundEngine.speakSkillCallout(me.characterId, 'rct', '反転術式！')
+        }
       } catch {
         // Ignore audio errors
       }
@@ -1665,6 +2009,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const me = latestPlayers.get(myPlayerId)
     if (!me || !myAlive || matchPhase !== 'playing' || me.characterId !== 'noone') return
     if ((me.infinityStones?.length ?? 0) < 5) return
+    if ((me.snapCooldownMs ?? 0) <= 0) {
+      soundEngine.speakSkillCallout('noone', 'snap', 'I am inevitable!')
+    }
     if (activeTransport?.supportsBinary()) {
       activeTransport.sendReliableBinary(encodeBinarySimple(BIN_CLIENT_SNAP))
     } else {

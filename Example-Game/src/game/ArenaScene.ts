@@ -26,6 +26,7 @@ const MINIMAP_PORTRAIT_URLS: Record<string, string> = {
   sia_mon: '/characters/sia_mon.png',
   ko: '/characters/ko.png',
   noone: '/characters/noone.png?v=mcu1',
+  simo: '/characters/simo.png',
 }
 
 interface ActorView {

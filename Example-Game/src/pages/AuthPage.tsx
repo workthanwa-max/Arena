@@ -19,30 +19,11 @@ export function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  const authUser = useGameStore((s) => s.authUser)
   const authLoading = useGameStore((s) => s.authLoading)
   const error = useGameStore((s) => s.error)
   const setError = useGameStore((s) => s.setError)
-  const goBack = useGameStore((s) => s.goBack)
   const loginAccount = useGameStore((s) => s.loginAccount)
   const registerAccount = useGameStore((s) => s.registerAccount)
-
-  function handleAuthBack() {
-    soundEngine.unlock()
-    if (tab === 'register') {
-      setTab('login')
-      setError('')
-      return
-    }
-    if (authUser) {
-      goBack()
-      return
-    }
-    setError('')
-    if (window.history.length > 1) {
-      window.history.back()
-    }
-  }
 
   const cardRef = useRef<HTMLElement | null>(null)
   const metaRef = useRef<HTMLElement | null>(null)
@@ -105,20 +86,11 @@ export function AuthPage() {
       {/* Top Mobile Game Brand & Server Status Chrome */}
       <header className="auth-topbar">
         <div className="auth-topbar-left">
-          <button
-            type="button"
-            className="auth-back-btn"
-            onClick={handleAuthBack}
-            aria-label="ย้อนกลับ"
-            title={tab === 'register' ? 'ย้อนกลับไปเข้าสู่ระบบ' : authUser ? 'ย้อนกลับหน้าหลัก' : 'ย้อนกลับ'}
-          >
-            ← ย้อนกลับ
-          </button>
           <div className="auth-brand-cluster">
-            <img src="/app-icon.png?v=20261120v2" alt="PulseArena" className="auth-brand-logo" />
+            <img src="/fx/logo_gojo_sukuna.jpg" alt="Infinity Clash" className="auth-brand-logo" />
             <div className="auth-brand-copy">
-              <div className="auth-edition-chip">JUJUTSU SHOWDOWN • ICONIC ARENA</div>
-              <h1 className="auth-brand-title">PULSE ARENA</h1>
+              <h1 className="auth-brand-title">INFINITY CLASH</h1>
+              <span className="auth-brand-sub">GOJO × SUKUNA MULTIVERSE MOBA</span>
             </div>
           </div>
         </div>
@@ -126,7 +98,7 @@ export function AuthPage() {
         <div className="auth-topbar-right">
           <span className="auth-server-pill">
             <span className="auth-server-dot" aria-hidden="true" />
-            SERVER ONLINE • 60Hz
+            ONLINE • 60Hz
           </span>
           <button
             type="button"
@@ -198,14 +170,14 @@ export function AuthPage() {
 
           <form className="auth-form" onSubmit={(e) => void handleSubmit(e)}>
             <label className="auth-field-group">
-              <span className="auth-field-label">Username (3–20 ตัวอักษร/ตัวเลข)</span>
+              <span className="auth-field-label">Username</span>
               <div className="auth-input-shell">
                 <span className="auth-input-icon" aria-hidden="true">👤</span>
                 <input
                   type="text"
                   className="auth-dark-input"
                   autoComplete="username"
-                  placeholder="เช่น thanwa_01"
+                  placeholder="ชื่อผู้ใช้"
                   value={username}
                   maxLength={20}
                   onChange={(e) => setUsername(e.target.value)}
@@ -216,13 +188,13 @@ export function AuthPage() {
 
             {tab === 'register' && (
               <label className="auth-field-group">
-                <span className="auth-field-label">ชื่อในเกม (Display Name)</span>
+                <span className="auth-field-label">ชื่อในเกม</span>
                 <div className="auth-input-shell">
                   <span className="auth-input-icon" aria-hidden="true">🎭</span>
                   <input
                     type="text"
                     className="auth-dark-input"
-                    placeholder="ชื่อบนหัวฮีโร่ (ไม่บังคับ)"
+                    placeholder="ชื่อที่แสดงในเกม"
                     value={displayName}
                     maxLength={24}
                     onChange={(e) => setDisplayName(e.target.value)}
@@ -232,7 +204,7 @@ export function AuthPage() {
             )}
 
             <label className="auth-field-group">
-              <span className="auth-field-label">Password (อย่างน้อย 6 ตัวอักษร)</span>
+              <span className="auth-field-label">Password</span>
               <div className="auth-input-shell">
                 <span className="auth-input-icon" aria-hidden="true">🔒</span>
                 <input
@@ -261,24 +233,19 @@ export function AuthPage() {
               <span className="auth-cta-glow" aria-hidden="true" />
               <span className="auth-cta-label">
                 {authLoading
-                  ? '⏳ กำลังเชื่อมต่อสมรภูมิ...'
+                  ? '⏳ กำลังเข้าสู่เกม...'
                   : tab === 'login'
-                    ? '⚔️ เข้าสู่เกม (PRESS TO PLAY)'
-                    : '🛡️ สมัคร & รับฮีโร่ฟรี 10 ตัว'}
+                    ? '⚔️ เริ่มเกม (PLAY)'
+                    : '🛡️ สมัครและเข้าเกม'}
               </span>
             </button>
           </form>
-
-          <p className="auth-session-note">
-            🔐 Session ถาวรจนกว่าจะกด Logout • เข้าเล่นได้ทุกอุปกรณ์
-          </p>
         </section>
       </main>
 
       {/* Bottom-Right Clean Beta Version Badge */}
       <aside ref={metaRef} className="auth-beta-badge" aria-label="ข้อมูลเวอร์ชัน Beta">
         <span className="auth-beta-pill">BETA v1.0</span>
-        <span className="auth-beta-text">เวอร์ชัน Beta • ทดสอบและปรับสมดุลต่อเนื่อง</span>
       </aside>
     </div>
   )

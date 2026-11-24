@@ -2,6 +2,7 @@ import { memo, useEffect, useRef } from 'react'
 import { setIconicCameraBasis, useGameStore } from '../store/useGameStore'
 import type { BeamEffect, MapConfig, PlayerState, Projectile, ZoneEffect } from '../types/game'
 import { gameEventBus, type AimPreviewPayload } from './core/eventBus'
+import { getHeroArenaCursorCss } from './heroAimThemes'
 
 interface SparkParticle {
   x: number
@@ -191,8 +192,24 @@ export const IconicArenaView = memo(function IconicArenaView() {
     canvas.style.display = 'block'
     host.appendChild(canvas)
 
-    const ctx = canvas.getContext('2d', { alpha: false })
-    if (!ctx) return
+    const mainCtx = canvas.getContext('2d', { alpha: false })
+    if (!mainCtx) return
+    let ctx: CanvasRenderingContext2D = mainCtx
+    const graphicsQuality = useGameStore.getState().graphicsQuality
+    const isPixelScale = graphicsQuality === 'pixel' || graphicsQuality === 'fine_pixel'
+    const pixelDivisor = graphicsQuality === 'fine_pixel' ? 1.75 : 3
+    const pixelCanvas = document.createElement('canvas')
+    const pixelCtx = pixelCanvas.getContext('2d', { alpha: false })
+    type HeroNameplateJob = {
+      sx: number
+      sy: number
+      wPx: number
+      hPx: number
+      p: PlayerState
+      isMe: boolean
+      isGojo: boolean
+    }
+    const heroLabels: HeroNameplateJob[] = []
 
     let mapCfg: MapConfig = DEFAULT_MAP
     let myPlayerId = ''
@@ -246,12 +263,19 @@ export const IconicArenaView = memo(function IconicArenaView() {
     let fpsAcc = 0
 
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1)
+      const nativeDpr = window.devicePixelRatio || 1
+      const dpr =
+        graphicsQuality === 'pixel'
+          ? 1
+          : graphicsQuality === 'ultra'
+            ? Math.min(1.65, nativeDpr)
+            : Math.min(1.35, nativeDpr)
       const w = Math.max(320, host.clientWidth || window.innerWidth)
       const h = Math.max(240, host.clientHeight || window.innerHeight)
       canvas.width = Math.round(w * dpr)
       canvas.height = Math.round(h * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      canvas.style.imageRendering = isPixelScale ? 'pixelated' : 'auto'
+      mainCtx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     resize()
     const ro = new ResizeObserver(resize)
@@ -279,10 +303,15 @@ export const IconicArenaView = memo(function IconicArenaView() {
       }
     }
 
+    let lastIconicCursorChar = ''
     const syncRoster = (list: PlayerState[]) => {
       const seen = new Set<string>()
       for (const raw of list) {
         seen.add(raw.id)
+        if (raw.id === myPlayerId && raw.characterId !== lastIconicCursorChar) {
+          lastIconicCursorChar = raw.characterId
+          canvas.style.cursor = getHeroArenaCursorCss(raw.characterId)
+        }
         const prev = smoothPlayers.get(raw.id)
         if (!prev) {
           smoothPlayers.set(raw.id, {
@@ -634,23 +663,15 @@ export const IconicArenaView = memo(function IconicArenaView() {
         ctx.fill()
       }
 
-      // World floating nameplate + HP bar cleanly scaled cleanly above hero
-      const barW = clamp(wPx * 1.55, 58, 118)
-      const barH = 7
-      const barY = -hPx * 1.15
-      ctx.fillStyle = 'rgba(2, 6, 23, 0.86)'
-      ctx.fillRect(-barW * 0.5 - 2, barY - 2, barW + 4, barH + 4)
-      const hpPct = clamp(p.hp / Math.max(1, p.maxHp), 0, 1)
-      ctx.fillStyle = isMe ? '#22C55E' : '#EF4444'
-      ctx.fillRect(-barW * 0.5, barY, barW * hpPct, barH)
-      ctx.fillStyle = '#F8FAFC'
-      ctx.font = '700 12px Inter, Noto Sans Thai, sans-serif'
-      ctx.textAlign = 'center'
-      ctx.fillText(
-        `${p.name} • ${isGojo ? 'Gojo' : 'Sukuna'} (${p.hp})`,
-        0,
-        barY - 6,
-      )
+      heroLabels.push({
+        sx: cx,
+        sy: by + bob,
+        wPx,
+        hPx,
+        p,
+        isMe,
+        isGojo,
+      })
       ctx.restore()
     }
 
@@ -734,6 +755,21 @@ export const IconicArenaView = memo(function IconicArenaView() {
 
       const voidActive = zones.some((z) => z.kind === 'infinite_void' && z.life > 0)
       const shrineActive = zones.some((z) => z.kind === 'malevolent_shrine' && z.life > 0)
+
+      heroLabels.length = 0
+      const useLowResPixel = isPixelScale && Boolean(pixelCtx)
+      if (useLowResPixel && pixelCtx) {
+        const pw = Math.max(240, Math.floor(w / pixelDivisor))
+        const ph = Math.max(135, Math.floor(h / pixelDivisor))
+        if (pixelCanvas.width !== pw || pixelCanvas.height !== ph) {
+          pixelCanvas.width = pw
+          pixelCanvas.height = ph
+        }
+        ctx = pixelCtx
+        ctx.setTransform(pw / w, 0, 0, ph / h, 0, 0)
+      } else {
+        ctx = mainCtx
+      }
 
       ctx.save()
       ctx.translate(shakeX, 0)
@@ -851,48 +887,137 @@ export const IconicArenaView = memo(function IconicArenaView() {
             z.x,
             z.y,
             z.radius,
-            'rgba(127, 29, 29, 0.28)',
-            '#EF4444',
-            2.6,
+            'rgba(24, 2, 5, 0.78)',
+            '#DC2626',
+            3.2,
           )
-          // Colossal 3D crimson torii shrine gate rising in perspective!
+          drawGroundRing3D(ctx, cam, z.x, z.y, z.radius * 0.84, null, '#FB7185', 2.0)
+          // Colossal 3D Multi-Tier Malevolent Shrine + 4 Horned Demon Skulls + Relentless Slash Hurricane!
           if (baseProj) {
-            const hShrine = clamp(240 * baseProj.scale, 46, 360)
-            const wShrine = hShrine * 1.15
+            const hShrine = clamp(255 * baseProj.scale, 52, 380)
+            const wShrine = hShrine * 1.18
             ctx.save()
-            ctx.fillStyle = '#450A0A'
+            // 4 Bleached Horned Demon Skulls at the Shrine Base
+            for (const sxOff of [-wShrine * 0.48, -wShrine * 0.2, wShrine * 0.2, wShrine * 0.48]) {
+              const skR = Math.max(5, hShrine * 0.085)
+              ctx.fillStyle = '#E2E8F0'
+              ctx.beginPath()
+              ctx.arc(baseProj.sx + sxOff, baseProj.sy - skR * 0.9, skR, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.fillStyle = '#EF4444'
+              ctx.beginPath()
+              ctx.arc(baseProj.sx + sxOff - skR * 0.35, baseProj.sy - skR * 0.9, skR * 0.24, 0, Math.PI * 2)
+              ctx.arc(baseProj.sx + sxOff + skR * 0.35, baseProj.sy - skR * 0.9, skR * 0.24, 0, Math.PI * 2)
+              ctx.fill()
+            }
+            // Dark Crimson Shrine Pillars + Demonic Ribcage Maw Core + Double Pagoda Roofs
+            ctx.fillStyle = '#2E0507'
             ctx.strokeStyle = '#FB7185'
             ctx.lineWidth = 2
-            ctx.fillRect(baseProj.sx - wShrine * 0.34, baseProj.sy - hShrine, wShrine * 0.1, hShrine)
-            ctx.fillRect(baseProj.sx + wShrine * 0.24, baseProj.sy - hShrine, wShrine * 0.1, hShrine)
-            ctx.fillRect(baseProj.sx - wShrine * 0.56, baseProj.sy - hShrine * 0.98, wShrine * 1.12, hShrine * 0.14)
-            ctx.strokeRect(baseProj.sx - wShrine * 0.56, baseProj.sy - hShrine * 0.98, wShrine * 1.12, hShrine * 0.14)
-            ctx.fillRect(baseProj.sx - wShrine * 0.44, baseProj.sy - hShrine * 0.76, wShrine * 0.88, hShrine * 0.08)
-            // Slashing razor arcs inside shrine
+            ctx.fillRect(baseProj.sx - wShrine * 0.36, baseProj.sy - hShrine * 0.92, wShrine * 0.11, hShrine * 0.92)
+            ctx.fillRect(baseProj.sx + wShrine * 0.25, baseProj.sy - hShrine * 0.92, wShrine * 0.11, hShrine * 0.92)
+            ctx.fillStyle = '#991B1B'
+            ctx.fillRect(baseProj.sx - wShrine * 0.18, baseProj.sy - hShrine * 0.68, wShrine * 0.36, hShrine * 0.56)
+            // Lower & Upper Pagoda Roof Eaves
+            ctx.fillStyle = '#450A0A'
+            ctx.fillRect(baseProj.sx - wShrine * 0.62, baseProj.sy - hShrine * 0.74, wShrine * 1.24, hShrine * 0.11)
+            ctx.strokeRect(baseProj.sx - wShrine * 0.62, baseProj.sy - hShrine * 0.74, wShrine * 1.24, hShrine * 0.11)
+            ctx.fillStyle = '#7F1D1D'
+            ctx.fillRect(baseProj.sx - wShrine * 0.52, baseProj.sy - hShrine * 1.0, wShrine * 1.04, hShrine * 0.14)
+            ctx.strokeRect(baseProj.sx - wShrine * 0.52, baseProj.sy - hShrine * 1.0, wShrine * 1.04, hShrine * 0.14)
+            // Relentless 360° Hurricane of White, Crimson & Obsidian Dismantle/Cleave Slash Arcs!
             ctx.globalCompositeOperation = 'lighter'
-            ctx.strokeStyle = 'rgba(254, 202, 202, 0.75)'
-            for (let sIdx = 0; sIdx < 4; sIdx++) {
-              const rx = baseProj.sx + Math.sin(timeSec * 19 + sIdx * 2.1) * wShrine * 0.8
-              const ry = baseProj.sy - Math.random() * hShrine * 0.9
+            for (let sIdx = 0; sIdx < 12; sIdx++) {
+              const ang = timeSec * 14 + sIdx * 1.75
+              const rx = baseProj.sx + Math.sin(ang) * wShrine * 1.05
+              const ry = baseProj.sy - ((sIdx * 0.08 + timeSec * 1.9) % 0.95) * hShrine * 1.05
+              const tilt = Math.cos(ang * 1.3) * 26
+              ctx.strokeStyle = sIdx % 2 === 0 ? '#FFFFFF' : '#F43F5E'
+              ctx.lineWidth = sIdx % 3 === 0 ? 3.2 : 2.0
               ctx.beginPath()
-              ctx.moveTo(rx - 22, ry - 14)
-              ctx.lineTo(rx + 22, ry + 14)
+              ctx.moveTo(rx - 32, ry - tilt)
+              ctx.lineTo(rx + 32, ry + tilt)
               ctx.stroke()
             }
             ctx.restore()
           }
         } else if (z.kind === 'infinite_void') {
+          // Anime Unlimited Void: Abyssal Pitch-Black Space Floor + Blinding Event Horizon + Levitating Black Hole Singularity!
           drawGroundRing3D(
             ctx,
             cam,
             z.x,
             z.y,
             z.radius,
-            'rgba(30, 27, 75, 0.42)',
-            '#38BDF8',
-            2.8,
+            'rgba(2, 6, 23, 0.88)',
+            '#FFFFFF',
+            3.2,
           )
-          drawGroundRing3D(ctx, cam, z.x, z.y, z.radius * 0.65, null, '#C084FC', 1.8)
+          drawGroundRing3D(ctx, cam, z.x, z.y, z.radius * 0.94, null, '#38BDF8', 2.4)
+          drawGroundRing3D(ctx, cam, z.x, z.y, z.radius * 0.64, null, '#C084FC', 1.8)
+          // Streaking Cosmic Starlight Rays across the Void Floor
+          ctx.save()
+          ctx.globalCompositeOperation = 'lighter'
+          for (let r = 0; r < 10; r++) {
+            const a = (r * Math.PI) / 5 + timeSec * 0.35
+            ctx.strokeStyle = r % 2 === 0 ? 'rgba(224, 242, 254, 0.78)' : 'rgba(56, 189, 248, 0.68)'
+            ctx.lineWidth = 2.2
+            ctx.beginPath()
+            drawPerspectiveSegment(
+              ctx,
+              cam,
+              z.x + Math.cos(a) * z.radius * 0.2,
+              z.y + Math.sin(a) * z.radius * 0.2,
+              4,
+              z.x + Math.cos(a) * z.radius * 0.92,
+              z.y + Math.sin(a) * z.radius * 0.92,
+              4,
+            )
+            ctx.stroke()
+          }
+          // Colossal Floating Black Hole Singularity + Photon Ring & Relativistic Accretion Disc
+          const bhProj = projectPoint(cam, z.x, z.y, 110)
+          if (bhProj) {
+            const bhR = clamp(54 * bhProj.scale, 18, 95)
+            ctx.strokeStyle = '#38BDF8'
+            ctx.lineWidth = 3.5
+            ctx.beginPath()
+            ctx.ellipse(bhProj.sx, bhProj.sy, bhR * 2.1, bhR * 0.58, Math.sin(timeSec * 2) * 0.22, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.strokeStyle = '#C084FC'
+            ctx.lineWidth = 2.4
+            ctx.beginPath()
+            ctx.ellipse(bhProj.sx, bhProj.sy, bhR * 2.45, bhR * 0.76, -0.35, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.restore()
+
+            ctx.save()
+            ctx.fillStyle = '#020617'
+            ctx.strokeStyle = '#FFFFFF'
+            ctx.lineWidth = 3
+            ctx.beginPath()
+            ctx.arc(bhProj.sx, bhProj.sy, bhR, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.stroke()
+            ctx.restore()
+          } else {
+            ctx.restore()
+          }
+        } else if (z.kind === 'fuga_explosion') {
+          drawGroundRing3D(ctx, cam, z.x, z.y, z.radius, 'rgba(249, 115, 22, 0.42)', '#FEF08A', 3.5)
+          if (baseProj) {
+            const hFire = clamp(320 * baseProj.scale, 60, 440)
+            const wFire = clamp(z.radius * baseProj.scale * 1.1, 28, 190)
+            ctx.save()
+            ctx.globalCompositeOperation = 'lighter'
+            const fg = ctx.createLinearGradient(baseProj.sx, baseProj.sy, baseProj.sx, baseProj.sy - hFire)
+            fg.addColorStop(0, '#FEF08A')
+            fg.addColorStop(0.45, 'rgba(249, 115, 22, 0.85)')
+            fg.addColorStop(1, 'rgba(239, 68, 68, 0)')
+            ctx.fillStyle = fg
+            ctx.fillRect(baseProj.sx - wFire * 0.5, baseProj.sy - hFire, wFire, hFire)
+            ctx.restore()
+          }
         } else if (z.kind === 'iconic_rct') {
           ctx.save()
           ctx.globalCompositeOperation = 'lighter'
@@ -1244,36 +1369,55 @@ export const IconicArenaView = memo(function IconicArenaView() {
             drawPerspectiveSegment(ctx, cam, me.renderX, me.renderY, 44, ex, ey, 44)
             ctx.stroke()
 
-            // Animated travelling directional chevrons inside the skill corridor
+            // Distinct Gojo Infinity Wave vs Sukuna Cursed Cleave X-Marks inside the skill corridor
             const chevPhase = (timeSec * 3.0) % 1
-            ctx.strokeStyle = '#FFFFFF'
-            ctx.lineWidth = 2.6
-            for (let k = 0; k < 4; k++) {
-              const frac = ((k / 4 + chevPhase) % 1) * 0.85 + 0.1
-              const px = me.renderX + dirX * (castRange * frac)
-              const py = me.renderY + dirY * (castRange * frac)
-              ctx.beginPath()
-              drawPerspectiveSegment(
-                ctx,
-                cam,
-                px - dirX * 24 + perpX * (halfW * 0.8),
-                py - dirY * 24 + perpY * (halfW * 0.8),
-                5,
-                px + dirX * 14,
-                py + dirY * 14,
-                5,
-              )
-              drawPerspectiveSegment(
-                ctx,
-                cam,
-                px + dirX * 14,
-                py + dirY * 14,
-                5,
-                px - dirX * 24 - perpX * (halfW * 0.8),
-                py - dirY * 24 - perpY * (halfW * 0.8),
-                5,
-              )
-              ctx.stroke()
+            if (isGojoHero) {
+              for (let k = 0; k < 4; k++) {
+                const frac = ((k / 4 + chevPhase) % 1) * 0.85 + 0.1
+                const px = me.renderX + dirX * (castRange * frac)
+                const py = me.renderY + dirY * (castRange * frac)
+                drawGroundRing3D(
+                  ctx,
+                  cam,
+                  px + Math.sin(k + timeSec * 4) * halfW * 0.35,
+                  py,
+                  18,
+                  null,
+                  k % 2 === 0 ? '#38BDF8' : '#EF4444',
+                  2.4,
+                  12,
+                )
+              }
+            } else {
+              ctx.strokeStyle = '#FFFFFF'
+              ctx.lineWidth = 2.6
+              for (let k = 0; k < 4; k++) {
+                const frac = ((k / 4 + chevPhase) % 1) * 0.85 + 0.1
+                const px = me.renderX + dirX * (castRange * frac)
+                const py = me.renderY + dirY * (castRange * frac)
+                ctx.beginPath()
+                drawPerspectiveSegment(
+                  ctx,
+                  cam,
+                  px - dirX * 18 + perpX * (halfW * 0.72),
+                  py - dirY * 18 + perpY * (halfW * 0.72),
+                  6,
+                  px + dirX * 18 - perpX * (halfW * 0.72),
+                  py + dirY * 18 - perpY * (halfW * 0.72),
+                  6,
+                )
+                drawPerspectiveSegment(
+                  ctx,
+                  cam,
+                  px - dirX * 18 - perpX * (halfW * 0.72),
+                  py - dirY * 18 - perpY * (halfW * 0.72),
+                  6,
+                  px + dirX * 18 + perpX * (halfW * 0.72),
+                  py + dirY * 18 + perpY * (halfW * 0.72),
+                  6,
+                )
+                ctx.stroke()
+              }
             }
             ctx.restore()
 
@@ -1425,13 +1569,52 @@ export const IconicArenaView = memo(function IconicArenaView() {
               ctx.ellipse(p.sx, p.sy, rad * 1.9, rad * 0.65, timeSec * 5, 0, Math.PI * 2)
               ctx.stroke()
             } else if (pr.kind === 'dismantle') {
-              ctx.strokeStyle = '#FECDD3'
-              ctx.lineWidth = Math.max(2.5, rad * 0.45)
+              // Sukuna "Kai" (Dismantle): Crisscrossing Obsidian, Crimson & Stark-White Twin Razor Crescent Blades!
+              for (const [col, wMult] of [
+                ['#09090B', 0.85],
+                ['#DC2626', 0.55],
+                ['#FFFFFF', 0.26],
+              ] as const) {
+                ctx.strokeStyle = col
+                ctx.lineWidth = Math.max(2, rad * wMult)
+                ctx.beginPath()
+                ctx.moveTo(p.sx - rad * 2.1, p.sy - rad * 1.25)
+                ctx.lineTo(p.sx + rad * 2.1, p.sy + rad * 1.25)
+                ctx.moveTo(p.sx + rad * 2.1, p.sy - rad * 1.25)
+                ctx.lineTo(p.sx - rad * 2.1, p.sy + rad * 1.25)
+                ctx.stroke()
+              }
+            } else if (pr.kind === 'fuga_arrow') {
+              // Sukuna "Kamino / Fuga" (Open): Blazing Hellfire Arrow + Spinning Fire Vortex Rings!
+              const g = ctx.createRadialGradient(p.sx, p.sy, rad * 0.1, p.sx, p.sy, rad * 2.8)
+              g.addColorStop(0, '#FFFFFF')
+              g.addColorStop(0.35, '#FEF08A')
+              g.addColorStop(0.7, 'rgba(249, 115, 22, 0.78)')
+              g.addColorStop(1, 'rgba(239, 68, 68, 0)')
+              ctx.fillStyle = g
               ctx.beginPath()
-              ctx.moveTo(p.sx - rad * 1.8, p.sy - rad * 1.1)
-              ctx.lineTo(p.sx + rad * 1.8, p.sy + rad * 1.1)
-              ctx.moveTo(p.sx + rad * 1.8, p.sy - rad * 1.1)
-              ctx.lineTo(p.sx - rad * 1.8, p.sy + rad * 1.1)
+              ctx.arc(p.sx, p.sy, rad * 2.8, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.strokeStyle = '#FEF08A'
+              ctx.lineWidth = 2.6
+              ctx.beginPath()
+              ctx.ellipse(p.sx, p.sy, rad * 2.1, rad * 0.72, timeSec * 8, 0, Math.PI * 2)
+              ctx.stroke()
+            } else if (pr.kind === 'gojo_blue' || pr.kind === 'gojo_red') {
+              const isBlue = pr.kind === 'gojo_blue'
+              const g = ctx.createRadialGradient(p.sx, p.sy, rad * 0.1, p.sx, p.sy, rad * 2.4)
+              g.addColorStop(0, isBlue ? '#020617' : '#FFFFFF')
+              g.addColorStop(0.38, isBlue ? '#38BDF8' : '#EF4444')
+              g.addColorStop(0.75, isBlue ? 'rgba(2, 132, 199, 0.5)' : 'rgba(220, 38, 38, 0.5)')
+              g.addColorStop(1, 'rgba(0, 0, 0, 0)')
+              ctx.fillStyle = g
+              ctx.beginPath()
+              ctx.arc(p.sx, p.sy, rad * 2.4, 0, Math.PI * 2)
+              ctx.fill()
+              ctx.strokeStyle = isBlue ? '#BAE6FD' : '#FECACA'
+              ctx.lineWidth = 2.2
+              ctx.beginPath()
+              ctx.ellipse(p.sx, p.sy, rad * 1.75, rad * 0.58, timeSec * (isBlue ? -7 : 7), 0, Math.PI * 2)
               ctx.stroke()
             } else {
               const g = ctx.createRadialGradient(p.sx, p.sy, rad * 0.1, p.sx, p.sy, rad * 2.1)
@@ -1451,24 +1634,70 @@ export const IconicArenaView = memo(function IconicArenaView() {
       queue.sort((a, b) => b.depth - a.depth)
       for (const item of queue) item.draw()
 
-      // 5. 3D Perspective Beams & Slash Waves
+      // 5. 3D Perspective Beams, Gojo Black-Flash Strikes & Sukuna Cleave Waves (Adapted to Graphics Quality Tier)
+      const strokeMult =
+        graphicsQuality === 'pixel' ? 1.35 : graphicsQuality === 'fine_pixel' ? 1.15 : 1.0
       ctx.save()
       ctx.globalCompositeOperation = 'lighter'
+      if (graphicsQuality === 'ultra') {
+        ctx.shadowBlur = 14
+      }
       for (const b of beams) {
+        if (graphicsQuality === 'ultra') {
+          ctx.shadowColor = b.color || '#38BDF8'
+        }
+        const endPt = projectPoint(cam, b.x2, b.y2, 52)
+        if (b.kind === 'atk_sukuna_cleave' && endPt) {
+          // Sukuna Spiderweb Cleave X-Slashes at Target
+          const r = clamp(58 * endPt.scale, 18, 96)
+          for (const [ang, col, lw] of [
+            [0.62, '#09090B', 5.8],
+            [0.62, '#EF4444', 3.4],
+            [-0.62, '#FFFFFF', 3.0],
+            [0.12, '#FB7185', 2.6],
+          ] as const) {
+            ctx.strokeStyle = col
+            ctx.lineWidth = lw * strokeMult
+            ctx.beginPath()
+            ctx.moveTo(endPt.sx - Math.cos(ang) * r, endPt.sy - Math.sin(ang) * r)
+            ctx.lineTo(endPt.sx + Math.cos(ang) * r, endPt.sy + Math.sin(ang) * r)
+            ctx.stroke()
+          }
+          continue
+        }
+        if (b.kind === 'atk_gojo_punch' && endPt) {
+          // Gojo Lapse-Blue Spatial Vacuum Impact + Black Flash (Kokusen) Crimson-Black Sparks
+          const r = clamp(50 * endPt.scale, 16, 88)
+          ctx.strokeStyle = '#38BDF8'
+          ctx.lineWidth = 3.4 * strokeMult
+          ctx.beginPath()
+          ctx.arc(endPt.sx, endPt.sy, r * 0.72, 0, Math.PI * 2)
+          ctx.stroke()
+          for (let k = 0; k < 4; k++) {
+            const a = k * 1.57 + 0.4
+            ctx.strokeStyle = k % 2 === 0 ? '#EF4444' : '#7DD3FC'
+            ctx.lineWidth = 2.8 * strokeMult
+            ctx.beginPath()
+            ctx.moveTo(endPt.sx, endPt.sy)
+            ctx.lineTo(endPt.sx + Math.cos(a) * r * 0.55, endPt.sy + Math.sin(a) * r * 0.35 - 10)
+            ctx.lineTo(endPt.sx + Math.cos(a) * r * 1.15, endPt.sy + Math.sin(a) * r * 0.95)
+            ctx.stroke()
+          }
+        }
         ctx.strokeStyle = b.color || '#38BDF8'
-        ctx.lineWidth = Math.max(3, b.width * 0.35)
+        ctx.lineWidth = Math.max(3, b.width * 0.35) * strokeMult
         ctx.beginPath()
         drawPerspectiveSegment(ctx, cam, b.x1, b.y1, 52, b.x2, b.y2, 52)
         ctx.stroke()
         ctx.strokeStyle = '#FFFFFF'
-        ctx.lineWidth = 2
+        ctx.lineWidth = 2.2 * strokeMult
         ctx.beginPath()
         drawPerspectiveSegment(ctx, cam, b.x1, b.y1, 52, b.x2, b.y2, 52)
         ctx.stroke()
       }
       ctx.restore()
 
-      // 6. 3D Sparks & Floating Damage / Heal Readouts
+      // 6. 3D Sparks (Square Voxel Pixel Blocks in Pixel tiers vs Glowing Orbs in HD/Ultra)
       for (let i = particles.length - 1; i >= 0; i--) {
         const pt = particles[i]
         pt.life -= dt
@@ -1486,9 +1715,75 @@ export const IconicArenaView = memo(function IconicArenaView() {
         ctx.globalCompositeOperation = 'lighter'
         ctx.globalAlpha = clamp(pt.life / pt.maxLife, 0, 1)
         ctx.fillStyle = pt.color
+        const rad = Math.max(2, pt.size * sp.scale * 1.45 * strokeMult)
+        if (isPixelScale) {
+          ctx.fillRect(sp.sx - rad, sp.sy - rad, rad * 2, rad * 2)
+        } else {
+          if (graphicsQuality === 'ultra') {
+            ctx.shadowColor = pt.color
+            ctx.shadowBlur = 10
+          }
+          ctx.beginPath()
+          ctx.arc(sp.sx, sp.sy, rad, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        ctx.restore()
+      }
+
+      // Drifting Shibuya cursed embers in foreground air
+      ctx.save()
+      ctx.globalCompositeOperation = 'lighter'
+      for (const em of ambientEmbers) {
+        const ex = ((em.xNorm + timeSec * em.speed * 0.25) % 1) * w
+        const ey = ((em.yNorm - timeSec * em.speed + 10) % 1) * h
+        ctx.fillStyle = em.isRed ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.55)'
         ctx.beginPath()
-        ctx.arc(sp.sx, sp.sy, Math.max(1.5, pt.size * sp.scale * 1.4), 0, Math.PI * 2)
+        ctx.arc(ex, ey, em.size, 0, Math.PI * 2)
         ctx.fill()
+      }
+      ctx.restore()
+
+      if (flashOverlay > 0.01) {
+        ctx.fillStyle = flashColor
+        ctx.globalAlpha = flashOverlay * 0.45
+        ctx.fillRect(0, 0, w, h)
+        ctx.globalAlpha = 1
+      }
+
+      // Close world pass (either pixelCanvas or mainCtx)
+      ctx.restore()
+
+      // Switch to native-resolution display canvas & upscale low-res pixel buffer cleanly
+      ctx = mainCtx
+      if (useLowResPixel) {
+        ctx.save()
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(pixelCanvas, 0, 0, w, h)
+        ctx.restore()
+      }
+
+      // 6b. Razor-Sharp Overhead HP Bars, Hero Nameplates & Floating Combat Readouts
+      ctx.save()
+      ctx.translate(shakeX, 0)
+      for (const lbl of heroLabels) {
+        const barW = clamp(lbl.wPx * 1.55, 58, 118)
+        const barH = 7
+        const barY = lbl.sy - lbl.hPx * 1.15
+        ctx.save()
+        ctx.globalAlpha = lbl.p.alive ? 1 : 0.35
+        ctx.fillStyle = 'rgba(2, 6, 23, 0.86)'
+        ctx.fillRect(lbl.sx - barW * 0.5 - 2, barY - 2, barW + 4, barH + 4)
+        const hpPct = clamp(lbl.p.hp / Math.max(1, lbl.p.maxHp), 0, 1)
+        ctx.fillStyle = lbl.isMe ? '#22C55E' : '#EF4444'
+        ctx.fillRect(lbl.sx - barW * 0.5, barY, barW * hpPct, barH)
+        ctx.fillStyle = '#F8FAFC'
+        ctx.font = '700 12px Inter, Noto Sans Thai, sans-serif'
+        ctx.textAlign = 'center'
+        ctx.fillText(
+          `${lbl.p.name} • ${lbl.isGojo ? 'Gojo' : 'Sukuna'} (${lbl.p.hp})`,
+          lbl.sx,
+          barY - 6,
+        )
         ctx.restore()
       }
 
@@ -1513,26 +1808,7 @@ export const IconicArenaView = memo(function IconicArenaView() {
         ctx.fillText(ft.text, fp.sx, fp.sy)
         ctx.restore()
       }
-
-      // Drifting Shibuya cursed embers in foreground air
-      ctx.save()
-      ctx.globalCompositeOperation = 'lighter'
-      for (const em of ambientEmbers) {
-        const ex = ((em.xNorm + timeSec * em.speed * 0.25) % 1) * w
-        const ey = ((em.yNorm - timeSec * em.speed + 10) % 1) * h
-        ctx.fillStyle = em.isRed ? 'rgba(239, 68, 68, 0.55)' : 'rgba(56, 189, 248, 0.55)'
-        ctx.beginPath()
-        ctx.arc(ex, ey, em.size, 0, Math.PI * 2)
-        ctx.fill()
-      }
       ctx.restore()
-
-      if (flashOverlay > 0.01) {
-        ctx.fillStyle = flashColor
-        ctx.globalAlpha = flashOverlay * 0.45
-        ctx.fillRect(0, 0, w, h)
-        ctx.globalAlpha = 1
-      }
 
       // 7. Top-Left Tactical Minimap Radar
       const isNarrow = w <= 780 || h <= 520
@@ -1574,7 +1850,6 @@ export const IconicArenaView = memo(function IconicArenaView() {
       }
       ctx.restore()
 
-      ctx.restore()
       rafId = window.requestAnimationFrame(frame)
     }
 

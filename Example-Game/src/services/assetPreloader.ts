@@ -1,3 +1,4 @@
+import { SKILL_VOICE_MAP } from '../audio/soundEngine'
 import type { CharacterDef, GameMode, MapId } from '../types/game'
 
 const ASSET_CACHE_NAME = 'pulsearena-match-assets-v1'
@@ -118,7 +119,15 @@ export function buildMatchManifestUrls(opts: {
   const seenVoice = new Set<string>()
 
   // 1. Active Map Environment Backdrop Texture (Compressed WebP for fast WAN load)
-  imageSet.add(opts.mapId === 'konoha' ? '/maps/konoha_bg.webp' : '/maps/shibuya_bg.webp')
+  imageSet.add(
+    opts.mapId === 'konoha'
+      ? '/maps/konoha_bg.webp'
+      : opts.mapId === 'sisaket_island'
+        ? '/maps/sisaket_bg.webp'
+        : opts.mapId === 'scp_site'
+          ? '/maps/scp_bg.webp'
+          : '/maps/shibuya_bg.webp',
+  )
 
   // 2. Common core combat button icons
   imageSet.add('/skills/atk.png')
@@ -157,6 +166,18 @@ export function buildMatchManifestUrls(opts: {
     if (!seenVoice.has(hid)) {
       seenVoice.add(hid)
       voiceList.push({ charId: hid, url: voiceUrl })
+    }
+
+    // Preload this hero's per-skill voice callouts so skill shouts fire with 0ms delay in combat
+    const skillTags = ['1', '2', '3', '4', '5', 'rct', 'purple', 'snap']
+    for (const tag of skillTags) {
+      const skKey = `${hid}_${tag}`
+      const clip = SKILL_VOICE_MAP[skKey]
+      const cacheId = `skill:${skKey}`
+      if (clip && !seenVoice.has(cacheId)) {
+        seenVoice.add(cacheId)
+        voiceList.push({ charId: cacheId, url: clip.url })
+      }
     }
   }
 

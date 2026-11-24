@@ -121,6 +121,134 @@ export const CHARACTER_VOICES: Record<string, CharacterVoiceConfig> = {
     pitch: 0.84,
     rate: 0.94,
   },
+  simo: {
+    quote: '白い死神からは逃げられない…照準完了、一撃必殺！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/simo.mp3?v=jp1',
+    playbackRate: 0.98,
+    pitch: 0.92,
+    rate: 0.96,
+  },
+  jinwoo: {
+    quote: '起きろ…影の君主の命令だ。我が軍団よ、敵を殲滅せよ！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/jinwoo.mp3?v=jp1',
+    playbackRate: 0.97,
+    pitch: 0.88,
+    rate: 0.96,
+  },
+  naruto: {
+    quote: '俺は火影になる男だ！いくぜ九喇嘛、螺旋手裏剣だってばよ！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/naruto.mp3?v=jp1',
+    playbackRate: 1.03,
+    pitch: 1.08,
+    rate: 1.04,
+  },
+  sanji: {
+    quote: 'レディには指一本触れさせねえ…魔神風脚、焼き尽くしてやる！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/sanji.mp3?v=jp1',
+    playbackRate: 1.0,
+    pitch: 0.96,
+    rate: 1.0,
+  },
+  luffy: {
+    quote: '海賊王に、俺はなる！ギア５、ゴムゴムの猿神銃だぁっ！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/luffy.mp3?v=jp1',
+    playbackRate: 1.04,
+    pitch: 1.1,
+    rate: 1.05,
+  },
+  ben10: {
+    quote: 'It is Hero Time! Omnitrix locked on and ready to go!',
+    lang: 'en-US',
+    audioUrl: '/voices/ben10.mp3?v=jp1',
+    playbackRate: 1.02,
+    pitch: 1.05,
+    rate: 1.02,
+  },
+  diablo: {
+    quote: 'クフフフ…原初の黒ディアブロ、絶望の世界へご案内いたします。',
+    lang: 'ja-JP',
+    audioUrl: '/voices/diablo.mp3?v=jp1',
+    playbackRate: 0.96,
+    pitch: 0.88,
+    rate: 0.95,
+  },
+}
+
+export interface SkillVoiceClip {
+  url: string
+  text: string
+  lang: string
+  playbackRate: number
+}
+
+/** Authentic per-hero, per-skill voice callouts played immediately when heroes unleash their abilities. */
+export const SKILL_VOICE_MAP: Record<string, SkillVoiceClip> = {
+  pa_1: { url: '/voices/skills/pa_1.mp3?v=sk1', text: 'ゲート・オブ・バビロン！', lang: 'ja-JP', playbackRate: 1.02 },
+  pa_2: { url: '/voices/skills/pa_2.mp3?v=sk1', text: '天の鎖、エルキドゥ！', lang: 'ja-JP', playbackRate: 1.0 },
+  pa_3: { url: '/voices/skills/pa_3.mp3?v=sk1', text: 'エヌマ・エリシュ！', lang: 'ja-JP', playbackRate: 0.98 },
+  boy_1: { url: '/voices/skills/boy_1.mp3?v=sk1', text: '気弾連射！', lang: 'ja-JP', playbackRate: 1.04 },
+  boy_2: { url: '/voices/skills/boy_2.mp3?v=sk1', text: '龍拳爆発！', lang: 'ja-JP', playbackRate: 1.03 },
+  boy_3: { url: '/voices/skills/boy_3.mp3?v=sk1', text: 'かめはめ波ぁっ！', lang: 'ja-JP', playbackRate: 1.02 },
+  ole_1: { url: '/voices/skills/ole_1.mp3?v=sk1', text: '烏分身、手裏剣！', lang: 'ja-JP', playbackRate: 1.0 },
+  ole_2: { url: '/voices/skills/ole_2.mp3?v=sk1', text: '月読！', lang: 'ja-JP', playbackRate: 0.96 },
+  ole_3: { url: '/voices/skills/ole_3.mp3?v=sk1', text: '天照！', lang: 'ja-JP', playbackRate: 0.96 },
+  thanwa_1: { url: '/voices/skills/thanwa_1.mp3?v=sk1', text: '百八煩悩鳳！', lang: 'ja-JP', playbackRate: 1.0 },
+  thanwa_2: { url: '/voices/skills/thanwa_2.mp3?v=sk1', text: '一刀流、獅子歌歌！', lang: 'ja-JP', playbackRate: 1.02 },
+  thanwa_3: { url: '/voices/skills/thanwa_3.mp3?v=sk1', text: '三刀流奥義、三千世界！', lang: 'ja-JP', playbackRate: 0.98 },
+  ajarn_au_1: { url: '/voices/skills/ajarn_au_1.mp3?v=sk1', text: '雷掌！', lang: 'ja-JP', playbackRate: 1.05 },
+  ajarn_au_2: { url: '/voices/skills/ajarn_au_2.mp3?v=sk1', text: '神速、カンムル！', lang: 'ja-JP', playbackRate: 1.04 },
+  ajarn_au_3: { url: '/voices/skills/ajarn_au_3.mp3?v=sk1', text: '落雷、ナルカミ！', lang: 'ja-JP', playbackRate: 1.02 },
+  ajarn_boy_1: { url: '/voices/skills/ajarn_boy_1.mp3?v=sk1', text: '解！', lang: 'ja-JP', playbackRate: 0.98 },
+  ajarn_boy_2: { url: '/voices/skills/ajarn_boy_2.mp3?v=sk1', text: 'フーガ、開！', lang: 'ja-JP', playbackRate: 0.96 },
+  ajarn_boy_3: { url: '/voices/skills/ajarn_boy_3.mp3?v=sk1', text: '領域展開、伏魔御厨子！', lang: 'ja-JP', playbackRate: 0.95 },
+  ajarn_boy_rct: { url: '/voices/skills/ajarn_boy_rct.mp3?v=sk1', text: '反転術式！', lang: 'ja-JP', playbackRate: 0.97 },
+  kaem_1: { url: '/voices/skills/kaem_1.mp3?v=sk1', text: '黒稲妻！', lang: 'ja-JP', playbackRate: 1.02 },
+  kaem_2: { url: '/voices/skills/kaem_2.mp3?v=sk1', text: '黒炎！', lang: 'ja-JP', playbackRate: 1.02 },
+  kaem_3: { url: '/voices/skills/kaem_3.mp3?v=sk1', text: '暴食之王、ベルゼビュート！', lang: 'ja-JP', playbackRate: 1.0 },
+  frame_1: { url: '/voices/skills/frame_1.mp3?v=sk1', text: '行け、アイウアン！', lang: 'ja-JP', playbackRate: 1.02 },
+  frame_2: { url: '/voices/skills/frame_2.mp3?v=sk1', text: 'オラオラオラオラァ！', lang: 'ja-JP', playbackRate: 1.05 },
+  frame_3: { url: '/voices/skills/frame_3.mp3?v=sk1', text: 'ザ・ワールド！時よ止まれ！', lang: 'ja-JP', playbackRate: 0.97 },
+  sia_mon_1: { url: '/voices/skills/sia_mon_1.mp3?v=sk1', text: '術式反転、赫！', lang: 'ja-JP', playbackRate: 1.02 },
+  sia_mon_2: { url: '/voices/skills/sia_mon_2.mp3?v=sk1', text: '術式順転、蒼！', lang: 'ja-JP', playbackRate: 1.02 },
+  sia_mon_3: { url: '/voices/skills/sia_mon_3.mp3?v=sk1', text: '領域展開、無量空処！', lang: 'ja-JP', playbackRate: 1.0 },
+  sia_mon_rct: { url: '/voices/skills/sia_mon_rct.mp3?v=sk1', text: '反転術式！', lang: 'ja-JP', playbackRate: 1.0 },
+  sia_mon_purple: { url: '/voices/skills/sia_mon_purple.mp3?v=sk1', text: '虚式、茈！', lang: 'ja-JP', playbackRate: 1.0 },
+  ko_1: { url: '/voices/skills/ko_1.mp3?v=sk1', text: '雷の呼吸、壱ノ型、霹靂一閃！', lang: 'ja-JP', playbackRate: 1.05 },
+  ko_2: { url: '/voices/skills/ko_2.mp3?v=sk1', text: '霹靂一閃、六連！', lang: 'ja-JP', playbackRate: 1.06 },
+  ko_3: { url: '/voices/skills/ko_3.mp3?v=sk1', text: '火雷神！', lang: 'ja-JP', playbackRate: 1.02 },
+  noone_1: { url: '/voices/skills/noone_1.mp3?v=sk1', text: 'Power Stone!', lang: 'en-US', playbackRate: 0.98 },
+  noone_2: { url: '/voices/skills/noone_2.mp3?v=sk1', text: 'Space Stone!', lang: 'en-US', playbackRate: 0.98 },
+  noone_3: { url: '/voices/skills/noone_3.mp3?v=sk1', text: 'Reality Stone!', lang: 'en-US', playbackRate: 0.98 },
+  noone_4: { url: '/voices/skills/noone_4.mp3?v=sk1', text: 'Time Stone!', lang: 'en-US', playbackRate: 0.98 },
+  noone_5: { url: '/voices/skills/noone_5.mp3?v=sk1', text: 'Mind Stone!', lang: 'en-US', playbackRate: 0.98 },
+  noone_snap: { url: '/voices/skills/noone_snap.mp3?v=sk1', text: 'I am inevitable!', lang: 'en-US', playbackRate: 0.95 },
+  simo_1: { url: '/voices/skills/simo_1.mp3?v=sk1', text: '雪原レーダー展開！', lang: 'ja-JP', playbackRate: 1.0 },
+  simo_2: { url: '/voices/skills/simo_2.mp3?v=sk1', text: '白い死神、一撃必殺！', lang: 'ja-JP', playbackRate: 0.98 },
+  simo_3: { url: '/voices/skills/simo_3.mp3?v=sk1', text: '戦術後方射撃！', lang: 'ja-JP', playbackRate: 1.02 },
+  luangphi_sorn_1: { url: '/voices/skills/luangphi_sorn_1.mp3?v=sk1', text: '必殺マジシリーズ、マジ殴り！', lang: 'ja-JP', playbackRate: 0.98 },
+  jinwoo_1: { url: '/voices/skills/jinwoo_1.mp3?v=sk1', text: '影の短剣乱舞！', lang: 'ja-JP', playbackRate: 1.02 },
+  jinwoo_2: { url: '/voices/skills/jinwoo_2.mp3?v=sk1', text: '支配者の手！', lang: 'ja-JP', playbackRate: 0.98 },
+  jinwoo_3: { url: '/voices/skills/jinwoo_3.mp3?v=sk1', text: '起きろ！影の軍団！', lang: 'ja-JP', playbackRate: 0.96 },
+  naruto_1: { url: '/voices/skills/naruto_1.mp3?v=sk1', text: '螺旋丸！', lang: 'ja-JP', playbackRate: 1.04 },
+  naruto_2: { url: '/voices/skills/naruto_2.mp3?v=sk1', text: '風遁・螺旋手裏剣！', lang: 'ja-JP', playbackRate: 1.02 },
+  naruto_3: { url: '/voices/skills/naruto_3.mp3?v=sk1', text: '九喇嘛モード、いくぜっ！', lang: 'ja-JP', playbackRate: 1.03 },
+  sanji_1: { url: '/voices/skills/sanji_1.mp3?v=sk1', text: 'スカイウォーク・キック！', lang: 'ja-JP', playbackRate: 1.03 },
+  sanji_2: { url: '/voices/skills/sanji_2.mp3?v=sk1', text: '悪魔風脚！', lang: 'ja-JP', playbackRate: 1.02 },
+  sanji_3: { url: '/voices/skills/sanji_3.mp3?v=sk1', text: '魔神風脚・牛肉バースト！', lang: 'ja-JP', playbackRate: 1.0 },
+  luffy_1: { url: '/voices/skills/luffy_1.mp3?v=sk1', text: 'ゴムゴムのピストル！', lang: 'ja-JP', playbackRate: 1.04 },
+  luffy_2: { url: '/voices/skills/luffy_2.mp3?v=sk1', text: 'ゴムゴムのガトリング！', lang: 'ja-JP', playbackRate: 1.05 },
+  luffy_3: { url: '/voices/skills/luffy_3.mp3?v=sk1', text: 'ギア５、猿神銃！', lang: 'ja-JP', playbackRate: 1.02 },
+  ben10_1: { url: '/voices/skills/ben10_1.mp3?v=sk1', text: 'Heatblast Fireball!', lang: 'en-US', playbackRate: 1.03 },
+  ben10_2: { url: '/voices/skills/ben10_2.mp3?v=sk1', text: 'XLR8 Hyper Blitz!', lang: 'en-US', playbackRate: 1.04 },
+  ben10_3: { url: '/voices/skills/ben10_3.mp3?v=sk1', text: 'Way Big Cosmic Ray!', lang: 'en-US', playbackRate: 1.0 },
+  diablo_1: { url: '/voices/skills/diablo_1.mp3?v=sk1', text: '絶望の時間！', lang: 'ja-JP', playbackRate: 0.98 },
+  diablo_2: { url: '/voices/skills/diablo_2.mp3?v=sk1', text: '誘惑世界！', lang: 'ja-JP', playbackRate: 0.96 },
+  diablo_3: { url: '/voices/skills/diablo_3.mp3?v=sk1', text: 'エンド・オブ・ワールド！', lang: 'ja-JP', playbackRate: 0.95 },
 }
 
 interface BgmChordBar {
@@ -197,10 +325,14 @@ class SoundEngine {
   // Voice caching & overlap prevention
   private voiceBuffers = new Map<string, AudioBuffer>()
   private voiceFetches = new Map<string, Promise<AudioBuffer | null>>()
+  private pendingVoiceBytes = new Map<string, ArrayBuffer>()
   private voicePlaySeq = 0
   private activeVoiceSrc: AudioBufferSourceNode | null = null
   private activeVoiceAudio: HTMLAudioElement | null = null
+  private activeSkillVoiceSrc: AudioBufferSourceNode | null = null
+  private activeSkillVoiceAudio: HTMLAudioElement | null = null
   private preloadStarted = false
+  private autoUnlockInstalled = false
 
   // Arena BGM lookahead scheduler state
   private bgmPlaying = false
@@ -210,6 +342,65 @@ class SoundEngine {
   private bgmStep = 0
   private bgmDuckUntil = 0
   private bgmDuckTimerId: number | null = null
+
+  constructor() {
+    this.installAutoUnlockListeners()
+  }
+
+  /**
+   * Fixes intermittent "no sound" bug caused by browsers suspending AudioContext after
+   * 1-year auto-login (no auth click), background tab switches, or mobile Safari audio interrupts.
+   */
+  private installAutoUnlockListeners(): void {
+    if (this.autoUnlockInstalled || typeof window === 'undefined') return
+    this.autoUnlockInstalled = true
+    const wakeAudio = () => {
+      if (this.muted) return
+      const ctx = this.unlock()
+      if (ctx && ctx.state !== 'running') {
+        void ctx
+          .resume()
+          .then(() => {
+            if (this.ctx) {
+              this.bgmNextNoteTime = this.ctx.currentTime + 0.06
+            }
+            this.updateGainTargets()
+            this.flushPendingVoiceBytes()
+          })
+          .catch(() => undefined)
+      } else if (ctx) {
+        this.flushPendingVoiceBytes()
+      }
+    }
+    window.addEventListener('pointerdown', wakeAudio, { capture: true, passive: true })
+    window.addEventListener('touchstart', wakeAudio, { capture: true, passive: true })
+    window.addEventListener('keydown', wakeAudio, { capture: true, passive: true })
+    window.addEventListener('click', wakeAudio, { capture: true, passive: true })
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden && !this.muted && this.ctx && this.ctx.state !== 'running') {
+          void this.ctx
+            .resume()
+            .then(() => {
+              if (this.ctx) {
+                this.bgmNextNoteTime = this.ctx.currentTime + 0.06
+              }
+              this.updateGainTargets()
+            })
+            .catch(() => undefined)
+        }
+      })
+    }
+  }
+
+  private flushPendingVoiceBytes(): void {
+    if (!this.ctx || this.pendingVoiceBytes.size === 0) return
+    const entries = Array.from(this.pendingVoiceBytes.entries())
+    this.pendingVoiceBytes.clear()
+    for (const [charId, bytes] of entries) {
+      void this.primeVoiceFromBytes(charId, bytes)
+    }
+  }
 
   isMuted(): boolean {
     return this.muted
@@ -285,19 +476,31 @@ class SoundEngine {
         this.bgmGain = bgmGain
         this.bgmLowpass = bgmLowpass
         this.noiseBuffer = this.buildNoiseBuffer(ctx)
+        ctx.onstatechange = () => {
+          if (ctx.state === 'running') {
+            this.bgmNextNoteTime = Math.max(this.bgmNextNoteTime, ctx.currentTime + 0.05)
+            this.updateGainTargets()
+            this.flushPendingVoiceBytes()
+          }
+        }
       } catch {
         return null
       }
     }
-    if (this.ctx.state === 'suspended') {
+    if (this.ctx.state !== 'running') {
       void this.ctx
         .resume()
         .then(() => {
+          if (this.ctx) {
+            this.bgmNextNoteTime = Math.max(this.bgmNextNoteTime, this.ctx.currentTime + 0.05)
+          }
           this.updateGainTargets()
+          this.flushPendingVoiceBytes()
         })
         .catch(() => undefined)
     } else {
       this.updateGainTargets()
+      this.flushPendingVoiceBytes()
     }
     if (!this.preloadStarted) {
       this.preloadStarted = true
@@ -311,10 +514,15 @@ class SoundEngine {
   async primeVoiceFromBytes(charId: string, bytes: ArrayBuffer): Promise<void> {
     if (this.voiceBuffers.has(charId)) return
     const ctx = this.ctx
-    if (!ctx) return
+    if (!ctx) {
+      if (this.pendingVoiceBytes.size < 40) {
+        this.pendingVoiceBytes.set(charId, bytes.slice(0))
+      }
+      return
+    }
     try {
       const decoded = await ctx.decodeAudioData(bytes.slice(0))
-      if (this.voiceBuffers.size >= 10) {
+      if (this.voiceBuffers.size >= 48) {
         const oldest = this.voiceBuffers.keys().next().value
         if (oldest) this.voiceBuffers.delete(oldest)
       }
@@ -388,6 +596,7 @@ class SoundEngine {
       }
       this.activeVoiceAudio = null
     }
+    this.stopActiveSkillVoice()
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       try {
         window.speechSynthesis.cancel()
@@ -409,6 +618,84 @@ class SoundEngine {
         this.updateGainTargets()
       }
     }, ms + 20)
+  }
+
+  private stopActiveSkillVoice(): void {
+    if (this.activeSkillVoiceSrc) {
+      try {
+        this.activeSkillVoiceSrc.stop()
+      } catch {
+        // Ignore already-stopped source
+      }
+      this.activeSkillVoiceSrc.disconnect()
+      this.activeSkillVoiceSrc = null
+    }
+    if (this.activeSkillVoiceAudio) {
+      try {
+        this.activeSkillVoiceAudio.pause()
+        this.activeSkillVoiceAudio.currentTime = 0
+      } catch {
+        // Ignore HTMLAudio cleanup errors
+      }
+      this.activeSkillVoiceAudio = null
+    }
+  }
+
+  /** Plays each hero's signature skill-name voice callout immediately when casting a skill. */
+  speakSkillCallout(charId: string, slotOrTag: number | string, fallbackLabel?: string): void {
+    if (this.muted || !charId) return
+    const key = `${charId}_${slotOrTag}`
+    if (this.shouldThrottle(`skill_vo:${key}`, 420)) return
+
+    const clip = SKILL_VOICE_MAP[key]
+    const ctx = this.unlock()
+    this.stopActiveSkillVoice()
+    this.duckBgm(1100)
+
+    if (!clip) {
+      if (fallbackLabel) {
+        const base = CHARACTER_VOICES[charId] ?? CHARACTER_VOICES.default
+        this.speakBrowserFallback(base, fallbackLabel)
+      }
+      return
+    }
+
+    const bufKey = `skill:${key}`
+    if (ctx && this.voiceGain) {
+      void this.loadVoiceBuffer(bufKey, clip.url).then((buffer) => {
+        if (this.muted) return
+        if (buffer && this.ctx && this.voiceGain) {
+          if (this.ctx.state === 'suspended') {
+            void this.ctx.resume().catch(() => undefined)
+          }
+          this.stopActiveSkillVoice()
+          const src = this.ctx.createBufferSource()
+          src.buffer = buffer
+          src.playbackRate.value = clip.playbackRate
+          src.connect(this.voiceGain)
+          src.onended = () => {
+            if (this.activeSkillVoiceSrc === src) {
+              this.activeSkillVoiceSrc = null
+            }
+            src.disconnect()
+          }
+          this.activeSkillVoiceSrc = src
+          src.start(0)
+          return
+        }
+        if (typeof Audio !== 'undefined') {
+          try {
+            const audio = new Audio(clip.url)
+            audio.volume = 0.9
+            audio.playbackRate = clip.playbackRate
+            this.activeSkillVoiceAudio = audio
+            void audio.play().catch(() => undefined)
+          } catch {
+            // Ignore audio fallback failure
+          }
+        }
+      })
+    }
   }
 
   /** Plays a signature hero chime + authentic Thai voice line when selecting a character. */
@@ -1144,6 +1431,119 @@ class SoundEngine {
       case 'ko':
         this.playTone(190, 52, 0.38, 'triangle', 0.32)
         this.playTone(540, 270, 0.24, 'sine', 0.22, 0.06)
+        break
+      case 'atk_simo_rifle':
+      case 'simo_snipe_off':
+        this.playNoise(0.14, 2400, 'bandpass', 0.28)
+        this.playTone(420, 95, 0.16, 'sawtooth', 0.24)
+        break
+      case 'simo_snipe_max':
+      case 'simo_backflip_shot':
+        this.playNoise(0.28, 1950, 'bandpass', 0.42)
+        this.playTone(880, 62, 0.36, 'sawtooth', 0.38)
+        this.playTone(1640, 220, 0.22, 'triangle', 0.24, 0.02)
+        break
+      case 'simo_sentinel':
+      case 'simo_blizzard_burst':
+        this.playTone(620, 1240, 0.26, 'sine', 0.22)
+        this.playNoise(0.22, 3200, 'highpass', 0.18)
+        break
+      case 'scp_medkit_heal':
+      case 'aegis_core_burst':
+        this.playTone(587.33, 880, 0.24, 'sine', 0.26)
+        this.playTone(880, 1318.5, 0.28, 'triangle', 0.2, 0.06)
+        break
+      case 'kill_streak_fanfare':
+        this.playTone(523.25, 783.99, 0.18, 'triangle', 0.28)
+        this.playTone(659.25, 1046.5, 0.24, 'sine', 0.26, 0.07)
+        this.playTone(783.99, 1318.5, 0.34, 'triangle', 0.24, 0.14)
+        break
+      case 'atk_jinwoo_dagger':
+      case 'jinwoo_dagger_rush':
+      case 'jinwoo_dagger_dash':
+      case 'jinwoo_shadow_slash':
+        this.playNoise(0.14, 3100, 'highpass', 0.24)
+        this.playTone(1320, 560, 0.16, 'triangle', 0.22)
+        break
+      case 'jinwoo_rulers_hand':
+      case 'jinwoo_arise':
+        this.playTone(145, 52, 0.52, 'sawtooth', 0.34)
+        this.playTone(420, 880, 0.36, 'sine', 0.22, 0.05)
+        this.playNoise(0.38, 1200, 'bandpass', 0.26)
+        break
+      case 'atk_naruto_punch':
+      case 'atk_naruto_rasen':
+      case 'naruto_rasengan':
+      case 'naruto_rasengan_burst':
+        this.playNoise(0.24, 2100, 'bandpass', 0.28)
+        this.playTone(320, 920, 0.22, 'sawtooth', 0.22)
+        break
+      case 'naruto_rasenshuriken':
+      case 'naruto_rasen_blast':
+      case 'naruto_shuriken_boom':
+        this.playNoise(0.36, 2800, 'highpass', 0.34)
+        this.playTone(980, 260, 0.34, 'sawtooth', 0.28)
+        break
+      case 'naruto_kurama_aura':
+        this.playTone(120, 260, 0.45, 'sawtooth', 0.3)
+        this.playTone(520, 1040, 0.32, 'triangle', 0.24, 0.06)
+        break
+      case 'atk_sanji_kick':
+      case 'sanji_sky_kick':
+      case 'sanji_skywalk':
+      case 'sanji_diable_fire':
+        this.playNoise(0.2, 1800, 'bandpass', 0.26)
+        this.playTone(280, 110, 0.22, 'triangle', 0.28)
+        break
+      case 'sanji_ifrit_kick':
+      case 'sanji_ifrit_rush':
+      case 'sanji_ifrit_burst':
+        this.playNoise(0.32, 3000, 'highpass', 0.34)
+        this.playTone(1440, 320, 0.28, 'sawtooth', 0.28)
+        this.playTone(165, 48, 0.34, 'sine', 0.34, 0.03)
+        break
+      case 'atk_luffy_punch':
+      case 'luffy_pistol':
+      case 'luffy_gatling':
+      case 'luffy_gatling_fist':
+        this.playTone(220, 68, 0.18, 'sine', 0.34)
+        this.playNoise(0.14, 1100, 'bandpass', 0.26)
+        break
+      case 'luffy_bajrang_gun':
+      case 'luffy_bajrang_smash':
+        this.playTone(98, 28, 0.62, 'sawtooth', 0.4)
+        this.playNoise(0.48, 560, 'lowpass', 0.38)
+        break
+      case 'atk_ben10_plasma':
+      case 'atk_ben10_omni':
+      case 'ben10_heatblast':
+      case 'ben10_heat_boom':
+      case 'ben10_heat_pool':
+        this.playTone(760, 320, 0.18, 'sawtooth', 0.22)
+        this.playNoise(0.18, 1400, 'bandpass', 0.24)
+        break
+      case 'ben10_xlr8_blitz':
+        this.playTone(520, 1680, 0.16, 'sine', 0.26)
+        this.playNoise(0.16, 2900, 'highpass', 0.22)
+        break
+      case 'ben10_cosmic_ray':
+        this.playTone(220, 680, 0.52, 'sawtooth', 0.32)
+        this.playTone(880, 1320, 0.42, 'sine', 0.24, 0.04)
+        this.playNoise(0.45, 2200, 'bandpass', 0.28)
+        break
+      case 'atk_diablo_orb':
+      case 'atk_diablo_claw':
+      case 'diablo_despair_claw':
+      case 'diablo_despair_wave':
+        this.playNoise(0.14, 2800, 'highpass', 0.24)
+        this.playTone(460, 180, 0.18, 'sawtooth', 0.24)
+        break
+      case 'diablo_temptation':
+      case 'diablo_end_world':
+      case 'diablo_eclipse_burst':
+        this.playTone(130, 42, 0.58, 'sawtooth', 0.36)
+        this.playTone(620, 210, 0.42, 'triangle', 0.24, 0.05)
+        this.playNoise(0.42, 920, 'bandpass', 0.3)
         break
     }
   }

@@ -89,6 +89,49 @@ export const EFFECT_KINDS: readonly string[] = [
   'thanos_time_mandala',    // 73
   'thanos_mind_beam',       // 74
   'thanos_infinity_snap',   // 75
+  'atk_simo_rifle',         // 76
+  'simo_sentinel',          // 77
+  'simo_snipe_max',         // 78
+  'simo_snipe_off',         // 79
+  'simo_backflip_shot',     // 80
+  'simo_blizzard_burst',    // 81
+  'scp_medkit_orb',         // 82
+  'scp_medkit_heal',        // 83
+  'atk_jinwoo_dagger',      // 84
+  'atk_naruto_rasen',       // 85
+  'atk_sanji_kick',         // 86
+  'atk_luffy_punch',        // 87
+  'atk_ben10_omni',         // 88
+  'atk_diablo_claw',        // 89
+  'jinwoo_dagger_dash',     // 90
+  'jinwoo_rulers_hand',     // 91
+  'jinwoo_arise',           // 92
+  'jinwoo_shadow_slash',    // 93
+  'naruto_rasengan',        // 94
+  'naruto_rasengan_burst',  // 95
+  'naruto_rasenshuriken',   // 96
+  'naruto_shuriken_boom',   // 97
+  'naruto_kurama_aura',     // 98
+  'sanji_skywalk',          // 99
+  'sanji_diable_fire',      // 100
+  'sanji_ifrit_rush',       // 101
+  'sanji_ifrit_burst',      // 102
+  'luffy_pistol',           // 103
+  'luffy_gatling',          // 104
+  'luffy_gatling_fist',     // 105
+  'luffy_bajrang_gun',      // 106
+  'luffy_bajrang_smash',    // 107
+  'ben10_heatblast',        // 108
+  'ben10_heat_boom',        // 109
+  'ben10_heat_pool',        // 110
+  'ben10_xlr8_blitz',       // 111
+  'ben10_cosmic_ray',       // 112
+  'diablo_despair_wave',    // 113
+  'diablo_temptation',      // 114
+  'diablo_end_world',       // 115
+  'diablo_eclipse_burst',   // 116
+  'aegis_core_orb',         // 117
+  'aegis_core_burst',       // 118
 ]
 
 const textEncoder = new TextEncoder()

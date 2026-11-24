@@ -99,10 +99,32 @@ func (e *Engine) SpawnPositionForTeam(rs *state.RoomState, team string) (float64
 		} else if team == state.TeamBlue {
 			minX = 110
 			maxX = 360
+			if cfg.ID == state.MapSisaket {
+				minX, maxX = 150, 440
+				minY, maxY = 660, 1140
+			} else if cfg.ID == state.MapSCP {
+				minX, maxX = 780, 980
+				minY, maxY = 720, 1080
+			}
 		} else if team == state.TeamRed {
 			minX = cfg.Width - 360
 			maxX = cfg.Width - 110
+			if cfg.ID == state.MapSisaket {
+				minX, maxX = 2560, 2850
+				minY, maxY = 660, 1140
+			} else if cfg.ID == state.MapSCP {
+				minX, maxX = 2020, 2220
+				minY, maxY = 720, 1080
+			}
 		}
+	} else if cfg.ID == state.MapSisaket {
+		// FFA / Practice spawns cleanly on the safe Central Ko Klang Nam island plaza
+		minX, maxX = 940, 2060
+		minY, maxY = 540, 1260
+	} else if cfg.ID == state.MapSCP {
+		// Circular SCP containment chamber inner spawn zone
+		minX, maxX = 920, 2080
+		minY, maxY = 340, 1460
 	}
 
 	usableW := math.Max(60, maxX-minX)
@@ -111,10 +133,13 @@ func (e *Engine) SpawnPositionForTeam(rs *state.RoomState, team string) (float64
 	var bestX, bestY float64
 	bestMinDist := -1.0
 
-	for attempt := 0; attempt < 24; attempt++ {
+	for attempt := 0; attempt < 32; attempt++ {
 		rx := minX + randUnit()*usableW
 		ry := minY + randUnit()*usableH
-		if hitsAnyPillar(rx, ry, cfg.PlayerRadius+28, cfg) {
+		if hitsAnyPillar(rx, ry, cfg.PlayerRadius+28, cfg) || !state.IsOnDryLand(cfg, rx, ry) {
+			continue
+		}
+		if cfg.ID == state.MapSCP && math.Hypot(rx-state.SCPCenterX, ry-state.SCPCenterY) > state.SCPRadius-80 {
 			continue
 		}
 
@@ -211,6 +236,10 @@ func (e *Engine) StepPlayer(p *state.PlayerState, dt float64, cfg state.MapConfi
 	if now.Before(p.SlowUntil) {
 		speed *= 0.55
 	}
+	if cfg.ID == state.MapSisaket && !state.IsOnDryLand(cfg, p.X, p.Y) {
+		// Wading in Huai Nam Kham reservoir slightly slows movement so players must rush back to the island!
+		speed *= 0.78
+	}
 
 	nextX, nextY := resolveObstacles(p.X+nx*speed*dt, p.Y+ny*speed*dt, cfg)
 	changed := nextX != p.X || nextY != p.Y
@@ -219,19 +248,289 @@ func (e *Engine) StepPlayer(p *state.PlayerState, dt float64, cfg state.MapConfi
 	return changed
 }
 
+// StepWaterHazard deducts -5 HP periodically whenever a living player falls into Huai Nam Kham water on Sisaket Island.
+func (e *Engine) StepWaterHazard(rs *state.RoomState, now time.Time) (bool, []HitEvent) {
+	if rs.Map.ID != state.MapSisaket || rs.Phase != state.PhasePlaying {
+		return false, nil
+	}
+	changed := false
+	var hits []HitEvent
+	for _, p := range rs.Players {
+		if !p.Alive || p.IsDummy {
+			continue
+		}
+		if state.IsOnDryLand(rs.Map, p.X, p.Y) {
+			p.WaterTickUntil = time.Time{}
+			continue
+		}
+		if p.WaterTickUntil.IsZero() {
+			p.WaterTickUntil = now.Add(450 * time.Millisecond)
+			continue
+		}
+		if !now.Before(p.WaterTickUntil) {
+			p.WaterTickUntil = now.Add(750 * time.Millisecond)
+			if !now.Before(p.InvulnUntil) {
+				changed = true
+				if ev, died := e.damagePlayerCC(p, nil, "water_hazard", "ตกน้ำห้วยน้ำคำ 🌊", 5, 0, 0, 0, 0, 0, rs.Map, now); died {
+					hits = append(hits, ev)
+				}
+			}
+		}
+	}
+	return changed, hits
+}
+
+// SCPMedkitSpots defines 6 symmetrical glowing green bio-medkit orb coordinates inside the circular SCP Site-19 chamber.
+var SCPMedkitSpots = [6][2]float64{
+	{1500, 290},
+	{1500, 1510},
+	{1030, 560},
+	{1970, 560},
+	{1030, 1240},
+	{1970, 1240},
+}
+
+// StepMapPickups manages small glowing green health pickups on the circular SCP Site-19 map (+45 balanced HP, 14s respawn)
+// as well as the Central Dimensional Aegis Core Objective across combat modes (35s respawn).
+func (e *Engine) StepMapPickups(rs *state.RoomState, now time.Time) bool {
+	if rs.Phase != state.PhasePlaying {
+		return false
+	}
+	changed := false
+	if e.stepCentralAegisCore(rs, now) {
+		changed = true
+	}
+	if rs.Map.ID != state.MapSCP {
+		return changed
+	}
+	const healAmount = 45
+	const respawnDelay = 14 * time.Second
+	const pickupRad = 56.0
+
+	// Track which medkit slots currently have an active zone orb
+	activeIdx := [6]int{-1, -1, -1, -1, -1, -1}
+	for i := range rs.Zones {
+		z := &rs.Zones[i]
+		if z.Kind != "scp_medkit_orb" {
+			continue
+		}
+		if len(z.ID) == 12 && z.ID[:11] == "scp-medkit-" {
+			slot := int(z.ID[11] - '0')
+			if slot >= 0 && slot < 6 {
+				activeIdx[slot] = i
+				// Keep active orbs alive continuously until picked up
+				if z.Life < 60 {
+					z.Life = 999
+					z.MaxLife = 999
+				}
+			}
+		}
+	}
+
+	// Spawn any missing medkits whose respawn timer has elapsed
+	for slot := 0; slot < 6; slot++ {
+		if activeIdx[slot] != -1 {
+			continue
+		}
+		if !rs.SCPMedkitRespawnAt[slot].IsZero() && now.Before(rs.SCPMedkitRespawnAt[slot]) {
+			continue
+		}
+		rs.SCPMedkitRespawnAt[slot] = time.Time{}
+		rs.Zones = append(rs.Zones, state.ZoneEffect{
+			ID:          fmt.Sprintf("scp-medkit-%d", slot),
+			Kind:        "scp_medkit_orb",
+			X:           SCPMedkitSpots[slot][0],
+			Y:           SCPMedkitSpots[slot][1],
+			Radius:      26,
+			Color:       "#10B981",
+			AccentColor: "#6EE7B7",
+			Life:        999,
+			MaxLife:     999,
+		})
+		activeIdx[slot] = len(rs.Zones) - 1
+		changed = true
+	}
+
+	// Check player pickups (balanced: only consumed when player HP < MaxHP)
+	consumed := make([]bool, len(rs.Zones))
+	anyConsumed := false
+	for slot := 0; slot < 6; slot++ {
+		zi := activeIdx[slot]
+		if zi < 0 || zi >= len(rs.Zones) {
+			continue
+		}
+		mx, my := SCPMedkitSpots[slot][0], SCPMedkitSpots[slot][1]
+		for _, p := range rs.Players {
+			if !p.Alive || p.IsDummy || p.HP >= p.MaxHP {
+				continue
+			}
+			if math.Hypot(p.X-mx, p.Y-my) <= pickupRad {
+				p.HP += healAmount
+				if p.HP > p.MaxHP {
+					p.HP = p.MaxHP
+				}
+				consumed[zi] = true
+				anyConsumed = true
+				rs.SCPMedkitRespawnAt[slot] = now.Add(respawnDelay)
+				rs.Zones = append(rs.Zones, state.ZoneEffect{
+					ID:          e.nextID("zone"),
+					OwnerID:     p.ID,
+					OwnerName:   p.Name,
+					OwnerTeam:   p.Team,
+					Kind:        "scp_medkit_heal",
+					X:           p.X,
+					Y:           p.Y,
+					Radius:      64,
+					Color:       "#10B981",
+					AccentColor: "#A7F3D0",
+					Life:        0.55,
+					MaxLife:     0.55,
+				})
+				changed = true
+				break
+			}
+		}
+	}
+
+	if anyConsumed {
+		kept := rs.Zones[:0]
+		for i, z := range rs.Zones {
+			if i < len(consumed) && consumed[i] {
+				continue
+			}
+			kept = append(kept, z)
+		}
+		rs.Zones = kept
+	}
+	return changed
+}
+
+// stepCentralAegisCore spawns and resolves the Central Dimensional Aegis Core Objective ("aegis_core_orb")
+// every 35s in the heart of the battlefield, granting +40 HP, 2.5s speed overdrive, and 25% active skill CDR.
+func (e *Engine) stepCentralAegisCore(rs *state.RoomState, now time.Time) bool {
+	if rs.Mode == state.ModeIconic {
+		return false
+	}
+	ax, ay := 1500.0, 900.0
+	if rs.Map.ID == state.MapSisaket {
+		// On Sisaket Island, (1500,900) is the central Si Lamduan Tower pillar, so spawn on the south Kopura plaza
+		ay = 1080.0
+	}
+	activeIdx := -1
+	for i := range rs.Zones {
+		z := &rs.Zones[i]
+		if z.Kind == "aegis_core_orb" {
+			activeIdx = i
+			if z.Life < 60 {
+				z.Life = 999
+				z.MaxLife = 999
+			}
+			break
+		}
+	}
+	if activeIdx == -1 {
+		if rs.AegisCoreRespawnAt.IsZero() {
+			rs.AegisCoreRespawnAt = now.Add(10 * time.Second)
+			return false
+		}
+		if now.Before(rs.AegisCoreRespawnAt) {
+			return false
+		}
+		rs.AegisCoreRespawnAt = time.Time{}
+		rs.Zones = append(rs.Zones, state.ZoneEffect{
+			ID:          "aegis-core-0",
+			Kind:        "aegis_core_orb",
+			X:           ax,
+			Y:           ay,
+			Radius:      34,
+			Color:       "#FACC15",
+			AccentColor: "#38BDF8",
+			Life:        999,
+			MaxLife:     999,
+		})
+		return true
+	}
+
+	for _, p := range rs.Players {
+		if !p.Alive || p.IsDummy {
+			continue
+		}
+		if math.Hypot(p.X-ax, p.Y-ay) <= 62.0 {
+			p.HP += 40
+			if p.HP > p.MaxHP {
+				p.HP = p.MaxHP
+			}
+			if until := now.Add(2500 * time.Millisecond); until.After(p.BuffUntil) {
+				p.BuffUntil = until
+			}
+			for i := 0; i < len(p.CooldownUntil); i++ {
+				if rem := p.CooldownUntil[i].Sub(now); rem > 0 {
+					p.CooldownUntil[i] = now.Add(time.Duration(float64(rem) * 0.75))
+				}
+			}
+			rs.AegisCoreRespawnAt = now.Add(35 * time.Second)
+			rs.Zones = append(rs.Zones[:activeIdx], rs.Zones[activeIdx+1:]...)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     p.ID,
+				OwnerName:   p.Name,
+				OwnerTeam:   p.Team,
+				Kind:        "aegis_core_burst",
+				X:           p.X,
+				Y:           p.Y,
+				Radius:      92,
+				Color:       "#FACC15",
+				AccentColor: "#38BDF8",
+				Life:        0.65,
+				MaxLife:     0.65,
+			})
+			return true
+		}
+	}
+	return false
+}
+
 func basicAttackRange(characterID string) float64 {
 	switch characterID {
 	case "pa", "ole", "default":
 		return 300
+	case "ben10":
+		return 320
 	case "kaem":
 		return 316
+	case "diablo":
+		return 265
 	case "ajarn_au":
 		return 240
-	case "ko":
+	case "luffy":
+		return 225
+	case "ko", "jinwoo":
 		return 195
+	case "naruto", "sanji":
+		return 185
+	case "simo":
+		return 480
 	default:
 		return 175
 	}
+}
+
+func parseSimoChargePct(targetID string) int {
+	if len(targetID) > 7 && targetID[:7] == "charge:" {
+		n := 0
+		for i := 7; i < len(targetID); i++ {
+			ch := targetID[i]
+			if ch < '0' || ch > '9' {
+				break
+			}
+			n = n*10 + int(ch-'0')
+		}
+		if n > 100 {
+			return 100
+		}
+		return n
+	}
+	return 0
 }
 
 // CastBasicAttack executes a signature Target Lock-On normal attack unique to each of the 9 characters.
@@ -351,6 +650,70 @@ func (e *Engine) CastBasicAttack(rs *state.RoomState, caster *state.PlayerState,
 		hits := e.fireConeSweep(rs, caster, "atk_thanos_gauntlet", nx, ny, strikeRange, 1.02, 20, 44, 0.24, "#9333EA", "#FACC15", now)
 		return hits, true
 
+	case "simo": // Simo Hayha (First Carry / Marksman): Long-range 480px Target Lock-On rifle shot with normal basic damage (18 dmg)
+		if locked != nil {
+			var hits []HitEvent
+			e.addBeamVisual(rs, caster, "atk_simo_rifle", caster.X, caster.Y, locked.X, locked.Y, 32, 0.24, "#38BDF8", "#F8FAFC")
+			if ev, died := e.damagePlayerCC(locked, caster, caster.ID, caster.Name, 18, 0, 0, nx, ny, 20, rs.Map, now); died {
+				hits = append(hits, ev)
+			}
+			return hits, true
+		}
+		hits := e.fireLineBeam(rs, caster, "atk_simo_rifle", nx, ny, strikeRange, 32, 18, 20, 0.24, "#38BDF8", "#F8FAFC", now)
+		return hits, true
+
+	case "jinwoo": // Sung Jin-Woo: Twin Knight Killer Violet-Cyan Shadow Dagger Sweep
+		hits := e.fireConeSweep(rs, caster, "atk_jinwoo_dagger", nx, ny, strikeRange, 0.98, 19, 32, 0.22, "#7C3AED", "#38BDF8", now)
+		return hits, true
+
+	case "naruto": // Uzumaki Naruto: Chakra Fist / Enhanced Golden Kurama Claw Strike when transformed!
+		dmg := 19
+		col, acc := "#F97316", "#38BDF8"
+		if now.Before(caster.BuffUntil) {
+			dmg = 24
+			col, acc = "#FACC15", "#F97316"
+		}
+		hits := e.fireConeSweep(rs, caster, "atk_naruto_rasen", nx, ny, strikeRange, 0.98, dmg, 38, 0.23, col, acc, now)
+		return hits, true
+
+	case "sanji": // Vinsmoke Sanji: Blazing Black-Leg High Kick Sweep
+		hits := e.fireConeSweep(rs, caster, "atk_sanji_kick", nx, ny, strikeRange, 1.0, 19, 40, 0.22, "#F97316", "#FEF08A", now)
+		return hits, true
+
+	case "luffy": // Monkey D. Luffy: Mid-Range Elastic Rubber Fist Strike
+		hits := e.fireLineBeam(rs, caster, "atk_luffy_punch", nx, ny, strikeRange, 52, 20, 46, 0.22, "#EF4444", "#FACC15", now)
+		return hits, true
+
+	case "ben10": // Ben 10: Homing Neon-Green Omnitrix Energy Bolt
+		e.addProjectileFull(rs, caster, state.Projectile{
+			Kind:        "atk_ben10_omni",
+			Radius:      8,
+			Damage:      18,
+			Knockback:   22,
+			TargetID:    targetID,
+			HomingSpeed: 800,
+			Life:        projLife,
+			MaxLife:     projLife,
+			Color:       "#22C55E",
+			AccentColor: "#A3E635",
+		}, nx, ny, 800)
+		return nil, true
+
+	case "diablo": // Diablo: Homing Primordial Crimson-Black Demon Shard
+		e.addProjectileFull(rs, caster, state.Projectile{
+			Kind:        "atk_diablo_claw",
+			Radius:      8,
+			Damage:      19,
+			Knockback:   22,
+			TargetID:    targetID,
+			HomingSpeed: 790,
+			Life:        projLife,
+			MaxLife:     projLife,
+			Color:       "#DC2626",
+			AccentColor: "#FACC15",
+		}, nx, ny, 790)
+		return nil, true
+
 	default: // Classic Challenger: Locked homing cyan holographic energy pulse
 		e.addProjectileFull(rs, caster, state.Projectile{
 			Kind:        "atk_default_pulse",
@@ -374,13 +737,22 @@ func (e *Engine) CastDash(rs *state.RoomState, caster *state.PlayerState, target
 		return false
 	}
 
+	charDef := state.GetCharacter(caster.CharacterID)
+	maxDashDist := 255.0
+	dashCdMs := 3200.0
+	if charDef.HeroClass == state.ClassChronos && charDef.ClassStatValue > 0 {
+		// Velocity Breaker (ผู้แหวกมิติเวลา): faster dash cooldown (-28%) and extended dash reach (+18%)
+		dashCdMs *= charDef.ClassStatValue
+		maxDashDist = 300.0
+	}
+
 	var nx, ny float64
-	dashDist := 255.0
+	dashDist := maxDashDist
 	hasValidTarget := !math.IsNaN(targetX) && !math.IsNaN(targetY) && !math.IsInf(targetX, 0) && !math.IsInf(targetY, 0)
 	if hasValidTarget && math.Hypot(targetX-caster.X, targetY-caster.Y) >= 4 {
 		var dist float64
 		nx, ny, dist = normalizeAim(caster, targetX, targetY)
-		dashDist = clamp(dist, 90, 255)
+		dashDist = clamp(dist, 90, maxDashDist)
 	} else if caster.InputDX != 0 || caster.InputDY != 0 {
 		mag := math.Hypot(caster.InputDX, caster.InputDY)
 		nx, ny = caster.InputDX/mag, caster.InputDY/mag
@@ -390,7 +762,7 @@ func (e *Engine) CastDash(rs *state.RoomState, caster *state.PlayerState, target
 
 	caster.AimDX = nx
 	caster.AimDY = ny
-	caster.DashUntil = now.Add(3200 * time.Millisecond)
+	caster.DashUntil = now.Add(time.Duration(dashCdMs) * time.Millisecond)
 
 	startX, startY := caster.X, caster.Y
 	destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, dashDist, rs.Map)
@@ -1213,10 +1585,473 @@ func (e *Engine) CastSkillFull(rs *state.RoomState, caster *state.PlayerState, s
 				}
 			}
 		}
+
+	case "simo": // Simo Hayha (Record of Ragnarok • RoV Elsu-Style Sniper): Q Sentinel Recon Trap -> E Charge Snipe (50% Enemy HP on full charge, veers off-side if uncharged!) -> R Backflip Disengage Shot
+		switch slot {
+		case 1: // Sentinel Recon: Places an Arctic Radar Trap for 5s that scans & slows enemies
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "simo_sentinel",
+				X:             zx,
+				Y:             zy,
+				Radius:        skill.AoeRadius,
+				Color:         "#0284C7",
+				AccentColor:   "#E0F2FE",
+				Life:          5.0,
+				MaxLife:       5.0,
+				DamagePerTick: 10,
+				TickInterval:  0.65,
+				SlowSec:       1.4,
+			})
+		case 2: // White Death Snipe (Elsu Skill 2 Hold-to-Charge Sniper Shot!)
+			chargePct := parseSimoChargePct(targetID)
+			if chargePct >= 95 {
+				// 100% Full Charge: Pinpoint Laser-Accurate Supersonic Round dealing 50% of Enemy HP!
+				endX := caster.X + nx*skill.CastRange
+				endY := caster.Y + ny*skill.CastRange
+				e.addBeamVisual(rs, caster, "simo_snipe_max", caster.X, caster.Y, endX, endY, 44, 0.48, "#EF4444", "#F8FAFC")
+				for _, p := range rs.Players {
+					if !isEnemy(rs, caster, p) {
+						continue
+					}
+					if pointToSegmentDist(p.X, p.Y, caster.X, caster.Y, endX, endY) <= skill.AoeRadius+rs.Map.PlayerRadius {
+						baseHP := p.MaxHP
+						if p.HP > baseHP {
+							baseHP = p.HP
+						}
+						halfHPDmg := int(math.Ceil(float64(baseHP) * 0.50))
+						if halfHPDmg < 1 {
+							halfHPDmg = 1
+						}
+						if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, halfHPDmg, 0.35, 0, nx, ny, 75, rs.Map, now); died {
+							hits = append(hits, ev)
+						}
+					}
+				}
+			} else {
+				// Released Before Full Charge: Rifle scope is unsteady -> Bullet veers off to the left or right side!
+				inacc := 1.0 - float64(chargePct)/100.0
+				if inacc < 0.2 {
+					inacc = 0.2
+				}
+				sideSign := 1.0
+				if e.RandomBit() {
+					sideSign = -1.0
+				}
+				devAngle := sideSign * (0.28 + 0.34*inacc)
+				devX, devY := rotateVec(nx, ny, devAngle)
+				endX := caster.X + devX*(skill.CastRange*0.82)
+				endY := caster.Y + devY*(skill.CastRange*0.82)
+				e.addBeamVisual(rs, caster, "simo_snipe_off", caster.X, caster.Y, endX, endY, 22, 0.34, "#94A3B8", "#38BDF8")
+				for _, p := range rs.Players {
+					if !isEnemy(rs, caster, p) {
+						continue
+					}
+					if pointToSegmentDist(p.X, p.Y, caster.X, caster.Y, endX, endY) <= (skill.AoeRadius*0.75)+rs.Map.PlayerRadius {
+						if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 24, 0, 0.6, devX, devY, 24, rs.Map, now); died {
+							hits = append(hits, ev)
+						}
+					}
+				}
+			}
+		case 3: // Tactical Backflip (Elsu Ult): Leaps backward 240px with i-frame + speed buff while firing a heavy frost round forward!
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, -nx, -ny, 240, rs.Map)
+			caster.X = destX
+			caster.Y = destY
+			caster.InvulnUntil = now.Add(400 * time.Millisecond)
+			caster.BuffUntil = now.Add(1800 * time.Millisecond)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     caster.ID,
+				OwnerName:   caster.Name,
+				Kind:        "simo_blizzard_burst",
+				X:           startX,
+				Y:           startY,
+				Radius:      110,
+				Color:       "#38BDF8",
+				AccentColor: "#F8FAFC",
+				Life:        0.7,
+				MaxLife:     0.7,
+			})
+			endX := startX + nx*skill.CastRange
+			endY := startY + ny*skill.CastRange
+			e.addBeamVisual(rs, caster, "simo_backflip_shot", startX, startY, endX, endY, 36, 0.42, "#38BDF8", "#F8FAFC")
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if pointToSegmentDist(p.X, p.Y, startX, startY, endX, endY) <= skill.AoeRadius+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 44, 0, 1.8, nx, ny, 52, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		}
+
+	case "jinwoo":
+		switch slot {
+		case 1: // Q: Dagger Rush — High-speed shadow dagger dash piercing foes (32 dmg + Slow 0.9s)
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, clamp(targetDist, 140, skill.CastRange), rs.Map)
+			caster.X, caster.Y = destX, destY
+			e.addBeamVisual(rs, caster, "jinwoo_dagger_dash", startX, startY, destX, destY, 54, 0.34, "#7C3AED", "#38BDF8")
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if pointToSegmentDist(p.X, p.Y, startX, startY, destX, destY) <= skill.AoeRadius+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 32, 0, 0.9, nx, ny, 26, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		case 2: // E: Ruler's Authority — Telekinetic vortex pull + Stun 0.85s + 28 dmg
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     caster.ID,
+				OwnerName:   caster.Name,
+				Kind:        "jinwoo_rulers_hand",
+				X:           zx,
+				Y:           zy,
+				Radius:      skill.AoeRadius,
+				Color:       "#38BDF8",
+				AccentColor: "#7C3AED",
+				Life:        0.85,
+				MaxLife:     0.85,
+				PullForce:   340,
+			})
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if math.Hypot(p.X-zx, p.Y-zy) <= skill.AoeRadius*1.15+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 28, 0.85, 0, zx-p.X, zy-p.Y, 45, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		case 3: // R: ARISE! Shadow Monarch Domain — Summons shadow army slashing inside Sovereign-boosted domain
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "jinwoo_arise",
+				X:             zx,
+				Y:             zy,
+				Radius:        skill.AoeRadius,
+				Color:         "#6D28D9",
+				AccentColor:   "#38BDF8",
+				Life:          2.35,
+				MaxLife:       2.35,
+				DamagePerTick: 13,
+				TickInterval:  0.55,
+				NextTickIn:    0.12,
+				SlowSec:       1.2,
+			})
+		}
+
+	case "naruto":
+		inKurama := now.Before(caster.BuffUntil)
+		switch slot {
+		case 1: // Q: Rasengan Dash Strike (Enhanced in Kurama Nine-Tails Mode!)
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, clamp(targetDist, 110, skill.CastRange), rs.Map)
+			caster.X, caster.Y = destX, destY
+			dmg := 36
+			stun := 0.0
+			col, acc := "#38BDF8", "#E0F2FE"
+			if inKurama {
+				dmg = 50
+				stun = 0.6
+				col, acc = "#F97316", "#FACC15"
+			}
+			e.addBeamVisual(rs, caster, "naruto_rasengan", startX, startY, destX, destY, 58, 0.32, col, acc)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     caster.ID,
+				OwnerName:   caster.Name,
+				Kind:        "naruto_rasengan_burst",
+				X:           destX,
+				Y:           destY,
+				Radius:      skill.AoeRadius,
+				Color:       col,
+				AccentColor: acc,
+				Life:        0.55,
+				MaxLife:     0.55,
+			})
+			hits = append(hits, e.applyRadialImpact(rs, caster, destX, destY, skill.AoeRadius, dmg, stun, 85, now)...)
+		case 2: // E: Wind Style Rasenshuriken (Exploding cyclone projectile)
+			dmg := 38
+			col, acc := "#38BDF8", "#F8FAFC"
+			if inKurama {
+				dmg = 48
+				col, acc = "#FACC15", "#F97316"
+			}
+			e.addProjectileFull(rs, caster, state.Projectile{
+				Kind:          "naruto_rasenshuriken",
+				Radius:        18,
+				Damage:        dmg,
+				Knockback:     55,
+				ExplodeRadius: skill.AoeRadius,
+				ExplodeKind:   "naruto_shuriken_boom",
+				Life:          0.86,
+				MaxLife:       0.86,
+				Color:         col,
+				AccentColor:   acc,
+			}, nx, ny, 780)
+		case 3: // R: Kurama Nine-Tails Mode Transformation (6s visual transform + heal + speed + fast attacks + burning cloak!)
+			caster.BuffUntil = now.Add(6 * time.Second)
+			caster.RapidAttackUntil = now.Add(6 * time.Second)
+			caster.HP += 30
+			if caster.HP > caster.MaxHP {
+				caster.HP = caster.MaxHP
+			}
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "naruto_kurama_aura",
+				X:             caster.X,
+				Y:             caster.Y,
+				Radius:        135,
+				Color:         "#F97316",
+				AccentColor:   "#FACC15",
+				Life:          6.0,
+				MaxLife:       6.0,
+				DamagePerTick: 8,
+				TickInterval:  0.75,
+				NextTickIn:    0.15,
+				FollowOwner:   true,
+			})
+		}
+
+	case "sanji":
+		switch slot {
+		case 1: // Q: Sky Walk Kick (Fast fiery dash kick + 0.25s i-frame + 30 dmg)
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, clamp(targetDist, 140, skill.CastRange), rs.Map)
+			caster.X, caster.Y = destX, destY
+			caster.InvulnUntil = now.Add(250 * time.Millisecond)
+			e.addBeamVisual(rs, caster, "sanji_skywalk", startX, startY, destX, destY, 52, 0.34, "#F97316", "#FEF08A")
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if pointToSegmentDist(p.X, p.Y, startX, startY, destX, destY) <= skill.AoeRadius+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 30, 0, 0, nx, ny, 70, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		case 2: // E: Diable Jambe (Spinning fire kick + lingering flame field + speed boost)
+			caster.BuffUntil = now.Add(1500 * time.Millisecond)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "sanji_diable_fire",
+				X:             caster.X,
+				Y:             caster.Y,
+				Radius:        skill.AoeRadius,
+				Color:         "#EF4444",
+				AccentColor:   "#FACC15",
+				Life:          2.0,
+				MaxLife:       2.0,
+				DamagePerTick: 9,
+				TickInterval:  0.45,
+				NextTickIn:    0.45,
+			})
+			hits = append(hits, e.applyRadialImpact(rs, caster, caster.X, caster.Y, skill.AoeRadius, 36, 0, 48, now)...)
+		case 3: // R: Ifrit Jambe Boeuf Burst (Blue-white plasma lightning kick rush 58 dmg + Stun 1.0s)
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, clamp(targetDist, 160, skill.CastRange), rs.Map)
+			caster.X, caster.Y = destX, destY
+			e.addBeamVisual(rs, caster, "sanji_ifrit_rush", startX, startY, destX, destY, 66, 0.42, "#38BDF8", "#F8FAFC")
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     caster.ID,
+				OwnerName:   caster.Name,
+				Kind:        "sanji_ifrit_burst",
+				X:           destX,
+				Y:           destY,
+				Radius:      skill.AoeRadius,
+				Color:       "#38BDF8",
+				AccentColor: "#F8FAFC",
+				Life:        0.65,
+				MaxLife:     0.65,
+			})
+			hits = append(hits, e.applyRadialImpact(rs, caster, destX, destY, skill.AoeRadius, 58, 1.0, 110, now)...)
+		}
+
+	case "luffy":
+		switch slot {
+		case 1: // Q: Gomu Gomu no Pistol (Long elastic punch piercing line 30 dmg + knockback)
+			hits = append(hits, e.fireLineBeam(rs, caster, "luffy_pistol", nx, ny, skill.CastRange, 56, 30, 82, 0.3, "#EF4444", "#FACC15", now)...)
+		case 2: // E: Gomu Gomu no Gatling (4 rapid cone haki fist volleys)
+			gx, gy := clampTargetPoint(caster, nx, ny, math.Min(targetDist, 190), 210, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "luffy_gatling",
+				X:             gx,
+				Y:             gy,
+				Radius:        skill.AoeRadius,
+				Color:         "#DC2626",
+				AccentColor:   "#F97316",
+				Life:          1.25,
+				MaxLife:       1.25,
+				DamagePerTick: 12,
+				TickInterval:  0.28,
+				NextTickIn:    0.05,
+				SlowSec:       0.8,
+				AimAngle:      math.Atan2(ny, nx),
+			})
+		case 3: // R: Gear 5 Bajrang Gun (0.45s telegraph + caster i-frame 0.5s -> 62 dmg + Stun 1.15s)
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			caster.InvulnUntil = now.Add(500 * time.Millisecond)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "luffy_bajrang_gun",
+				X:             zx,
+				Y:             zy,
+				Radius:        skill.AoeRadius,
+				Color:         "#F8FAFC",
+				AccentColor:   "#EF4444",
+				Life:          1.05,
+				MaxLife:       1.05,
+				DelayLeft:     0.45,
+				MaxDelay:      0.45,
+				DamagePerTick: 62,
+				TickInterval:  2.0,
+				StunSec:       1.15,
+			})
+		}
+
+	case "ben10":
+		switch slot {
+		case 1: // Q: Heatblast Fireball (+20% Deadeye velocity -> explodes + burning pool)
+			e.addProjectileFull(rs, caster, state.Projectile{
+				Kind:          "ben10_heatblast",
+				Radius:        14,
+				Damage:        34,
+				Knockback:     48,
+				ExplodeRadius: skill.AoeRadius,
+				ExplodeKind:   "ben10_heat_boom",
+				SpawnPoolKind: "ben10_heat_pool",
+				Life:          0.86,
+				MaxLife:       0.86,
+				Color:         "#F97316",
+				AccentColor:   "#FACC15",
+			}, nx, ny, 740)
+		case 2: // E: XLR8 Hyper Blitz (Super-speed dash slash + Slow 1.0s + 1.8s speed buff)
+			startX, startY := caster.X, caster.Y
+			destX, destY := stepDashAvoidingPillars(startX, startY, nx, ny, clamp(targetDist, 180, skill.CastRange), rs.Map)
+			caster.X, caster.Y = destX, destY
+			caster.BuffUntil = now.Add(1800 * time.Millisecond)
+			e.addBeamVisual(rs, caster, "ben10_xlr8_blitz", startX, startY, destX, destY, 56, 0.36, "#38BDF8", "#22C55E")
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if pointToSegmentDist(p.X, p.Y, startX, startY, destX, destY) <= skill.AoeRadius+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 28, 0, 1.0, nx, ny, 36, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		case 3: // R: Way Big Cosmic Ray (Long-range massive Omnitrix emerald laser 60 dmg + Stun 0.75s)
+			endX := clamp(caster.X+nx*skill.CastRange, 0, rs.Map.Width)
+			endY := clamp(caster.Y+ny*skill.CastRange, 0, rs.Map.Height)
+			e.addBeamVisual(rs, caster, "ben10_cosmic_ray", caster.X, caster.Y, endX, endY, 72, 0.52, "#22C55E", "#A3E635")
+			for _, p := range rs.Players {
+				if !isEnemy(rs, caster, p) {
+					continue
+				}
+				if pointToSegmentDist(p.X, p.Y, caster.X, caster.Y, endX, endY) <= skill.AoeRadius*0.6+rs.Map.PlayerRadius {
+					if ev, died := e.damagePlayerCC(p, caster, caster.ID, caster.Name, 60, 0.75, 0, nx, ny, 80, rs.Map, now); died {
+						hits = append(hits, ev)
+					}
+				}
+			}
+		}
+
+	case "diablo":
+		switch slot {
+		case 1: // Q: Despair Time (3-way crimson-black demon claw waves 22 dmg + Slow 0.9s)
+			for _, ang := range []float64{-0.22, 0, 0.22} {
+				rx, ry := rotateVec(nx, ny, ang)
+				e.addProjectileFull(rs, caster, state.Projectile{
+					Kind:        "diablo_despair_wave",
+					Radius:      12,
+					Damage:      22,
+					Knockback:   22,
+					Piercing:    true,
+					Life:        0.74,
+					MaxLife:     0.74,
+					Color:       "#DC2626",
+					AccentColor: "#FACC15",
+				}, rx, ry, 730)
+			}
+		case 2: // E: Temptation World (Demon illusion pull + Stun 1.1s + 32 dmg)
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:          e.nextID("zone"),
+				OwnerID:     caster.ID,
+				OwnerName:   caster.Name,
+				Kind:        "diablo_temptation",
+				X:           zx,
+				Y:           zy,
+				Radius:      skill.AoeRadius,
+				Color:       "#DC2626",
+				AccentColor: "#F59E0B",
+				Life:        0.9,
+				MaxLife:     0.9,
+				PullForce:   320,
+			})
+			hits = append(hits, e.applyRadialImpact(rs, caster, zx, zy, skill.AoeRadius, 32, 1.1, 0, now)...)
+		case 3: // R: End of World (Crimson-obsidian eclipse 0.42s windup -> 60 dmg + Cataclysm <=12% execution!)
+			zx, zy := clampTargetPoint(caster, nx, ny, targetDist, skill.CastRange, rs.Map)
+			rs.Zones = append(rs.Zones, state.ZoneEffect{
+				ID:            e.nextID("zone"),
+				OwnerID:       caster.ID,
+				OwnerName:     caster.Name,
+				Kind:          "diablo_end_world",
+				X:             zx,
+				Y:             zy,
+				Radius:        skill.AoeRadius,
+				Color:         "#991B1B",
+				AccentColor:   "#FACC15",
+				Life:          1.1,
+				MaxLife:       1.1,
+				DelayLeft:     0.42,
+				MaxDelay:      0.42,
+				DamagePerTick: 60,
+				TickInterval:  2.0,
+				StunSec:       0.75,
+				SlowSec:       1.5,
+			})
+		}
 	}
 
+	casterDef := state.GetCharacter(caster.CharacterID)
+	zoneScale := 1.0
+	if casterDef.HeroClass == state.ClassSovereign && casterDef.ClassStatValue > 0 {
+		zoneScale = casterDef.ClassStatValue
+	}
 	for i := prevZones; i < len(rs.Zones); i++ {
 		rs.Zones[i].OwnerTeam = caster.Team
+		if zoneScale != 1.0 && rs.Zones[i].Radius > 0 {
+			rs.Zones[i].Radius = math.Round(rs.Zones[i].Radius * zoneScale)
+		}
 	}
 	return SkillOutcome{Hits: hits, Punches: punches, Clashes: clashes, OK: true}
 }
@@ -1459,6 +2294,9 @@ func (e *Engine) StepProjectiles(rs *state.RoomState, dt float64, now time.Time)
 		pr := rs.Projectiles[i]
 
 		outOfBounds := pr.Life <= 0 || pr.X < 0 || pr.X > rs.Map.Width || pr.Y < 0 || pr.Y > rs.Map.Height
+		if !outOfBounds && rs.Map.ID == state.MapSCP && math.Hypot(pr.X-state.SCPCenterX, pr.Y-state.SCPCenterY) > state.SCPRadius {
+			outOfBounds = true
+		}
 		hitPillar := !pr.Boomerang && pr.TargetID == "" && hitsAnyPillar(pr.X, pr.Y, pr.Radius, rs.Map)
 		if outOfBounds || hitPillar {
 			if pr.ExplodeRadius > 0 {
@@ -1719,6 +2557,10 @@ func (e *Engine) StepZones(rs *state.RoomState, dt float64, now time.Time) (chan
 					e.addBeamVisual(rs, owner, "black_lightning_strike", z.X, z.Y-420, z.X, z.Y, 38, 0.42, "#0F172A", "#38BDF8")
 				} else if z.Kind == "aiouan_timestop" {
 					e.addBeamVisual(rs, owner, "aiouan_timestop_burst", z.X, z.Y-380, z.X, z.Y, 56, 0.45, "#FACC15", "#A855F7")
+				} else if z.Kind == "luffy_bajrang_gun" {
+					e.addBeamVisual(rs, owner, "luffy_bajrang_smash", z.X, z.Y-460, z.X, z.Y, 96, 0.5, "#F8FAFC", "#EF4444")
+				} else if z.Kind == "diablo_end_world" {
+					e.addBeamVisual(rs, owner, "diablo_eclipse_burst", z.X, z.Y-420, z.X, z.Y, 82, 0.48, "#DC2626", "#FACC15")
 				}
 			}
 			kept = append(kept, z)
@@ -1761,6 +2603,20 @@ func (e *Engine) StepZones(rs *state.RoomState, dt float64, now time.Time) (chan
 						sx := clamp(z.X+math.Cos(ang)*dist, 20, rs.Map.Width-20)
 						sy := clamp(z.Y+math.Sin(ang)*dist, 20, rs.Map.Height-20)
 						e.addBeamVisual(rs, owner, "gilga_sky_sword", sx-22, sy-360, sx, sy, 22, 0.36, "#FACC15", "#EF4444")
+					}
+				} else if z.Kind == "jinwoo_arise" {
+					for k := 0; k < 2; k++ {
+						ang := randUnit() * math.Pi * 2
+						dist := randUnit() * z.Radius * 0.72
+						sx := clamp(z.X+math.Cos(ang)*dist, 20, rs.Map.Width-20)
+						sy := clamp(z.Y+math.Sin(ang)*dist, 20, rs.Map.Height-20)
+						e.addBeamVisual(rs, owner, "jinwoo_shadow_slash", sx-54, sy-36, sx+54, sy+36, 24, 0.3, "#7C3AED", "#38BDF8")
+					}
+				} else if z.Kind == "luffy_gatling" {
+					for k := 0; k < 3; k++ {
+						spread := (randUnit() - 0.5) * 0.9
+						ang := z.AimAngle + spread
+						e.addBeamVisual(rs, owner, "luffy_gatling_fist", z.X-math.Cos(ang)*95, z.Y-math.Sin(ang)*95, z.X+math.Cos(ang)*z.Radius, z.Y+math.Sin(ang)*z.Radius, 28, 0.22, "#EF4444", "#FACC15")
 					}
 				} else if z.Kind == "zenitsu_honoo_no_kami" {
 					if z.StepCount < 5 {
@@ -1956,6 +2812,16 @@ func (e *Engine) addProjectileFull(rs *state.RoomState, caster *state.PlayerStat
 }
 
 func (e *Engine) addProjectileAt(rs *state.RoomState, caster *state.PlayerState, pr state.Projectile, sx, sy, nx, ny, speed float64) {
+	if caster != nil {
+		cDef := state.GetCharacter(caster.CharacterID)
+		if cDef.HeroClass == state.ClassDeadeye && cDef.ClassStatValue > 1.0 {
+			// Lethal Vector (เพชฌฆาตเส้นเล็ง): +20% projectile velocity while maintaining exact travel distance
+			speed *= cDef.ClassStatValue
+			if pr.HomingSpeed > 0 {
+				pr.HomingSpeed *= cDef.ClassStatValue
+			}
+		}
+	}
 	pr.ID = e.nextID("proj")
 	pr.OwnerID = caster.ID
 	pr.OwnerName = caster.Name
@@ -2099,7 +2965,21 @@ func (e *Engine) damagePlayerCC(
 	if !victim.Alive || now.Before(victim.InvulnUntil) {
 		return HitEvent{}, false
 	}
+	if killer != nil && killer.Alive {
+		kDef := state.GetCharacter(killer.CharacterID)
+		// Limit Breaker (ผู้ทลายขีดจำกัด): +25% bonus damage when HP < 45%
+		if kDef.HeroClass == state.ClassVanguard && killer.MaxHP > 0 && float64(killer.HP)/float64(killer.MaxHP) < 0.45 && kDef.ClassStatValue > 1.0 {
+			dmg = int(math.Round(float64(dmg) * kDef.ClassStatValue))
+		}
+	}
 	victim.HP -= dmg
+	if killer != nil && victim.HP > 0 && !victim.IsDummy && victim.MaxHP > 0 {
+		kDef := state.GetCharacter(killer.CharacterID)
+		// Fate Cataclysm (ผู้กุมชะตาโลก): instant execution when target drops below 12% HP
+		if kDef.HeroClass == state.ClassCataclysm && kDef.ClassStatValue > 0 && float64(victim.HP)/float64(victim.MaxHP) <= kDef.ClassStatValue {
+			victim.HP = 0
+		}
+	}
 	if stunSec > 0 {
 		until := now.Add(time.Duration(stunSec * float64(time.Second)))
 		if until.After(victim.StunUntil) {
@@ -2107,6 +2987,10 @@ func (e *Engine) damagePlayerCC(
 		}
 	}
 	if slowSec > 0 {
+		vDef := state.GetCharacter(victim.CharacterID)
+		if vDef.HeroClass == state.ClassCataclysm {
+			slowSec *= 0.70
+		}
 		until := now.Add(time.Duration(slowSec * float64(time.Second)))
 		if until.After(victim.SlowUntil) {
 			victim.SlowUntil = until
@@ -2132,6 +3016,15 @@ func (e *Engine) damagePlayerCC(
 			killer.Kills++
 			if killer.CharacterID == "noone" {
 				GrantRandomInfinityStone(killer)
+			}
+			// Kill Momentum Reward (on real enemy takedown): restore +18% MaxHP and reset Dash cooldown for outplay chains!
+			if !victim.IsDummy && killer.Alive && killer.MaxHP > 0 {
+				heal := int(math.Round(float64(killer.MaxHP) * 0.18))
+				killer.HP += heal
+				if killer.HP > killer.MaxHP {
+					killer.HP = killer.MaxHP
+				}
+				killer.DashUntil = time.Time{}
 			}
 		}
 		return HitEvent{
@@ -2189,6 +3082,15 @@ func stepDashAvoidingPillars(x, y, nx, ny, dist float64, cfg state.MapConfig) (f
 func resolveObstacles(x, y float64, cfg state.MapConfig) (float64, float64) {
 	x = clamp(x, cfg.PlayerRadius, cfg.Width-cfg.PlayerRadius)
 	y = clamp(y, cfg.PlayerRadius, cfg.Height-cfg.PlayerRadius)
+	if cfg.ID == state.MapSCP {
+		dx := x - state.SCPCenterX
+		dy := y - state.SCPCenterY
+		maxR := state.SCPRadius - cfg.PlayerRadius
+		if d := math.Hypot(dx, dy); d > maxR && d > 0.001 {
+			x = state.SCPCenterX + (dx/d)*maxR
+			y = state.SCPCenterY + (dy/d)*maxR
+		}
+	}
 	for _, pil := range cfg.Pillars {
 		dx := x - pil.X
 		dy := y - pil.Y
@@ -2200,6 +3102,15 @@ func resolveObstacles(x, y float64, cfg state.MapConfig) (float64, float64) {
 			}
 			x = pil.X + (dx/d)*minDist
 			y = pil.Y + (dy/d)*minDist
+		}
+	}
+	if cfg.ID == state.MapSCP {
+		dx := x - state.SCPCenterX
+		dy := y - state.SCPCenterY
+		maxR := state.SCPRadius - cfg.PlayerRadius
+		if d := math.Hypot(dx, dy); d > maxR && d > 0.001 {
+			x = state.SCPCenterX + (dx/d)*maxR
+			y = state.SCPCenterY + (dy/d)*maxR
 		}
 	}
 	x = clamp(x, cfg.PlayerRadius, cfg.Width-cfg.PlayerRadius)

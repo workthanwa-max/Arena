@@ -1,14 +1,18 @@
 import { memo, useEffect, useRef, useState } from 'react'
 import { gameEventBus } from '../game/core/eventBus'
+import { getSimoLiveAimDirection, setSimoSnipeCharging } from '../store/useGameStore'
 import type { SkillAimType } from '../types/game'
+import { HeroAimWheel } from './HeroAimWheel'
 
 export interface SkillAimTrigger {
-  dirX: number
-  dirY: number
+  dirX?: number
+  dirY?: number
   rangeFactor: number
+  targetId?: string
 }
 
 export interface MobaSkillButtonProps {
+  characterId?: string
   slotId: number
   keyHint: string
   label: string
@@ -22,6 +26,7 @@ export interface MobaSkillButtonProps {
   castRange?: number
   aoeRadius?: number
   aimType?: SkillAimType
+  chargeDurationMs?: number
   variant?: 'basic' | 'dash' | 'skill' | 'ultimate'
   cancelZoneRef: React.RefObject<HTMLButtonElement | null>
   onDragChange: (dragging: boolean, hoveringCancel: boolean) => void
@@ -55,6 +60,7 @@ function computeRangeFactor(dist: number): number {
 }
 
 export const MobaSkillButton = memo(function MobaSkillButton({
+  characterId,
   slotId,
   keyHint,
   label,
@@ -68,6 +74,7 @@ export const MobaSkillButton = memo(function MobaSkillButton({
   castRange = 360,
   aoeRadius = 60,
   aimType = 'line',
+  chargeDurationMs,
   variant = 'skill',
   cancelZoneRef,
   onDragChange,
@@ -79,16 +86,44 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     dy: number
     cancel: boolean
   }>({ active: false, dx: 0, dy: 0, cancel: false })
+  const [chargePct, setChargePct] = useState(0)
 
   const pointerIdRef = useRef<number | null>(null)
   const hoverPreviewRef = useRef(false)
   const originRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const chargeStartMsRef = useRef<number | null>(null)
+  const chargeRafRef = useRef<number | null>(null)
+  const aimVecRef = useRef<{ dirX: number; dirY: number; rangeFactor: number; cancel: boolean }>({
+    dirX: 0,
+    dirY: -1,
+    rangeFactor: 1,
+    cancel: false,
+  })
 
   const onCooldown = cooldownMs > 0
   const isBlocked = disabled || onCooldown
 
+  function stopChargeLoop() {
+    if (chargeRafRef.current !== null) {
+      window.cancelAnimationFrame(chargeRafRef.current)
+      chargeRafRef.current = null
+    }
+    if (chargeDurationMs) {
+      setSimoSnipeCharging(false)
+    }
+    chargeStartMsRef.current = null
+    setChargePct(0)
+  }
+
   useEffect(() => {
     return () => {
+      if (chargeRafRef.current !== null) {
+        window.cancelAnimationFrame(chargeRafRef.current)
+        chargeRafRef.current = null
+      }
+      if (chargeDurationMs) {
+        setSimoSnipeCharging(false)
+      }
       if (hoverPreviewRef.current || pointerIdRef.current !== null) {
         hoverPreviewRef.current = false
         pointerIdRef.current = null
@@ -105,7 +140,7 @@ export const MobaSkillButton = memo(function MobaSkillButton({
         })
       }
     }
-  }, [slotId, castRange, aoeRadius, aimType])
+  }, [slotId, castRange, aoeRadius, aimType, chargeDurationMs])
 
   function handlePointerEnter(e: React.PointerEvent<HTMLButtonElement>) {
     if (isBlocked || e.pointerType !== 'mouse' || pointerIdRef.current !== null) return
@@ -147,19 +182,51 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     e.currentTarget.setPointerCapture(e.pointerId)
     pointerIdRef.current = e.pointerId
     originRef.current = { x: e.clientX, y: e.clientY }
+    const initDir = chargeDurationMs ? getSimoLiveAimDirection() : { dirX: 0, dirY: -1 }
+    aimVecRef.current = {
+      dirX: initDir.dirX,
+      dirY: initDir.dirY,
+      rangeFactor: aimType === 'ground' ? 0 : 1,
+      cancel: false,
+    }
     setDragState({ active: true, dx: 0, dy: 0, cancel: false })
     onDragChange(true, false)
     gameEventBus.emitAimPreview({
       active: true,
       slot: slotId,
-      dirX: 0,
-      dirY: -1,
+      dirX: initDir.dirX,
+      dirY: initDir.dirY,
       rangeFactor: aimType === 'ground' ? 0 : 1,
       castRange,
       aoeRadius,
       aimType,
       cancel: false,
+      chargeRatio: chargeDurationMs ? 0 : undefined,
     })
+
+    if (chargeDurationMs && chargeDurationMs > 0) {
+      setSimoSnipeCharging(true)
+      chargeStartMsRef.current = performance.now()
+      const stepCharge = () => {
+        if (pointerIdRef.current === null || chargeStartMsRef.current === null) return
+        const ratio = Math.min(1, (performance.now() - chargeStartMsRef.current) / chargeDurationMs)
+        setChargePct(Math.round(ratio * 100))
+        gameEventBus.emitAimPreview({
+          active: true,
+          slot: slotId,
+          dirX: aimVecRef.current.dirX,
+          dirY: aimVecRef.current.dirY,
+          rangeFactor: aimVecRef.current.rangeFactor,
+          castRange,
+          aoeRadius,
+          aimType,
+          cancel: aimVecRef.current.cancel,
+          chargeRatio: ratio,
+        })
+        chargeRafRef.current = window.requestAnimationFrame(stepCharge)
+      }
+      chargeRafRef.current = window.requestAnimationFrame(stepCharge)
+    }
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLButtonElement>) {
@@ -182,18 +249,28 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     })
     onDragChange(true, cancel)
 
+    const liveCharge =
+      chargeDurationMs && chargeStartMsRef.current !== null
+        ? Math.min(1, (performance.now() - chargeStartMsRef.current) / chargeDurationMs)
+        : undefined
+
     if (dist >= AIM_THRESHOLD_PX) {
+      const rf = computeRangeFactor(dist)
+      aimVecRef.current = { dirX: nx, dirY: ny, rangeFactor: rf, cancel }
       gameEventBus.emitAimPreview({
         active: true,
         slot: slotId,
         dirX: nx,
         dirY: ny,
-        rangeFactor: computeRangeFactor(dist),
+        rangeFactor: rf,
         castRange,
         aoeRadius,
         aimType,
         cancel,
+        chargeRatio: liveCharge,
       })
+    } else {
+      aimVecRef.current.cancel = cancel
     }
   }
 
@@ -201,6 +278,11 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     if (pointerIdRef.current !== e.pointerId) return
     e.preventDefault()
     pointerIdRef.current = null
+    const finalChargePct =
+      chargeDurationMs && chargeStartMsRef.current !== null
+        ? Math.min(100, Math.round(((performance.now() - chargeStartMsRef.current) / chargeDurationMs) * 100))
+        : undefined
+    stopChargeLoop()
     try {
       if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
         e.currentTarget.releasePointerCapture(e.pointerId)
@@ -231,14 +313,18 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     if (cancel) {
       return
     }
+    const chargeTag = finalChargePct !== undefined ? `charge:${finalChargePct}` : undefined
     if (dist >= AIM_THRESHOLD_PX) {
       onTrigger({
         dirX: rawX / dist,
         dirY: rawY / dist,
         rangeFactor: computeRangeFactor(dist),
+        targetId: chargeTag,
       })
     } else if (aimType === 'ground') {
-      onTrigger({ dirX: 1, dirY: 0, rangeFactor: 0 })
+      onTrigger({ dirX: 1, dirY: 0, rangeFactor: 0, targetId: chargeTag })
+    } else if (chargeTag) {
+      onTrigger({ rangeFactor: 1, targetId: chargeTag })
     } else {
       onTrigger()
     }
@@ -256,15 +342,13 @@ export const MobaSkillButton = memo(function MobaSkillButton({
   return (
     <div className={`moba-skill-slot ${slotClass} ${variantClass}`}>
       {dragState.active && (
-        <div className={`moba-aim-ring ${dragState.cancel ? 'cancel' : ''}`}>
-          <div
-            className="moba-aim-pip"
-            style={{
-              transform: `translate3d(${dragState.dx}px, ${dragState.dy}px, 0)`,
-              backgroundColor: dragState.cancel ? '#EF4444' : accentColor,
-            }}
-          />
-        </div>
+        <HeroAimWheel
+          characterId={characterId}
+          dx={dragState.dx}
+          dy={dragState.dy}
+          cancel={dragState.cancel}
+          accentColor={accentColor}
+        />
       )}
 
       <button
@@ -283,6 +367,7 @@ export const MobaSkillButton = memo(function MobaSkillButton({
         onPointerCancel={handlePointerUp}
         onLostPointerCapture={() => {
           pointerIdRef.current = null
+          stopChargeLoop()
           setDragState({ active: false, dx: 0, dy: 0, cancel: false })
           onDragChange(false, false)
         }}
@@ -293,6 +378,8 @@ export const MobaSkillButton = memo(function MobaSkillButton({
           <span className="moba-skill-lock-badge">{lockBadge}</span>
         ) : onCooldown ? (
           <span className="moba-skill-cd-badge">{(cooldownMs / 1000).toFixed(1)}s</span>
+        ) : dragState.active && chargeDurationMs ? (
+          <span className="moba-skill-cd-badge">{chargePct >= 95 ? '🎯 100%' : `${chargePct}%`}</span>
         ) : (
           <span className="moba-skill-key-badge">{keyHint}</span>
         )}

@@ -1,5 +1,5 @@
 import initSqlJs, { type Database } from 'sql.js'
-import type { CharacterDef, RecentRoom } from '../types/game'
+import type { CharacterDef, GraphicsQuality, RecentRoom } from '../types/game'
 
 /**
  * Browser Local SQLite (WASM + IndexedDB)
@@ -92,10 +92,27 @@ export async function initLocalSQLite(): Promise<boolean> {
   }
 }
 
-export function loadPreferences(): { playerName: string; characterId: string } {
-  const out = { playerName: '', characterId: 'pa' }
+function normalizeGraphicsQuality(raw: string | undefined): GraphicsQuality {
+  if (raw === 'pixel' || raw === 'fine_pixel' || raw === 'hd' || raw === 'ultra') {
+    return raw
+  }
+  return 'pixel'
+}
+
+export function loadPreferences(): {
+  playerName: string
+  characterId: string
+  graphicsQuality: GraphicsQuality
+} {
+  const out: { playerName: string; characterId: string; graphicsQuality: GraphicsQuality } = {
+    playerName: '',
+    characterId: 'pa',
+    graphicsQuality: 'pixel',
+  }
   if (!dbInstance) return out
   try {
+    let legacyPixel: string | undefined
+    let explicitGfx: string | undefined
     const stmt = dbInstance.prepare('SELECT key, value FROM user_preferences')
     while (stmt.step()) {
       const row = stmt.getAsObject() as { key?: string; value?: string }
@@ -105,15 +122,29 @@ export function loadPreferences(): { playerName: string; characterId: string } {
       if (row.key === 'characterId' && typeof row.value === 'string') {
         out.characterId = row.value
       }
+      if (row.key === 'graphicsQuality' && typeof row.value === 'string') {
+        explicitGfx = row.value
+      }
+      if (row.key === 'pixelMode' && typeof row.value === 'string') {
+        legacyPixel = row.value
+      }
     }
     stmt.free()
+    if (explicitGfx) {
+      out.graphicsQuality = normalizeGraphicsQuality(explicitGfx)
+    } else if (legacyPixel === '0' || legacyPixel === 'false') {
+      out.graphicsQuality = 'hd'
+    }
   } catch {
     // Return defaults on cache read error
   }
   return out
 }
 
-export async function savePreference(key: 'playerName' | 'characterId', value: string): Promise<void> {
+export async function savePreference(
+  key: 'playerName' | 'characterId' | 'graphicsQuality',
+  value: string,
+): Promise<void> {
   if (!dbInstance) return
   dbInstance.run(
     'INSERT OR REPLACE INTO user_preferences (key, value) VALUES (?, ?)',

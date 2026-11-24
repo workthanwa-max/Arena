@@ -15,6 +15,12 @@ const (
 
 	MapShibuya = "shibuya"
 	MapKonoha  = "konoha"
+	MapSisaket = "sisaket_island"
+	MapSCP     = "scp_site"
+
+	SCPCenterX = 1500.0
+	SCPCenterY = 900.0
+	SCPRadius  = 840.0
 
 	PhaseWaiting  = "waiting"
 	PhasePlaying  = "playing"
@@ -69,17 +75,111 @@ func HasWaitingLobby(mode string) bool {
 	return mode != ModeFFA
 }
 
-// NormalizeMapID validates map identifier ("shibuya" or "konoha").
+// NormalizeMapID validates map identifier ("shibuya", "konoha", "sisaket_island", or "scp_site").
 func NormalizeMapID(raw string) string {
-	if raw == MapKonoha {
+	switch raw {
+	case MapKonoha:
 		return MapKonoha
+	case MapSisaket:
+		return MapSisaket
+	case MapSCP:
+		return MapSCP
+	default:
+		return MapShibuya
 	}
-	return MapShibuya
+}
+
+// IsOnDryLand reports whether coordinate (x, y) is safely on dry land/bridges rather than Huai Nam Kham water.
+func IsOnDryLand(cfg MapConfig, x, y float64) bool {
+	if cfg.ID != MapSisaket {
+		return true
+	}
+	// 1. Main Central Island (Ko Klang Nam Huai Nam Kham) — ellipse centered at (1500, 900)
+	dx := (x - 1500.0) / 740.0
+	dy := (y - 900.0) / 510.0
+	if dx*dx+dy*dy <= 1.0 {
+		return true
+	}
+	// 2. West Mainland Pier Bank (Blue Spawn)
+	if x >= 60 && x <= 540 && y >= 560 && y <= 1240 {
+		return true
+	}
+	// 3. East Sisaket Aquarium Bank (Red Spawn)
+	if x >= 2460 && x <= 2940 && y >= 560 && y <= 1240 {
+		return true
+	}
+	// 4. West & East Main Khmer Bridges connecting banks to the Central Island
+	if x >= 480 && x <= 860 && y >= 795 && y <= 1005 {
+		return true
+	}
+	if x >= 2140 && x <= 2520 && y >= 795 && y <= 1005 {
+		return true
+	}
+	// 5. North & South Floating Lakeside Pavilions + Walkways
+	ndx := x - 1500.0
+	ndy := y - 220.0
+	if ndx*ndx+ndy*ndy <= 145.0*145.0 {
+		return true
+	}
+	if x >= 1435 && x <= 1565 && y >= 220 && y <= 440 {
+		return true
+	}
+	sdx := x - 1500.0
+	sdy := y - 1580.0
+	if sdx*sdx+sdy*sdy <= 145.0*145.0 {
+		return true
+	}
+	if x >= 1435 && x <= 1565 && y >= 1360 && y <= 1580 {
+		return true
+	}
+	// 6. Four Narrow Stepping-Stone Flank Bridges
+	if x >= 490 && x <= 980 && ((y >= 605 && y <= 685) || (y >= 1115 && y <= 1195)) {
+		return true
+	}
+	if x >= 2020 && x <= 2510 && ((y >= 605 && y <= 685) || (y >= 1115 && y <= 1195)) {
+		return true
+	}
+	return false
 }
 
 // MapConfigFor returns the authoritative arena geometry for the given map ID.
 func MapConfigFor(mapID string) MapConfig {
 	switch NormalizeMapID(mapID) {
+	case MapSCP:
+		return MapConfig{
+			ID:           MapSCP,
+			Name:         "สถานีวิจัย SCP (Site-19)",
+			Width:        3000,
+			Height:       1800,
+			PlayerRadius: 18,
+			MoveSpeed:    255,
+			// Symmetrical inner containment cryo-pillars inside the circular chamber (r=840 around 1500,900)
+			Pillars: []Pillar{
+				{X: 1210, Y: 660, Radius: 42},
+				{X: 1790, Y: 660, Radius: 42},
+				{X: 1210, Y: 1140, Radius: 42},
+				{X: 1790, Y: 1140, Radius: 42},
+			},
+		}
+	case MapSisaket:
+		return MapConfig{
+			ID:           MapSisaket,
+			Name:         "เกาะกลางน้ำ ห้วยน้ำคำ (ศรีสะเกษ)",
+			Width:        3000,
+			Height:       1800,
+			PlayerRadius: 18,
+			MoveSpeed:    255,
+			// Real-layout Sisaket landmarks: Central Si Lamduan Tower, 4 Kopura Khmer stone pillars, West Gate & East Aquarium Dome.
+			Pillars: []Pillar{
+				{X: 1500, Y: 900, Radius: 76},
+				{X: 1120, Y: 680, Radius: 36},
+				{X: 1880, Y: 680, Radius: 36},
+				{X: 1120, Y: 1120, Radius: 36},
+				{X: 1880, Y: 1120, Radius: 36},
+				{X: 260, Y: 720, Radius: 42},
+				{X: 2740, Y: 720, Radius: 46},
+			},
+		}
 	case MapKonoha:
 		return MapConfig{
 			ID:           MapKonoha,
@@ -187,6 +287,7 @@ type PlayerState struct {
 	DashUntil        time.Time    `json:"-"`
 	RctUntil         time.Time    `json:"-"`
 	LastEmoteAt      time.Time    `json:"-"`
+	WaterTickUntil   time.Time    `json:"-"`
 }
 
 // Projectile represents a flying skill projectile simulated by the server.
@@ -285,10 +386,12 @@ type RoomState struct {
 	Map            MapConfig
 	Tick           uint64
 	NextNetID      uint16
-	Players        map[string]*PlayerState
-	Projectiles    []Projectile
-	Beams          []BeamEffect
-	Zones          []ZoneEffect
+	Players            map[string]*PlayerState
+	Projectiles        []Projectile
+	Beams              []BeamEffect
+	Zones              []ZoneEffect
+	SCPMedkitRespawnAt [6]time.Time
+	AegisCoreRespawnAt time.Time
 }
 
 // NewRoomState initializes an empty room state configured for its mode & map.

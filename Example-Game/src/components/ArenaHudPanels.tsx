@@ -141,8 +141,18 @@ export const ArenaTopBar = memo(function ArenaTopBar({
   const myMaxHp = useGameStore((s) => s.myMaxHp)
   const lastDummyDamage = useGameStore((s) => s.lastDummyDamage)
   const totalDummyDamage = useGameStore((s) => s.totalDummyDamage)
+  const voiceMicEnabled = useGameStore((s) => s.voiceMicEnabled)
+  const voiceSpeakerEnabled = useGameStore((s) => s.voiceSpeakerEnabled)
+  const voiceSpeaking = useGameStore((s) => s.voiceSpeaking)
+  const peerVoiceStates = useGameStore((s) => s.peerVoiceStates)
+  const adminAiEnabled = useGameStore((s) => s.adminAiEnabled)
+  const toggleAdminAi = useGameStore((s) => s.toggleAdminAi)
+  const toggleVoiceMic = useGameStore((s) => s.toggleVoiceMic)
+  const toggleVoiceSpeaker = useGameStore((s) => s.toggleVoiceSpeaker)
   const switchPracticeCharacter = useGameStore((s) => s.switchPracticeCharacter)
   const resetPractice = useGameStore((s) => s.resetPractice)
+
+  const isAdmin = authUser?.role === 'admin'
 
   const myCharacterId = roster.find((p) => p.id === myPlayerId)?.characterId ?? ''
   const accessibleChars = characters.filter((c) => !c.adminOnly || authUser?.role === 'admin')
@@ -161,16 +171,25 @@ export const ArenaTopBar = memo(function ArenaTopBar({
   function renderPortraitPip(p: PlayerState, side: 'blue' | 'red' | 'ffa') {
     const isMe = p.id === myPlayerId
     const pRatio = Math.max(0, Math.min(100, (p.hp / Math.max(1, p.maxHp)) * 100))
+    const vState = isMe
+      ? { micOn: voiceMicEnabled, speakerOn: voiceSpeakerEnabled, speaking: voiceSpeaking }
+      : peerVoiceStates[p.id]
+    const isSpeaking = Boolean(vState?.micOn && vState?.speaking)
     return (
       <div
         key={p.id}
-        className={`rov-hero-pip ${side} ${isMe ? 'me' : ''} ${p.alive ? 'alive' : 'dead'}`}
-        title={`${p.name} (${p.characterName}) • K:${p.kills}`}
+        className={`rov-hero-pip ${side} ${isMe ? 'me' : ''} ${p.alive ? 'alive' : 'dead'} ${isSpeaking ? 'voice-speaking' : ''}`}
+        title={`${p.name} (${p.characterName}) • K:${p.kills}${vState?.micOn ? ' • 🎙️ เปิดไมค์' : ''}`}
       >
         <img src={getHeroThumb(p.characterId)} alt={p.name} className="rov-hero-thumb" />
         <div className="rov-mini-hp-track">
           <div className="rov-mini-hp-fill" style={{ width: `${pRatio}%` }} />
         </div>
+        {vState?.micOn && (
+          <span className={`rov-voice-pip ${isSpeaking ? 'speaking' : ''}`} aria-hidden="true">
+            🎙️
+          </span>
+        )}
         {!p.alive && (
           <span className="rov-dead-cd">
             {p.respawnInMs && p.respawnInMs > 0 ? Math.ceil(p.respawnInMs / 1000) : '✕'}
@@ -311,10 +330,20 @@ export const ArenaTopBar = memo(function ArenaTopBar({
         </div>
 
         <div className="rov-utility-strip">
+          {isAdmin && (
+            <TouchTapButton
+              className={`rov-icon-btn rov-admin-ai-btn ${adminAiEnabled ? 'active' : ''}`}
+              onTap={() => toggleAdminAi()}
+              title={adminAiEnabled ? 'AI โหมดโหดกำลังเล่นอัตโนมัติ (คลิกหรือกด F9 เพื่อปิด)' : 'เปิด AI เล่นอัตโนมัติระดับ Grandmaster (เฉพาะแอดมิน • คีย์ลัด F9)'}
+              ariaLabel="เปิด/ปิด AI เล่นอัตโนมัติเฉพาะแอดมิน"
+            >
+              {adminAiEnabled ? '🤖 AI: ON' : '🤖 AI'}
+            </TouchTapButton>
+          )}
           <TouchTapButton
             className="rov-icon-btn"
             onTap={onToggleSound}
-            title="เปิด/ปิดเสียง"
+            title="เปิด/ปิดเสียงเอฟเฟกต์เกม"
             ariaLabel="เปิด/ปิดเสียง"
           >
             {soundMuted ? '🔇' : '🔊'}
@@ -326,6 +355,22 @@ export const ArenaTopBar = memo(function ArenaTopBar({
             ariaLabel="เปิด/ปิดเพลง"
           >
             {bgmMuted ? '🎵✕' : '🎵'}
+          </TouchTapButton>
+          <TouchTapButton
+            className={`rov-icon-btn rov-voice-btn ${voiceMicEnabled ? 'mic-on' : 'mic-off'} ${voiceSpeaking ? 'speaking' : ''}`}
+            onTap={() => void toggleVoiceMic()}
+            title={voiceMicEnabled ? 'ไมค์เปิดอยู่ (แตะเพื่อปิดไมค์)' : 'ไมค์ปิดอยู่ (แตะเพื่อเปิดไมค์คุยในห้อง)'}
+            ariaLabel="เปิด/ปิดไมค์"
+          >
+            {voiceMicEnabled ? '🎙️' : '🎙️✕'}
+          </TouchTapButton>
+          <TouchTapButton
+            className={`rov-icon-btn rov-voice-btn ${voiceSpeakerEnabled ? 'spk-on' : 'spk-off'}`}
+            onTap={toggleVoiceSpeaker}
+            title={voiceSpeakerEnabled ? 'ลำโพงเสียงคุยเปิดอยู่ (แตะเพื่อปิดเสียงคุยเพื่อน)' : 'ลำโพงเสียงคุยปิดอยู่ (แตะเพื่อเปิดฟังเพื่อนในห้อง)'}
+            ariaLabel="เปิด/ปิดลำโพงเสียงคุย"
+          >
+            {voiceSpeakerEnabled ? '🎧' : '🎧✕'}
           </TouchTapButton>
           <TouchTapButton
             className="rov-icon-btn hide-xs"
@@ -518,6 +563,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
           return (
             <MobaSkillButton
               key={sk.slot}
+              characterId={myCharacterDef.id}
               slotId={sk.slot}
               keyHint={sk.keyHint}
               label={sk.name.split(' ')[0]}
@@ -531,6 +577,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
               castRange={effectiveCastRange}
               aoeRadius={effectiveAoeRadius}
               aimType={sk.aimType ?? 'line'}
+              chargeDurationMs={myCharacterDef.id === 'simo' && sk.slot === 2 ? 1150 : undefined}
               variant={!isThanos && sk.slot === 3 ? 'ultimate' : 'skill'}
               cancelZoneRef={cancelZoneRef}
               onDragChange={handleSkillDragChange}
@@ -546,6 +593,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
 
       {isThanos && (
         <MobaSkillButton
+          characterId={myCharacterDef?.id}
           slotId={6}
           keyHint="G"
           label="ดีดนิ้ว"
@@ -567,6 +615,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
       )}
 
       <MobaSkillButton
+        characterId={myCharacterDef?.id}
         slotId={4}
         keyHint="SHIFT"
         label="Dash"
@@ -586,6 +635,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
 
       {roomMode === 'iconic' && (
         <MobaSkillButton
+          characterId={myCharacterDef?.id}
           slotId={5}
           keyHint="G"
           label="ย้อนกลับ"
@@ -605,6 +655,7 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
       )}
 
       <MobaSkillButton
+        characterId={myCharacterDef?.id}
         slotId={0}
         keyHint="J / ␣"
         label="ตีธรรมดา"

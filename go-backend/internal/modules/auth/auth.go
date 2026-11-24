@@ -25,6 +25,8 @@ import (
 
 const (
 	SessionCookieName = "pulse_session"
+	SessionTTL        = 365 * 24 * time.Hour
+	SessionMaxAgeSec  = 365 * 24 * 60 * 60 // 1 year (365 days)
 
 	argonTime    = 1
 	argonMemory  = 64 * 1024
@@ -68,6 +70,7 @@ type memSession struct {
 	id        string
 	userID    string
 	tokenHash string
+	createdAt time.Time
 	revoked   bool
 }
 
@@ -149,7 +152,7 @@ func (s *Service) Register(ctx context.Context, rawUsername, rawPassword, rawDis
 		}
 		s.memUsers[lower] = u
 		s.memByID[userID] = u
-		s.memSess[tokenHash] = &memSession{id: sessID, userID: userID, tokenHash: tokenHash}
+		s.memSess[tokenHash] = &memSession{id: sessID, userID: userID, tokenHash: tokenHash, createdAt: time.Now().UTC()}
 		return &UserProfile{
 			ID:                  u.id,
 			Username:            u.username,
@@ -243,7 +246,7 @@ func (s *Service) Login(ctx context.Context, rawUsername, rawPassword, userAgent
 		if !ok || !verifyPassword(rawPassword, u.passwordHash) {
 			return nil, "", ErrInvalidCredential
 		}
-		s.memSess[tokenHash] = &memSession{id: sessID, userID: u.id, tokenHash: tokenHash}
+		s.memSess[tokenHash] = &memSession{id: sessID, userID: u.id, tokenHash: tokenHash, createdAt: time.Now().UTC()}
 		return &UserProfile{
 			ID:                  u.id,
 			Username:            u.username,
@@ -310,7 +313,7 @@ func (s *Service) ValidateToken(ctx context.Context, rawToken string) (*UserProf
 		s.mu.RLock()
 		defer s.mu.RUnlock()
 		sess, ok := s.memSess[tokenHash]
-		if !ok || sess.revoked {
+		if !ok || sess.revoked || (!sess.createdAt.IsZero() && time.Since(sess.createdAt) > SessionTTL) {
 			return nil, ErrUnauthenticated
 		}
 		u, ok := s.memByID[sess.userID]
@@ -333,9 +336,10 @@ func (s *Service) ValidateToken(ctx context.Context, rawToken string) (*UserProf
 		`SELECT u.id, u.username, u.display_name, COALESCE(NULLIF(u.role, ''), 'player'), u.selected_character_id
 		 FROM user_sessions s
 		 JOIN users u ON u.id = s.user_id
-		 WHERE s.token_hash = $1 AND s.revoked_at IS NULL
+		 WHERE s.token_hash = $1 AND s.revoked_at IS NULL AND s.created_at >= $2
 		 LIMIT 1`,
 		tokenHash,
+		time.Now().UTC().Add(-SessionTTL),
 	).Scan(&userID, &username, &displayName, &role, &selectedChar)
 	if err != nil {
 		return nil, ErrUnauthenticated
@@ -442,13 +446,14 @@ func (s *Service) UpdateSelectedCharacter(ctx context.Context, userID, character
 	}, nil
 }
 
-// SetSessionCookie writes an HttpOnly non-expiring cookie bound to the browser until explicit Logout.
+// SetSessionCookie writes an HttpOnly 1-year (365-day) persistent cookie bound to the browser until explicit Logout.
 func SetSessionCookie(w http.ResponseWriter, r *http.Request, rawToken string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,
 		Value:    rawToken,
 		Path:     "/",
-		MaxAge:   315360000, // 10 years — persists across restarts until user clicks Logout
+		MaxAge:   SessionMaxAgeSec,
+		Expires:  time.Now().UTC().Add(SessionTTL),
 		HttpOnly: true,
 		Secure:   isHTTPSRequest(r),
 		SameSite: http.SameSiteLaxMode,

@@ -1,0 +1,2031 @@
+/* ============================================================================
+   INFINITY CLASH — AAA Mobile MOBA Esports Theme (MLBB-Inspired Dark Royal Blue)
+   60% Midnight Navy Canvas | 30% Royal Glass Panels | 10% Gold & Electric Cyan
+   ============================================================================ */
+
+.auth-brand-sub {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #fde047;
+  opacity: 0.92;
+  margin-top: 2px;
+}
+
+/* ----------------------------------------------------------------------------
+   1. FULL-SCREEN MLBB-STYLE HOME LOBBY (Gojo vs Sukuna Celestial Sanctuary)
+   ---------------------------------------------------------------------------- */
+.mlbb-home-stage {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: #060e20;
+  color: #f8fafc;
+}
+
+.mlbb-home-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  transform: scale(1.04);
+  user-select: none;
+  pointer-events: none;
+  will-change: transform;
+  animation: mlbbHomeBreathe 18s ease-in-out infinite alternate;
+}
+
+.mlbb-home-fx-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@keyframes mlbbHomeBreathe {
+  0% {
+    transform: scale(1.03) translate3d(0, 0, 0);
+  }
+  50% {
+    transform: scale(1.075) translate3d(-0.8%, -0.5%, 0);
+  }
+  100% {
+    transform: scale(1.05) translate3d(0.7%, 0.4%, 0);
+  }
+}
+
+@keyframes mlbbEmblemPulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(56, 189, 248, 0.5), 0 0 20px rgba(239, 68, 68, 0.28);
+  }
+  50% {
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.78), 0 0 28px rgba(250, 204, 21, 0.48);
+  }
+}
+
+@keyframes mlbbCrestFloat {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes mlbbCtaSheen {
+  0% {
+    transform: translateX(-140%) skewX(-24deg);
+  }
+  38%, 100% {
+    transform: translateX(260%) skewX(-24deg);
+  }
+}
+
+.mlbb-home-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(5, 11, 26, 0.84) 0%, rgba(5, 11, 26, 0.14) 22%, rgba(5, 11, 26, 0.16) 72%, rgba(5, 11, 26, 0.92) 100%),
+    radial-gradient(ellipse 75% 75% at 50% 48%, transparent 45%, rgba(4, 10, 24, 0.62) 100%);
+}
+
+.mlbb-home-chrome {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  box-sizing: border-box;
+}
+
+/* Top HUD Bar */
+.mlbb-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mlbb-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mlbb-emblem-cluster {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 14px 5px 6px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, rgba(10, 22, 48, 0.88), rgba(15, 32, 68, 0.72));
+  border: 1px solid rgba(250, 204, 21, 0.38);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+}
+
+.mlbb-emblem-frame {
+  width: 46px;
+  height: 46px;
+  border-radius: 11px;
+  overflow: hidden;
+  border: 2px solid #facc15;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4), 0 0 18px rgba(239, 68, 68, 0.25);
+  flex-shrink: 0;
+}
+
+.mlbb-emblem-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.mlbb-brand-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mlbb-wordmark {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
+.mlbb-word-cyan {
+  background: linear-gradient(180deg, #e0f2fe 0%, #38bdf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.45));
+}
+
+.mlbb-word-gold {
+  background: linear-gradient(180deg, #fef08a 0%, #f59e0b 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 8px rgba(250, 204, 21, 0.45));
+}
+
+.mlbb-player-tag {
+  font-size: 12px;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mlbb-player-tag strong {
+  color: #ffffff;
+}
+
+.mlbb-player-tag span {
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.mlbb-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* Shared Dark Royal Glass Buttons & Pills */
+.mlbb-glass-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  background: linear-gradient(180deg, rgba(16, 35, 74, 0.86), rgba(9, 20, 44, 0.92));
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 140ms ease, border-color 140ms ease, filter 140ms ease;
+}
+
+.mlbb-glass-btn:hover {
+  border-color: rgba(56, 189, 248, 0.72);
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+}
+
+.mlbb-glass-btn.compact {
+  padding: 6px 12px;
+  font-size: 12.5px;
+}
+
+.mlbb-glass-btn.icon-only {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.mlbb-glass-btn.active {
+  border-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(2, 132, 199, 0.62), rgba(7, 89, 133, 0.84));
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.mlbb-glass-btn.danger {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: linear-gradient(180deg, rgba(127, 29, 29, 0.72), rgba(69, 10, 10, 0.88));
+  color: #fecaca;
+}
+
+.mlbb-glass-btn.danger:hover {
+  border-color: #f87171;
+  color: #ffffff;
+}
+
+/* Graphics Quality Floating Panel on Home */
+.mlbb-gfx-panel {
+  position: absolute;
+  top: 72px;
+  right: max(18px, env(safe-area-inset-right));
+  z-index: 25;
+  width: min(560px, calc(100vw - 36px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(10, 23, 52, 0.94), rgba(6, 14, 34, 0.96));
+  border: 1px solid rgba(56, 189, 248, 0.42);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 160ms ease, transform 160ms ease;
+}
+
+.mlbb-gfx-panel.open {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.mlbb-gfx-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mlbb-gfx-title {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #e0f2fe;
+}
+
+.mlbb-gfx-hint {
+  font-size: 11.5px;
+  color: #93c5fd;
+}
+
+.mlbb-gfx-panel .home-gfx-pills {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mlbb-gfx-panel .home-gfx-pill {
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 29, 60, 0.78);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.mlbb-gfx-panel .home-gfx-pill.active {
+  border-color: #facc15;
+  background: linear-gradient(180deg, rgba(234, 179, 8, 0.34), rgba(161, 98, 7, 0.56));
+  color: #fef9c3;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.32);
+}
+
+/* Middle Stage (Left Emblem Crest + Right Join Room Glass Dock) */
+.mlbb-home-mid {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  min-height: 0;
+}
+
+.mlbb-home-left-crest {
+  align-self: flex-start;
+  margin-top: 16px;
+}
+
+.mlbb-crest-badge {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px 8px 8px;
+  border-radius: 16px;
+  background: linear-gradient(90deg, rgba(9, 21, 48, 0.88) 0%, rgba(9, 21, 48, 0.42) 100%);
+  border-left: 3px solid #facc15;
+  border-top: 1px solid rgba(125, 211, 252, 0.22);
+  border-bottom: 1px solid rgba(125, 211, 252, 0.16);
+  backdrop-filter: blur(10px);
+}
+
+.mlbb-crest-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  border: 2px solid rgba(250, 204, 21, 0.85);
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+}
+
+.mlbb-crest-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mlbb-crest-eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: #7dd3fc;
+}
+
+.mlbb-crest-name {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+/* Right Translucent Join-By-Code Dock (MLBB Right Sidebar Aesthetic) */
+.mlbb-join-dock {
+  width: min(296px, 92vw);
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(13, 30, 68, 0.84), rgba(7, 17, 40, 0.88));
+  border: 1px solid rgba(125, 211, 252, 0.34);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  backdrop-filter: blur(14px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mlbb-join-dock-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mlbb-dock-title {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.mlbb-dock-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #bae6fd;
+}
+
+.mlbb-join-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.mlbb-code-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(125, 211, 252, 0.35);
+  background: rgba(5, 12, 28, 0.82);
+  color: #ffffff;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  outline: none;
+}
+
+.mlbb-code-input:focus {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+}
+
+.mlbb-code-input::placeholder {
+  color: #64748b;
+  letter-spacing: 0.02em;
+  font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+  font-size: 12px;
+}
+
+.mlbb-join-submit {
+  padding: 9px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.72);
+  background: linear-gradient(180deg, #0284c7, #0369a1);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: filter 140ms ease, transform 140ms ease;
+}
+
+.mlbb-join-submit:hover:not(:disabled) {
+  filter: brightness(1.15);
+  transform: translateY(-1px);
+}
+
+.mlbb-join-submit:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.mlbb-recent-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.mlbb-recent-label {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.mlbb-recent-chip {
+  padding: 2px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(15, 29, 60, 0.7);
+  color: #e0f2fe;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mlbb-recent-chip:hover {
+  border-color: #38bdf8;
+}
+
+/* Bottom Navigation Bar + Iconic Golden Metallic CTA */
+.mlbb-bottom-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 8px;
+}
+
+.mlbb-bottom-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(11, 24, 54, 0.82), rgba(6, 14, 34, 0.92));
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  backdrop-filter: blur(12px);
+}
+
+.mlbb-nav-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.mlbb-nav-tab:hover,
+.mlbb-nav-tab.active {
+  background: rgba(56, 189, 248, 0.16);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: #ffffff;
+}
+
+.mlbb-nav-ico {
+  font-size: 16px;
+}
+
+.mlbb-nav-count {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(250, 204, 21, 0.22);
+  border: 1px solid rgba(250, 204, 21, 0.55);
+  color: #fef08a;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.mlbb-cta-cluster {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mlbb-mode-diamond {
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  border: 2px solid rgba(56, 189, 248, 0.82);
+  background: linear-gradient(145deg, rgba(14, 116, 144, 0.86), rgba(15, 23, 42, 0.92));
+  color: #e0f2fe;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+.mlbb-mode-diamond:hover {
+  transform: translateY(-2px) scale(1.04);
+  filter: brightness(1.15);
+}
+
+.mlbb-diamond-icon {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.mlbb-diamond-label {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+/* Signature Beveled Golden Metallic CTA (Exact MLBB "BRAWL" / "Mulai Game" Energy!) */
+.mlbb-gold-cta {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 34px;
+  border-radius: 10px;
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 12px 100%, 0 50%);
+  border: none;
+  background: linear-gradient(180deg, #fef08a 0%, #eab308 46%, #b45309 100%);
+  color: #1c1002;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(234, 179, 8, 0.42);
+  transition: transform 140ms ease, filter 140ms ease;
+}
+
+.mlbb-gold-cta:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-2px);
+}
+
+.mlbb-gold-cta:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+}
+
+.mlbb-gold-cta-main {
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  line-height: 1.15;
+}
+
+.mlbb-gold-cta-sub {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  opacity: 0.82;
+}
+
+.mlbb-gold-cta.compact {
+  padding: 11px 28px;
+  font-size: 14.5px;
+}
+
+.mlbb-gold-cta.mini {
+  padding: 7px 18px;
+  font-size: 13px;
+}
+
+/* Alert Toast */
+.mlbb-alert-toast {
+  position: absolute;
+  top: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(127, 29, 29, 0.94);
+  border: 1px solid #f87171;
+  color: #fef2f2;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+
+.mlbb-alert-toast.inline {
+  position: static;
+  transform: none;
+  justify-content: space-between;
+}
+
+/* ----------------------------------------------------------------------------
+   2. UNIFIED DARK ROYAL-BLUE ESPORTS SUB-PAGES (Lobby, BattleSetup, Join, Heroes)
+   ---------------------------------------------------------------------------- */
+.mlbb-dark-page {
+  min-height: 100dvh;
+  width: 100%;
+  background:
+    radial-gradient(ellipse 65% 55% at 15% 20%, rgba(2, 132, 199, 0.22), transparent 65%),
+    radial-gradient(ellipse 65% 55% at 85% 25%, rgba(220, 38, 38, 0.16), transparent 65%),
+    linear-gradient(180deg, #071126 0%, #0b1b3a 52%, #060d1e 100%);
+  color: #f8fafc;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.mlbb-page-shell,
+.mlbb-lobby-shell {
+  width: min(1240px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.mlbb-sub-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(10, 22, 50, 0.86);
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  backdrop-filter: blur(12px);
+}
+
+.mlbb-sub-left,
+.mlbb-sub-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mlbb-sub-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mlbb-room-pill {
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(250, 204, 21, 0.6);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.24), rgba(161, 98, 7, 0.34));
+  color: #fef08a;
+  font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mlbb-meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: rgba(15, 31, 66, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.mlbb-meta-pill.accent {
+  background: rgba(2, 132, 199, 0.25);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: #bae6fd;
+}
+
+.mlbb-glass-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(13, 28, 62, 0.86), rgba(8, 18, 40, 0.92));
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mlbb-card-title {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #e0f2fe;
+}
+
+/* ----------------------------------------------------------------------------
+   3. ROOM LOBBY — SYMMETRICAL MLBB VS STAGE + VERTICAL BANNER CARDS (Images 2 & 3)
+   ---------------------------------------------------------------------------- */
+.mlbb-vs-stage {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background:
+    linear-gradient(90deg, rgba(2, 132, 199, 0.2) 0%, rgba(11, 24, 54, 0.86) 44%, rgba(11, 24, 54, 0.86) 56%, rgba(220, 38, 38, 0.2) 100%);
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.mlbb-vs-wing {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mlbb-wing-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.mlbb-wing-head.blue {
+  background: rgba(2, 132, 199, 0.24);
+  border-left: 3px solid #38bdf8;
+  color: #bae6fd;
+}
+
+.mlbb-wing-head.red {
+  background: rgba(220, 38, 38, 0.24);
+  border-right: 3px solid #f87171;
+  color: #fecaca;
+}
+
+.mlbb-banner-row {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Vertical Esports Ribbon Banner Card (Inspired by Reference Image 3!) */
+.mlbb-banner-card {
+  position: relative;
+  width: 132px;
+  min-height: 162px;
+  padding: 10px 8px 20px;
+  clip-path: polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%);
+  background: linear-gradient(180deg, rgba(22, 46, 94, 0.92) 0%, rgba(10, 22, 50, 0.96) 100%);
+  border-top: 2px solid rgba(125, 211, 252, 0.45);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.mlbb-banner-card.blue {
+  border-top-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(12, 48, 96, 0.94) 0%, rgba(8, 20, 46, 0.96) 100%);
+}
+
+.mlbb-banner-card.red {
+  border-top-color: #f87171;
+  background: linear-gradient(180deg, rgba(84, 18, 34, 0.9) 0%, rgba(28, 12, 26, 0.96) 100%);
+}
+
+.mlbb-banner-card.me {
+  box-shadow: inset 0 0 20px rgba(250, 204, 21, 0.22);
+  border-top-color: #facc15;
+}
+
+.mlbb-banner-card.empty {
+  opacity: 0.78;
+}
+
+.mlbb-banner-top-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2px;
+}
+
+.mlbb-banner-ping {
+  font-size: 10px;
+  font-weight: 800;
+  color: #4ade80;
+}
+
+.mlbb-ready-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 900;
+  background: rgba(148, 163, 184, 0.25);
+  color: #cbd5e1;
+}
+
+.mlbb-ready-dot.ready {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.mlbb-banner-avatar-ring {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  padding: 2px;
+  border: 2.5px solid #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.4);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(7, 15, 34, 0.9);
+}
+
+.mlbb-banner-avatar-ring.empty {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.45);
+  box-shadow: none;
+  color: #64748b;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.mlbb-banner-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center 15%;
+}
+
+.mlbb-banner-name {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mlbb-banner-hero,
+.mlbb-banner-sub {
+  font-size: 11px;
+  font-weight: 600;
+  color: #93c5fd;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mlbb-swap-btn {
+  margin-top: 2px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.55);
+  background: rgba(2, 132, 199, 0.35);
+  color: #e0f2fe;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Center Golden VS Orb Medallion (Reference Image 2) */
+.mlbb-vs-medallion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.mlbb-vs-orb {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #2e2046 0%, #10162f 70%, #070b1a 100%);
+  border: 2.5px solid rgba(250, 204, 21, 0.78);
+  box-shadow:
+    0 0 28px rgba(250, 204, 21, 0.32),
+    inset 0 0 18px rgba(56, 189, 248, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mlbb-vs-orb span {
+  font-family: 'Rajdhani', 'Inter', sans-serif;
+  font-size: 36px;
+  font-weight: 900;
+  font-style: italic;
+  background: linear-gradient(180deg, #fef9c3 0%, #facc15 55%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(250, 204, 21, 0.45));
+}
+
+.mlbb-vs-sub {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: #fde047;
+}
+
+/* Center Action Strip */
+.mlbb-vs-action-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 16px;
+  border-radius: 14px;
+  background: rgba(10, 22, 50, 0.86);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+
+.mlbb-vs-action-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.mlbb-map-switch {
+  display: flex;
+  gap: 6px;
+}
+
+.mlbb-wait-host-note {
+  font-size: 13px;
+  font-weight: 700;
+  color: #fde047;
+}
+
+/* Bottom Draft Deck: 3D Model Spotlight + Hero Grid */
+.mlbb-lobby-draft-deck {
+  display: grid;
+  grid-template-columns: minmax(340px, 1.15fr) minmax(300px, 1fr);
+  gap: 14px;
+}
+
+.mlbb-draft-3d-spotlight {
+  display: grid;
+  grid-template-columns: 196px 1fr;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(13, 28, 62, 0.88), rgba(7, 16, 38, 0.94));
+  border: 1px solid rgba(125, 211, 252, 0.24);
+}
+
+.mlbb-draft-hero-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mlbb-draft-meta-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mlbb-draft-hero-name {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mlbb-draft-hero-name span {
+  font-size: 13px;
+  font-weight: 600;
+  color: #7dd3fc;
+}
+
+.mlbb-draft-hero-stats {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-top: 2px;
+}
+
+.mlbb-draft-skills-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mlbb-mini-skill-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px 4px 4px;
+  border-radius: 10px;
+  background: rgba(15, 31, 66, 0.85);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+  font-size: 11.5px;
+  color: #e2e8f0;
+}
+
+.mlbb-mini-skill-chip img {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.mlbb-mini-skill-chip strong {
+  color: #fde047;
+  margin-right: 3px;
+}
+
+.mlbb-draft-grid-wrap {
+  padding: 14px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(13, 28, 62, 0.88), rgba(7, 16, 38, 0.94));
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mlbb-draft-grid-head {
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #bae6fd;
+}
+
+.mlbb-iconic-lock-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  border-radius: 16px;
+  background: rgba(15, 29, 60, 0.82);
+  border: 1px dashed rgba(250, 204, 21, 0.45);
+  color: #fef08a;
+  font-weight: 700;
+  font-size: 13.5px;
+  text-align: center;
+}
+
+/* ----------------------------------------------------------------------------
+   4. INTERACTIVE 3D HERO MODEL TURNTABLE BOX (Hero3dPreview.tsx)
+   ---------------------------------------------------------------------------- */
+.hero-3d-preview-box {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 62%, rgba(56, 189, 248, 0.22), rgba(7, 15, 34, 0.85) 70%);
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  box-shadow: inset 0 0 28px rgba(2, 132, 199, 0.18);
+  flex-shrink: 0;
+}
+
+.hero-3d-preview-box.size-lg {
+  width: 260px;
+  height: 248px;
+}
+
+.hero-3d-preview-box.size-md {
+  width: 196px;
+  height: 186px;
+}
+
+.hero-3d-preview-box.size-sm {
+  width: 138px;
+  height: 146px;
+}
+
+.hero-3d-canvas-host {
+  width: 100%;
+  height: 100%;
+}
+
+.hero-3d-drag-hint {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(6, 14, 34, 0.78);
+  border: 1px solid rgba(125, 211, 252, 0.3);
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ----------------------------------------------------------------------------
+   5. HERO PICKER GRID (Shared across Lobby, JoinHeroSelect, BattleSetup, Heroes)
+   ---------------------------------------------------------------------------- */
+.mlbb-hero-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 8px;
+}
+
+.mlbb-hero-pick-grid.heroes-sidebar-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.mlbb-hero-pick-grid.compact {
+  grid-template-columns: repeat(auto-fill, minmax(66px, 1fr));
+  gap: 6px;
+  flex: 1;
+}
+
+.mlbb-hero-pick-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 12px;
+  border: 1.5px solid rgba(148, 163, 184, 0.22);
+  background: rgba(15, 29, 60, 0.78);
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.mlbb-hero-pick-tile:hover {
+  transform: translateY(-2px);
+  border-color: var(--hero-accent, #38bdf8);
+}
+
+.mlbb-hero-pick-tile.active {
+  border-color: #facc15;
+  background: linear-gradient(180deg, rgba(250, 204, 21, 0.2), rgba(15, 31, 66, 0.95));
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.32);
+  color: #ffffff;
+}
+
+.mlbb-pick-thumb-wrap {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #09142b;
+}
+
+.mlbb-pick-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 15%;
+  display: block;
+}
+
+.mlbb-pick-name {
+  font-size: 11px;
+  font-weight: 700;
+  width: 100%;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ----------------------------------------------------------------------------
+   6. BATTLE SETUP PAGE, JOIN HERO SELECT PAGE & HEROES PAGE LAYOUTS
+   ---------------------------------------------------------------------------- */
+.mlbb-setup-grid {
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  gap: 14px;
+}
+
+.mlbb-mode-two-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mlbb-mode-card,
+.mlbb-map-card {
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1.5px solid rgba(125, 211, 252, 0.22);
+  background: rgba(14, 30, 64, 0.78);
+  color: #f1f5f9;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 140ms ease;
+}
+
+.mlbb-mode-card:hover:not(:disabled),
+.mlbb-map-card:hover:not(:disabled) {
+  border-color: rgba(56, 189, 248, 0.65);
+  transform: translateY(-1px);
+}
+
+.mlbb-mode-card.selected,
+.mlbb-map-card.selected {
+  border-color: #facc15;
+  background: linear-gradient(150deg, rgba(234, 179, 8, 0.22), rgba(14, 30, 64, 0.94));
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.24);
+}
+
+.mlbb-mode-card.iconic-featured-card {
+  border-color: rgba(248, 113, 113, 0.45);
+  background: linear-gradient(135deg, rgba(14, 42, 86, 0.9), rgba(88, 16, 36, 0.85));
+}
+
+.mlbb-mode-card.iconic-featured-card.selected {
+  border-color: #facc15;
+  box-shadow: 0 0 22px rgba(250, 204, 21, 0.34);
+}
+
+.mlbb-map-card.disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.mlbb-mode-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mlbb-mode-tag.gold {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #facc15, #f59e0b);
+  color: #1c1002;
+  font-size: 10.5px;
+  font-weight: 900;
+}
+
+.mlbb-mode-meta {
+  font-size: 11px;
+  font-weight: 700;
+  color: #93c5fd;
+}
+
+.mlbb-mode-meta.hot {
+  color: #fde047;
+}
+
+.mlbb-mode-ico {
+  font-size: 18px;
+}
+
+.mlbb-mode-name,
+.mlbb-map-name {
+  font-size: 14.5px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mlbb-mode-desc {
+  font-size: 11.5px;
+  color: #cbd5e1;
+}
+
+.mlbb-map-thumb {
+  width: 100%;
+  height: 116px;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.mlbb-ffa-pick-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(7, 16, 38, 0.65);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+}
+
+.mlbb-ffa-pick-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #bae6fd;
+}
+
+.mlbb-ffa-pick-body {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.mlbb-setup-footer {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(125, 211, 252, 0.16);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mlbb-setup-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mlbb-setup-summary strong {
+  color: #fef08a;
+  font-size: 14px;
+}
+
+.mlbb-setup-summary span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* Join Hero Select Page */
+.mlbb-join-select-split {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1.15fr);
+  gap: 14px;
+}
+
+.mlbb-join-3d-stage {
+  align-items: center;
+}
+
+.mlbb-join-stage-top {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mlbb-join-roster-col {
+  justify-content: space-between;
+}
+
+.mlbb-join-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(125, 211, 252, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Heroes Page */
+.mlbb-heroes-split {
+  display: grid;
+  grid-template-columns: 296px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.mlbb-hero-showroom {
+  position: relative;
+  overflow: hidden;
+}
+
+.mlbb-showroom-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mlbb-showroom-glow {
+  position: absolute;
+  inset: -24px;
+  pointer-events: none;
+}
+
+.mlbb-showroom-meta-bar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mlbb-showroom-nav-arrows {
+  display: flex;
+  gap: 6px;
+}
+
+.mlbb-showroom-center {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.mlbb-showroom-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mlbb-showroom-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mlbb-showroom-portrait-chip {
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
+  object-fit: cover;
+  object-position: center 15%;
+  border: 2px solid #38bdf8;
+  flex-shrink: 0;
+}
+
+.mlbb-hero-showroom .showroom-hero-name {
+  margin: 0;
+  font-size: 24px;
+  color: #ffffff;
+}
+
+.mlbb-hero-showroom .showroom-hero-anime {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #93c5fd;
+}
+
+.mlbb-hero-showroom .showroom-voice-btn {
+  align-self: flex-start;
+  background: rgba(14, 34, 72, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #e0f2fe;
+}
+
+.mlbb-hero-showroom .spec-bars {
+  background: rgba(7, 16, 38, 0.72);
+  border: 1px solid rgba(125, 211, 252, 0.2);
+  color: #e2e8f0;
+}
+
+.mlbb-hero-showroom .spec-row {
+  color: #e2e8f0;
+}
+
+.mlbb-hero-showroom .spec-track {
+  background: rgba(30, 41, 59, 0.9);
+}
+
+.mlbb-skill-grid-box {
+  position: relative;
+  z-index: 2;
+  padding-top: 12px;
+  border-top: 1px solid rgba(125, 211, 252, 0.18);
+}
+
+.mlbb-skill-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.mlbb-skill-card {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(8, 19, 44, 0.84);
+  border: 1px solid rgba(125, 211, 252, 0.22);
+}
+
+.mlbb-skill-card .skill-title {
+  color: #fef08a;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+.mlbb-skill-card .skill-desc {
+  color: #cbd5e1;
+  font-size: 12px;
+  line-height: 1.45;
+  margin-top: 4px;
+}
+
+.mlbb-no-skill-notice {
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(15, 29, 60, 0.72);
+  color: #bae6fd;
+  font-size: 13px;
+}
+
+/* Voice pill overrides on Dark Royal Lobby */
+.mlbb-dark-page .lobby-voice-pill.mic-on {
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-color: #34d399;
+  color: #ffffff;
+}
+
+.mlbb-dark-page .lobby-voice-pill.mic-off {
+  background: rgba(15, 29, 60, 0.85);
+  border-color: rgba(148, 163, 184, 0.35);
+  color: #cbd5e1;
+}
+
+.mlbb-dark-page .lobby-voice-pill.spk-on {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.mlbb-dark-page .lobby-voice-pill.spk-off {
+  background: rgba(127, 29, 29, 0.85);
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+.mlbb-dark-page .slot-voice-tag.on {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+  border-color: rgba(52, 211, 153, 0.55);
+}
+
+.mlbb-dark-page .slot-voice-tag.off {
+  background: rgba(15, 23, 42, 0.65);
+  color: #94a3b8;
+}
+
+/* ----------------------------------------------------------------------------
+   6.5. SISAKET 3-MAP GRID & 5-ARCHETYPE HERO CLASS SYSTEM
+   ---------------------------------------------------------------------------- */
+.mlbb-map-three-cols {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mlbb-map-four-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mlbb-map-card.sisaket-map-card,
+.mlbb-map-card.scp-map-card {
+  position: relative;
+}
+
+.mlbb-map-hazard-pill {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(8, 47, 73, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.78);
+  color: #7dd3fc;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.mlbb-map-heal-pill {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(6, 78, 59, 0.92);
+  border: 1px solid rgba(52, 211, 153, 0.85);
+  color: #a7f3d0;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.mlbb-class-filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.mlbb-class-filter-bar.compact {
+  margin-bottom: 6px;
+  gap: 5px;
+}
+
+.mlbb-class-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 211, 252, 0.24);
+  background: rgba(9, 20, 46, 0.82);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: transform 0.14s ease, border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.mlbb-class-pill.compact {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.mlbb-class-pill:hover {
+  border-color: var(--class-accent, #38bdf8);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.mlbb-class-pill.active {
+  border-color: var(--class-accent, #38bdf8);
+  background: linear-gradient(135deg, rgba(15, 36, 78, 0.96), rgba(30, 58, 138, 0.86));
+  color: #ffffff;
+  box-shadow: 0 0 12px color-mix(in srgb, var(--class-accent, #38bdf8) 42%, transparent);
+}
+
+.mlbb-class-count {
+  font-style: normal;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.22);
+  color: #e2e8f0;
+}
+
+.mlbb-class-pill.active .mlbb-class-count {
+  background: var(--class-accent, #38bdf8);
+  color: #020617;
+  font-weight: 800;
+}
+
+.mlbb-hero-class-pip {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  background: rgba(6, 15, 34, 0.92);
+  border: 1.5px solid #38bdf8;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.55);
+}
+
+.mlbb-class-trait-card {
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(10, 24, 56, 0.92), rgba(7, 16, 38, 0.96));
+  border: 1px solid color-mix(in srgb, var(--class-accent, #38bdf8) 55%, transparent);
+  border-left: 3px solid var(--class-accent, #38bdf8);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mlbb-class-trait-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.mlbb-class-trait-head strong {
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.mlbb-class-var-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.86);
+  border: 1px solid color-mix(in srgb, var(--class-accent, #38bdf8) 45%, transparent);
+  color: var(--class-accent, #7dd3fc);
+}
+
+.mlbb-class-trait-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.mlbb-draft-class-note {
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+@media (max-width: 640px) {
+  .mlbb-map-three-cols {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Living Home Lobby Motion Accents & Logout Confirmation Dialog */
+.mlbb-emblem-frame {
+  animation: mlbbEmblemPulse 4.2s ease-in-out infinite;
+}
+
+.mlbb-crest-badge {
+  animation: mlbbCrestFloat 4.6s ease-in-out infinite;
+}
+
+.mlbb-gold-cta {
+  position: relative;
+  overflow: hidden;
+}
+
+.mlbb-gold-cta::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.45) 50%, transparent 100%);
+  pointer-events: none;
+  animation: mlbbCtaSheen 4.2s ease-in-out infinite;
+}
+
+.mlbb-logout-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(3, 8, 22, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.mlbb-logout-dialog {
+  width: min(390px, 100%);
+  padding: 24px 22px 20px;
+  border-radius: 18px;
+  background: linear-gradient(165deg, rgba(13, 29, 64, 0.96), rgba(7, 15, 36, 0.98));
+  border: 1.5px solid rgba(250, 204, 21, 0.42);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 24px rgba(56, 189, 248, 0.16);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.mlbb-logout-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  background: rgba(220, 38, 38, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.45);
+}
+
+.mlbb-logout-title {
+  margin: 2px 0 0;
+  font-size: 19px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.mlbb-logout-desc {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #cbd5e1;
+}
+
+.mlbb-logout-desc strong {
+  color: #fef08a;
+}
+
+.mlbb-logout-desc span {
+  font-size: 11.5px;
+  color: #7dd3fc;
+}
+
+.mlbb-logout-actions {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mlbb-logout-actions .mlbb-glass-btn {
+  justify-content: center;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+
+/* Admin-Only Grandmaster Auto-AI HUD Toggle Pill */
+.rov-admin-ai-btn {
+  width: auto !important;
+  padding: 0 10px !important;
+  gap: 4px;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.03em;
+  border-color: rgba(250, 204, 21, 0.5) !important;
+  color: #fde047 !important;
+  background: linear-gradient(135deg, rgba(20, 24, 52, 0.92), rgba(30, 18, 56, 0.92)) !important;
+}
+
+.rov-admin-ai-btn.active {
+  background: linear-gradient(135deg, #f59e0b, #dc2626) !important;
+  border-color: #fef08a !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.65), 0 0 26px rgba(239, 68, 68, 0.45) !important;
+  animation: mlbbAdminAiPulse 1.4s ease-in-out infinite;
+}
+
+@keyframes mlbbAdminAiPulse {
+  0%, 100% {
+    box-shadow: 0 0 14px rgba(250, 204, 21, 0.6), 0 0 22px rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 24px rgba(250, 204, 21, 0.92), 0 0 34px rgba(239, 68, 68, 0.68);
+  }
+}
+
+/* ----------------------------------------------------------------------------
+   7. RESPONSIVE BREAKPOINTS (Mobile Landscape & Portrait)
+   ---------------------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .mlbb-setup-grid,
+  .mlbb-join-select-split,
+  .mlbb-lobby-draft-deck,
+  .mlbb-heroes-split {
+    grid-template-columns: 1fr;
+  }
+
+  .mlbb-vs-stage {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .mlbb-showroom-center {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .mlbb-draft-3d-spotlight {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .mlbb-home-left-crest {
+    display: none;
+  }
+
+  .mlbb-home-mid {
+    justify-content: flex-end;
+    align-items: flex-end;
+  }
+
+  .mlbb-bottom-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .mlbb-nav-tab {
+    padding: 7px 11px;
+    font-size: 12px;
+  }
+
+  .mlbb-gold-cta {
+    padding: 10px 22px;
+  }
+
+  .mlbb-gold-cta-main {
+    font-size: 14px;
+  }
+
+  .mlbb-gfx-panel .home-gfx-pills {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { getHeroAimTheme } from './heroAimThemes'
 
 interface SigilPalette {
   primary: string
@@ -7,85 +8,27 @@ interface SigilPalette {
   glyphs: string[]
 }
 
-const HERO_SIGILS: Record<string, SigilPalette> = {
-  noone: {
-    primary: '#A855F7',
-    secondary: '#FACC15',
-    glow: 'rgba(168, 85, 247, 0.42)',
-    glyphs: ['✦', '◈', '❖', '✧', '⟐', '✶', '⊹', '⟡'],
-  },
-  ko: {
-    primary: '#FACC15',
-    secondary: '#7DD3FC',
-    glow: 'rgba(250, 204, 21, 0.45)',
-    glyphs: ['⚡', '✦', '✧', '◈', '✶', '⊹', '⚡', '✦'],
-  },
-  sia_mon: {
-    primary: '#38BDF8',
-    secondary: '#A855F7',
-    glow: 'rgba(56, 189, 248, 0.44)',
-    glyphs: ['∞', '✦', '◈', '✧', '∞', '✶', '⊹', '❖'],
-  },
-  ajarn_boy: {
-    primary: '#EF4444',
-    secondary: '#FCA5A5',
-    glow: 'rgba(239, 68, 68, 0.46)',
-    glyphs: ['✕', '◈', '✦', '❖', '✕', '✧', '✶', '⊹'],
-  },
-  thanwa: {
-    primary: '#10B981',
-    secondary: '#C084FC',
-    glow: 'rgba(16, 185, 129, 0.42)',
-    glyphs: ['✦', '❖', '◈', '✧', '✶', '⊹', '✦', '❖'],
-  },
-  pa: {
-    primary: '#FACC15',
-    secondary: '#EF4444',
-    glow: 'rgba(250, 204, 21, 0.46)',
-    glyphs: ['✶', '✦', '◈', '❖', '✧', '⊹', '✶', '✦'],
-  },
-  kaem: {
-    primary: '#38BDF8',
-    secondary: '#FACC15',
-    glow: 'rgba(56, 189, 248, 0.44)',
-    glyphs: ['❖', '✦', '✧', '◈', '✶', '⟡', '⊹', '✦'],
-  },
-  frame: {
-    primary: '#FACC15',
-    secondary: '#A855F7',
-    glow: 'rgba(168, 85, 247, 0.44)',
-    glyphs: ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'],
-  },
-  ole: {
-    primary: '#DC2626',
-    secondary: '#F87171',
-    glow: 'rgba(220, 38, 38, 0.46)',
-    glyphs: ['◈', '✦', '✧', '❖', '◈', '✶', '⊹', '✦'],
-  },
-  ajarn_au: {
-    primary: '#22D3EE',
-    secondary: '#FEF08A',
-    glow: 'rgba(34, 211, 238, 0.46)',
-    glyphs: ['⚡', '✧', '✦', '◈', '⚡', '✶', '⊹', '✧'],
-  },
-  boy: {
-    primary: '#F97316',
-    secondary: '#FACC15',
-    glow: 'rgba(249, 115, 22, 0.45)',
-    glyphs: ['★', '✦', '◈', '✧', '★', '✶', '⊹', '✦'],
-  },
-  luangphi_sorn: {
-    primary: '#FACC15',
-    secondary: '#DC2626',
-    glow: 'rgba(250, 204, 21, 0.48)',
-    glyphs: ['✦', '✶', '❖', '◈', '✧', '✦', '✶', '❖'],
-  },
-  default: {
-    primary: '#38BDF8',
-    secondary: '#E0F2FE',
-    glow: 'rgba(56, 189, 248, 0.4)',
-    glyphs: ['✦', '◈', '✧', '❖', '✶', '⊹', '✦', '◈'],
-  },
+const HERO_SIGIL_GLYPHS: Record<string, string[]> = {
+  noone: ['✦', '◈', '❖', '✧', '⟐', '✶', '⊹', '⟡'],
+  ko: ['⚡', '✦', '✧', '◈', '✶', '⊹', '⚡', '✦'],
+  sia_mon: ['∞', '✦', '◈', '✧', '∞', '✶', '⊹', '❖'],
+  ajarn_boy: ['✕', '◈', '✦', '❖', '✕', '✧', '✶', '⊹'],
+  thanwa: ['⚔', '✦', '❖', '◈', '⚔', '✶', '⊹', '✧'],
+  pa: ['✶', '✦', '◈', '❖', '✧', '⊹', '✶', '✦'],
+  kaem: ['❖', '✦', '✧', '◈', '✶', '⟡', '⊹', '✦'],
+  frame: ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'],
+  ole: ['◈', '✦', '✧', '❖', '◈', '✶', '⊹', '✦'],
+  ajarn_au: ['⚡', '✧', '✦', '◈', '⚡', '✶', '⊹', '✧'],
+  boy: ['★', '✦', '◈', '✧', '★', '✶', '⊹', '✦'],
+  luangphi_sorn: ['👊', '✦', '✶', '❖', '◈', '✧', '✦', '✶'],
+  simo: ['⊕', '❄', '✦', '◈', '⊕', '❄', '✧', '⊹'],
+  jinwoo: ['♛', '✦', '◈', '✧', '♛', '✶', '⊹', '❖'],
+  naruto: ['🌀', '★', '✦', '◈', '🦊', '✶', '✧', '⊹'],
+  sanji: ['🔥', '⚡', '✦', '◈', '🔥', '✶', '✧', '⊹'],
+  luffy: ['★', '☠', '✦', '◈', '★', '✶', '✧', '⊹'],
+  ben10: ['⧖', '✦', '◈', '✧', '⧖', '✶', '⊹', '❖'],
+  diablo: ['❖', '✕', '✦', '◈', '❖', '✶', '✧', '⊹'],
+  default: ['✦', '◈', '✧', '❖', '✶', '⊹', '✦', '◈'],
 }
 
 const CANCEL_SIGIL: SigilPalette = {
@@ -93,6 +36,17 @@ const CANCEL_SIGIL: SigilPalette = {
   secondary: '#FCA5A5',
   glow: 'rgba(239, 68, 68, 0.48)',
   glyphs: ['✕', '✕', '✕', '✕', '✕', '✕', '✕', '✕'],
+}
+
+function getSigilPalette(charId: string, cancel: boolean): SigilPalette {
+  if (cancel) return CANCEL_SIGIL
+  const theme = getHeroAimTheme(charId)
+  return {
+    primary: theme.primary,
+    secondary: theme.secondary,
+    glow: theme.glow,
+    glyphs: HERO_SIGIL_GLYPHS[theme.id] ?? HERO_SIGIL_GLYPHS.default,
+  }
 }
 
 function drawPolygon(
@@ -137,7 +91,7 @@ function drawStarPolygon(
 }
 
 function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: boolean): THREE.CanvasTexture {
-  const pal = cancel ? CANCEL_SIGIL : (HERO_SIGILS[charId] ?? HERO_SIGILS.default)
+  const pal = getSigilPalette(charId, cancel)
   const size = 512
   const c = document.createElement('canvas')
   c.width = size
@@ -161,12 +115,18 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
   g.shadowColor = pal.primary
   g.shadowBlur = 14
 
-  // Outer Double Arcane Rings + Precision Degree Notches
+  // Outer Range Ring with character-distinct rim style
   g.strokeStyle = pal.primary
   g.lineWidth = isOuterRange ? 5.5 : 7
+  if (isOuterRange && (charId === 'simo' || charId === 'ajarn_au')) {
+    g.setLineDash([28, 14])
+  } else if (isOuterRange && charId === 'pa') {
+    g.setLineDash([42, 10, 10, 10])
+  }
   g.beginPath()
   g.arc(cx, cy, R * 0.96, 0, Math.PI * 2)
   g.stroke()
+  g.setLineDash([])
 
   g.strokeStyle = pal.secondary
   g.lineWidth = 2.6
@@ -174,15 +134,15 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
   g.arc(cx, cy, R * 0.85, 0, Math.PI * 2)
   g.stroke()
 
-  // Delicate Arcane Tick Marks along Outer Ring
-  const tickCount = charId === 'frame' ? 24 : 36
+  // Calibration Tick Marks along Outer Ring
+  const tickCount = charId === 'frame' ? 24 : charId === 'luangphi_sorn' ? 16 : 36
   for (let i = 0; i < tickCount; i++) {
     const a = (i * Math.PI * 2) / tickCount
     const major = i % 3 === 0
-    const rIn = R * (major ? 0.85 : 0.90)
+    const rIn = R * (major ? 0.83 : 0.9)
     const rOut = R * 0.96
     g.strokeStyle = major ? pal.secondary : pal.primary
-    g.lineWidth = major ? 3.2 : 1.6
+    g.lineWidth = major ? 3.4 : 1.6
     g.beginPath()
     g.moveTo(cx + Math.cos(a) * rIn, cy + Math.sin(a) * rIn)
     g.lineTo(cx + Math.cos(a) * rOut, cy + Math.sin(a) * rOut)
@@ -207,7 +167,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
     g.restore()
   }
 
-  // Character-Specific Sacred Geometric Centerpiece!
+  // Character-Specific Sacred Geometric Centerpiece (ALL 14 Heroes!)
   if (!isOuterRange) {
     g.lineWidth = 3.6
     g.strokeStyle = pal.primary
@@ -216,7 +176,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
     g.stroke()
 
     if (charId === 'noone' && !cancel) {
-      // Thanos Sanctuary Hexagram + 5 Colored Infinity Stone Nodes!
+      // Thanos Sanctuary Hexagram + 5 Colored Infinity Stone Nodes
       g.strokeStyle = pal.secondary
       g.lineWidth = 4
       drawPolygon(g, cx, cy, R * 0.82, 3, -Math.PI / 2)
@@ -236,7 +196,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
         g.stroke()
       }
     } else if (charId === 'ko' && !cancel) {
-      // Zenitsu 5-Point Thunder Pentagram + Razor Spark Vertices
+      // Zenitsu 5-Point Thunder Pentagram
       g.strokeStyle = '#FACC15'
       g.lineWidth = 5
       drawStarPolygon(g, cx, cy, R * 0.82, 5, 2, -Math.PI / 2)
@@ -244,7 +204,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
       g.lineWidth = 2.6
       drawPolygon(g, cx, cy, R * 0.5, 5, -Math.PI / 2)
     } else if (charId === 'sia_mon' && !cancel) {
-      // Gojo Limitless Infinity Lemniscate + Red/Blue Orbs + Six Eyes Core
+      // Gojo Limitless Infinity Lemniscate + Red/Blue Orbs
       g.strokeStyle = '#38BDF8'
       g.lineWidth = 4.5
       g.beginPath()
@@ -257,7 +217,6 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
         else g.lineTo(ix, iy)
       }
       g.stroke()
-      // Red & Blue Polarity Nodes
       g.fillStyle = '#EF4444'
       g.beginPath()
       g.arc(cx - R * 0.64, cy, 13, 0, Math.PI * 2)
@@ -267,7 +226,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
       g.arc(cx + R * 0.64, cy, 13, 0, Math.PI * 2)
       g.fill()
     } else if (charId === 'ajarn_boy' && !cancel) {
-      // Sukuna Cursed Crimson Seal + Razor X-Cross + 4 Shrine Corners
+      // Sukuna Cursed Crimson Diamond Seal + Razor X-Cross
       g.strokeStyle = '#EF4444'
       g.lineWidth = 5
       drawPolygon(g, cx, cy, R * 0.8, 4, Math.PI / 4)
@@ -280,24 +239,126 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
       g.moveTo(cx + R * 0.52, cy - R * 0.52)
       g.lineTo(cx - R * 0.52, cy + R * 0.52)
       g.stroke()
+    } else if (charId === 'simo' && !cancel) {
+      // Simo Hayha: Arctic Mil-Dot Sniper Scope Crosshair + Range Stadia
+      g.strokeStyle = '#38BDF8'
+      g.lineWidth = 4
+      drawPolygon(g, cx, cy, R * 0.78, 8, Math.PI / 8)
+      g.strokeStyle = '#EF4444'
+      g.lineWidth = 3.5
+      g.beginPath()
+      g.moveTo(cx - R * 0.85, cy)
+      g.lineTo(cx + R * 0.85, cy)
+      g.moveTo(cx, cy - R * 0.85)
+      g.lineTo(cx, cy + R * 0.85)
+      g.stroke()
+      for (const tick of [-0.55, -0.32, 0.32, 0.55]) {
+        g.beginPath()
+        g.moveTo(cx + R * tick, cy - 12)
+        g.lineTo(cx + R * tick, cy + 12)
+        g.moveTo(cx - 12, cy + R * tick)
+        g.lineTo(cx + 12, cy + R * tick)
+        g.stroke()
+      }
     } else if (charId === 'thanwa' && !cancel) {
-      // Zoro Enma Triad Double-Triangle Santoryu Seal
+      // Zoro Enma Santoryu Triple-Sword Crossed Seal
       g.strokeStyle = '#10B981'
       g.lineWidth = 4.5
       drawPolygon(g, cx, cy, R * 0.83, 3, -Math.PI / 2)
       g.strokeStyle = '#C084FC'
       g.lineWidth = 4.5
       drawPolygon(g, cx, cy, R * 0.83, 3, Math.PI / 2)
-      drawPolygon(g, cx, cy, R * 0.45, 3, -Math.PI / 2)
-    } else if (charId === 'kaem' || charId === 'pa') {
-      // Rimuru Raphael Octagram / Gilgamesh Babylonian 8-Point Royal Seal
-      g.strokeStyle = pal.primary
+      for (let b = 0; b < 3; b++) {
+        const ba = (b * Math.PI) / 3
+        g.strokeStyle = b === 1 ? '#C084FC' : '#FFFFFF'
+        g.lineWidth = 3
+        g.beginPath()
+        g.moveTo(cx - Math.cos(ba) * R * 0.76, cy - Math.sin(ba) * R * 0.76)
+        g.lineTo(cx + Math.cos(ba) * R * 0.76, cy + Math.sin(ba) * R * 0.76)
+        g.stroke()
+      }
+    } else if (charId === 'pa' && !cancel) {
+      // Gilgamesh Gate of Babylon: 8 Surrounding Gold Portals + Crimson Ea Keyhole
+      g.strokeStyle = '#FACC15'
       g.lineWidth = 4.2
       drawPolygon(g, cx, cy, R * 0.83, 4, 0)
-      g.strokeStyle = pal.secondary
-      g.lineWidth = 4.2
       drawPolygon(g, cx, cy, R * 0.83, 4, Math.PI / 4)
-      drawPolygon(g, cx, cy, R * 0.48, 8, Math.PI / 8)
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI) / 4
+        g.strokeStyle = '#FEF08A'
+        g.lineWidth = 2.6
+        g.beginPath()
+        g.arc(cx + Math.cos(a) * R * 0.66, cy + Math.sin(a) * R * 0.66, 15, 0, Math.PI * 2)
+        g.stroke()
+      }
+      g.strokeStyle = '#EF4444'
+      g.lineWidth = 4
+      drawPolygon(g, cx, cy, R * 0.34, 4, Math.PI / 4)
+    } else if (charId === 'kaem' && !cancel) {
+      // Rimuru Demon-Lord Tempest Spiral + Golden Raphael Core
+      g.strokeStyle = '#38BDF8'
+      g.lineWidth = 4.4
+      for (let s = 0; s < 3; s++) {
+        const a = (s * Math.PI * 2) / 3
+        g.beginPath()
+        g.arc(cx + Math.cos(a) * R * 0.22, cy + Math.sin(a) * R * 0.22, R * 0.44, a, a + Math.PI * 1.15)
+        g.stroke()
+      }
+      g.strokeStyle = '#FACC15'
+      g.lineWidth = 3.8
+      drawPolygon(g, cx, cy, R * 0.38, 4, 0)
+      drawPolygon(g, cx, cy, R * 0.38, 4, Math.PI / 4)
+    } else if (charId === 'boy' && !cancel) {
+      // Goku Super Saiyan Solar Ki Burst + 4-Star Dragon Ball Crest
+      g.strokeStyle = '#FACC15'
+      g.lineWidth = 4.2
+      for (let s = 0; s < 12; s++) {
+        const a = (s * Math.PI * 2) / 12
+        g.beginPath()
+        g.moveTo(cx + Math.cos(a) * R * 0.46, cy + Math.sin(a) * R * 0.46)
+        g.lineTo(cx + Math.cos(a) * R * 0.84, cy + Math.sin(a) * R * 0.84)
+        g.stroke()
+      }
+      g.strokeStyle = '#F97316'
+      g.lineWidth = 5
+      g.beginPath()
+      g.arc(cx, cy, R * 0.44, 0, Math.PI * 2)
+      g.stroke()
+      g.fillStyle = '#EF4444'
+      for (const [ox, oy] of [[-26, -24], [26, -24], [-26, 24], [26, 24]] as const) {
+        drawStarPolygon(g, cx + ox, cy + oy, 11, 5, 2, -Math.PI / 2)
+      }
+    } else if (charId === 'ajarn_au' && !cancel) {
+      // Killua Godspeed Zoldyck High-Volt Star Circuit
+      g.strokeStyle = '#22D3EE'
+      g.lineWidth = 4.6
+      drawStarPolygon(g, cx, cy, R * 0.84, 6, 2, 0)
+      g.strokeStyle = '#FEF08A'
+      g.lineWidth = 4
+      g.beginPath()
+      g.moveTo(cx + 12, cy - R * 0.62)
+      g.lineTo(cx - 26, cy - 4)
+      g.lineTo(cx + 8, cy - 4)
+      g.lineTo(cx - 12, cy + R * 0.62)
+      g.stroke()
+    } else if (charId === 'luangphi_sorn' && !cancel) {
+      // Saitama Serious Punch Shockwave Sunburst + Hero Glove Impact Core
+      g.strokeStyle = '#FACC15'
+      g.lineWidth = 4
+      for (let r = 0; r < 16; r++) {
+        const a = (r * Math.PI * 2) / 16
+        g.beginPath()
+        g.moveTo(cx + Math.cos(a) * R * 0.34, cy + Math.sin(a) * R * 0.34)
+        g.lineTo(cx + Math.cos(a) * R * 0.82, cy + Math.sin(a) * R * 0.82)
+        g.stroke()
+      }
+      g.fillStyle = '#DC2626'
+      g.beginPath()
+      g.arc(cx, cy, R * 0.28, 0, Math.PI * 2)
+      g.fill()
+      g.strokeStyle = '#FFFFFF'
+      g.lineWidth = 4
+      g.stroke()
     } else if (charId === 'frame' && !cancel) {
       // ZA WARUDO Golden Clockwork Hands + Joestar Star
       g.strokeStyle = '#FACC15'
@@ -326,7 +387,7 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
         g.fill()
       }
     } else {
-      // Clean 6-Point Arcane Hexagram + Center Star
+      // Clean Aero Hexagram + Center Star
       g.strokeStyle = pal.primary
       g.lineWidth = 4
       drawPolygon(g, cx, cy, R * 0.82, 3, -Math.PI / 2)
@@ -340,12 +401,29 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
     g.beginPath()
     g.arc(cx, cy, 8, 0, Math.PI * 2)
     g.fill()
-  } else {
-    // Outer Cast-Range Ring subtle geometric octagon/star corners (keeps arena floor clearly readable!)
+  } else if (!cancel) {
+    // Distinct Outer Cast-Range Geometric Frame per Character!
     g.strokeStyle = pal.primary
-    g.globalAlpha = 0.55
-    g.lineWidth = 2.4
-    drawPolygon(g, cx, cy, R * 0.85, 8, Math.PI / 8)
+    g.globalAlpha = 0.62
+    g.lineWidth = 2.6
+    if (charId === 'simo') {
+      // Sniper Compass Brackets at N/S/E/W
+      for (let i = 0; i < 4; i++) {
+        const a = (i * Math.PI) / 2
+        g.beginPath()
+        g.moveTo(cx + Math.cos(a) * R * 0.78, cy + Math.sin(a) * R * 0.78)
+        g.lineTo(cx + Math.cos(a) * R * 0.96, cy + Math.sin(a) * R * 0.96)
+        g.stroke()
+      }
+    } else if (charId === 'ajarn_boy' || charId === 'thanwa') {
+      drawPolygon(g, cx, cy, R * 0.86, charId === 'ajarn_boy' ? 4 : 3, Math.PI / 4)
+    } else if (charId === 'ko' || charId === 'ajarn_au') {
+      drawStarPolygon(g, cx, cy, R * 0.85, 5, 2, -Math.PI / 2)
+    } else if (charId === 'noone' || charId === 'boy') {
+      drawPolygon(g, cx, cy, R * 0.85, 6, 0)
+    } else {
+      drawPolygon(g, cx, cy, R * 0.85, 8, Math.PI / 8)
+    }
     g.globalAlpha = 1
   }
 
@@ -356,7 +434,8 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
 }
 
 function bakeArcaneCorridorTexture(charId: string, cancel: boolean): THREE.CanvasTexture {
-  const pal = cancel ? CANCEL_SIGIL : (HERO_SIGILS[charId] ?? HERO_SIGILS.default)
+  const pal = getSigilPalette(charId, cancel)
+  const style = cancel ? 'pulse' : getHeroAimTheme(charId).corridorStyle
   const w = 256
   const h = 512
   const c = document.createElement('canvas')
@@ -364,7 +443,7 @@ function bakeArcaneCorridorTexture(charId: string, cancel: boolean): THREE.Canva
   c.height = h
   const g = c.getContext('2d')!
 
-  // Glowing side energy corridor gradient
+  // Soft corridor luminescence backing
   const grad = g.createLinearGradient(0, 0, w, 0)
   grad.addColorStop(0, 'rgba(0,0,0,0)')
   grad.addColorStop(0.14, pal.glow)
@@ -377,36 +456,201 @@ function bakeArcaneCorridorTexture(charId: string, cancel: boolean): THREE.Canva
   g.shadowColor = pal.primary
   g.shadowBlur = 12
 
-  // Luminous Left & Right Arcane Side Rails
+  // Side Boundary Rails (styled by character!)
   g.strokeStyle = pal.primary
-  g.lineWidth = 6
+  g.lineWidth = style === 'sniper' ? 3.5 : 6
+  if (style === 'crows' || style === 'predator') {
+    g.setLineDash([22, 12])
+  }
   g.beginPath()
   g.moveTo(22, 16)
   g.lineTo(22, h - 24)
   g.moveTo(w - 22, 16)
   g.lineTo(w - 22, h - 24)
   g.stroke()
-
-  // Center Arcane Spine
-  g.strokeStyle = pal.secondary
-  g.lineWidth = 2.5
-  g.setLineDash([14, 12])
-  g.beginPath()
-  g.moveTo(w * 0.5, 24)
-  g.lineTo(w * 0.5, h - 28)
-  g.stroke()
   g.setLineDash([])
 
-  // Forward-pointing Arcane Chevrons (pointing toward +Z = bottom of plane after rotateX(-PI/2)!)
-  for (let i = 0; i < 6; i++) {
-    const y = 70 + i * 74
-    g.strokeStyle = i === 5 ? '#FFFFFF' : pal.secondary
-    g.lineWidth = i === 5 ? 6 : 4
+  if (style === 'sniper') {
+    // Simo: Precision Laser Sight Spine + Stadia Elevation Ticks
+    g.strokeStyle = '#EF4444'
+    g.lineWidth = 4
     g.beginPath()
-    g.moveTo(w * 0.24, y - 22)
-    g.lineTo(w * 0.5, y + 10)
-    g.lineTo(w * 0.76, y - 22)
+    g.moveTo(w * 0.5, 16)
+    g.lineTo(w * 0.5, h - 10)
     g.stroke()
+    g.strokeStyle = '#E0F2FE'
+    g.lineWidth = 3
+    for (let y = 52; y < h - 30; y += 56) {
+      g.beginPath()
+      g.moveTo(w * 0.34, y)
+      g.lineTo(w * 0.66, y)
+      g.stroke()
+    }
+  } else if (style === 'infinity') {
+    // Gojo: Twin Red & Blue Sine Polarity Waves Converging to White/Violet Core
+    for (const [phase, col] of [
+      [0, '#EF4444'],
+      [Math.PI, '#38BDF8'],
+    ] as const) {
+      g.strokeStyle = col
+      g.lineWidth = 5
+      g.beginPath()
+      for (let y = 20; y <= h - 20; y += 12) {
+        const x = w * 0.5 + Math.sin(y * 0.036 + phase) * 52
+        if (y === 20) g.moveTo(x, y)
+        else g.lineTo(x, y)
+      }
+      g.stroke()
+    }
+    g.strokeStyle = '#FFFFFF'
+    g.lineWidth = 3
+    g.beginPath()
+    g.moveTo(w * 0.5, 20)
+    g.lineTo(w * 0.5, h - 10)
+    g.stroke()
+  } else if (style === 'cleave') {
+    // Sukuna: Jagged Crimson/White X-Slash Scars Down the Lane
+    for (let y = 64; y < h - 40; y += 84) {
+      g.strokeStyle = '#EF4444'
+      g.lineWidth = 6
+      g.beginPath()
+      g.moveTo(w * 0.24, y - 28)
+      g.lineTo(w * 0.76, y + 28)
+      g.moveTo(w * 0.76, y - 28)
+      g.lineTo(w * 0.24, y + 28)
+      g.stroke()
+      g.strokeStyle = '#FFFFFF'
+      g.lineWidth = 2.5
+      g.stroke()
+    }
+  } else if (style === 'lightning' || style === 'godspeed') {
+    // Zenitsu / Killua: High-Voltage Jagged Thunderbolt Spine
+    g.strokeStyle = style === 'lightning' ? '#FACC15' : '#22D3EE'
+    g.lineWidth = 6
+    g.beginPath()
+    for (let i = 0; i <= 10; i++) {
+      const y = 18 + (i * (h - 32)) / 10
+      const x = w * 0.5 + (i === 0 || i === 10 ? 0 : (i % 2 === 0 ? 1 : -1) * 44)
+      if (i === 0) g.moveTo(x, y)
+      else g.lineTo(x, y)
+    }
+    g.stroke()
+    g.strokeStyle = '#FFFFFF'
+    g.lineWidth = 2.5
+    g.stroke()
+  } else if (style === 'santoryu') {
+    // Zoro: Three Parallel Santoryu Katana Slash Blades
+    for (const [ox, col] of [
+      [-48, '#10B981'],
+      [0, '#FFFFFF'],
+      [48, '#C084FC'],
+    ] as const) {
+      g.strokeStyle = col
+      g.lineWidth = ox === 0 ? 6 : 4.5
+      g.beginPath()
+      g.moveTo(w * 0.5 + ox, 24)
+      g.lineTo(w * 0.5 + ox * 0.75, h - 18)
+      g.stroke()
+    }
+  } else if (style === 'stones') {
+    // Thanos: 5 Colored Infinity Stone Rays Converging Together
+    const cols = ['#A855F7', '#3B82F6', '#EF4444', '#10B981', '#FACC15']
+    cols.forEach((col, i) => {
+      g.strokeStyle = col
+      g.lineWidth = 4
+      g.beginPath()
+      g.moveTo(w * (0.22 + i * 0.14), 24)
+      g.lineTo(w * 0.5 + (i - 2) * 14, h - 16)
+      g.stroke()
+    })
+  } else if (style === 'babylon') {
+    // Gilgamesh: Golden Gate Key-Portals Flanking the Trajectory
+    for (let y = 76; y < h - 48; y += 96) {
+      for (const px of [w * 0.25, w * 0.75]) {
+        g.strokeStyle = '#FACC15'
+        g.lineWidth = 4
+        g.beginPath()
+        g.arc(px, y, 22, 0, Math.PI * 2)
+        g.stroke()
+      }
+      g.strokeStyle = '#EF4444'
+      g.lineWidth = 4
+      g.beginPath()
+      g.moveTo(w * 0.5, y - 28)
+      g.lineTo(w * 0.5, y + 28)
+      g.stroke()
+    }
+  } else if (style === 'kamehameha') {
+    // Goku: Expanding Kamehameha Ki Blast Compression Rings
+    for (let i = 0; i < 5; i++) {
+      const y = 72 + i * 86
+      const rad = 22 + i * 9
+      g.strokeStyle = i === 4 ? '#FFFFFF' : i % 2 === 0 ? '#F97316' : '#FACC15'
+      g.lineWidth = 4.5
+      g.beginPath()
+      g.ellipse(w * 0.5, y, rad, 14, 0, 0, Math.PI * 2)
+      g.stroke()
+    }
+  } else if (style === 'crows') {
+    // Itachi: Black Crow Silhouette V-Wings & Crimson Genjutsu Spine
+    for (let y = 78; y < h - 40; y += 84) {
+      g.strokeStyle = '#EF4444'
+      g.lineWidth = 5
+      g.beginPath()
+      g.arc(w * 0.5, y, 16, Math.PI * 1.1, Math.PI * 1.9)
+      g.stroke()
+      g.beginPath()
+      g.moveTo(w * 0.24, y + 10)
+      g.quadraticCurveTo(w * 0.37, y - 18, w * 0.5, y + 4)
+      g.quadraticCurveTo(w * 0.63, y - 18, w * 0.76, y + 10)
+      g.stroke()
+    }
+  } else if (style === 'clockwork') {
+    // Frame: Golden Mechanical Roman Clockwork Track
+    g.strokeStyle = '#FACC15'
+    g.lineWidth = 3.5
+    g.beginPath()
+    g.moveTo(w * 0.5, 24)
+    g.lineTo(w * 0.5, h - 18)
+    g.stroke()
+    for (let y = 56; y < h - 32; y += 64) {
+      g.strokeStyle = '#A855F7'
+      g.lineWidth = 4
+      g.beginPath()
+      g.arc(w * 0.5, y, 24, 0, Math.PI * 2)
+      g.stroke()
+    }
+  } else if (style === 'punch') {
+    // Saitama: Serious Impact Warning Stripes + Sonic Cones
+    for (let y = 70; y < h - 30; y += 76) {
+      g.strokeStyle = '#FACC15'
+      g.lineWidth = 7
+      g.beginPath()
+      g.moveTo(w * 0.22, y - 20)
+      g.lineTo(w * 0.5, y + 16)
+      g.lineTo(w * 0.78, y - 20)
+      g.stroke()
+    }
+  } else {
+    // Rimuru / Default: Flowing Chevrons + Center Spine
+    g.strokeStyle = pal.secondary
+    g.lineWidth = 2.5
+    g.setLineDash([14, 12])
+    g.beginPath()
+    g.moveTo(w * 0.5, 24)
+    g.lineTo(w * 0.5, h - 28)
+    g.stroke()
+    g.setLineDash([])
+    for (let i = 0; i < 6; i++) {
+      const y = 70 + i * 74
+      g.strokeStyle = i === 5 ? '#FFFFFF' : pal.secondary
+      g.lineWidth = i === 5 ? 6 : 4
+      g.beginPath()
+      g.moveTo(w * 0.24, y - 22)
+      g.lineTo(w * 0.5, y + 10)
+      g.lineTo(w * 0.76, y - 22)
+      g.stroke()
+    }
   }
 
   // Front Arrowhead Cap

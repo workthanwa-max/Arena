@@ -33,8 +33,8 @@ Game/
 │   │   │   ├── session/session.go         # Session Manager (RealtimeConn, Coalesced Datagram Queue + Reliable Pump)
 │   │   │   ├── engine/engine.go           # Game Engine (Team No-FF, Lock-On, Saitama 1-Punch Target-Pick, Gojo Red+Blue->Hollow Purple & Infinite Void)
 │   │   │   ├── state/
-│   │   │   │   ├── characters.go          # 13 Characters (12 Public incl. noone Thanos & ko Zenitsu + 1 Admin Saitama), Role-Filtered JSON
-│   │   │   │   └── state.go               # Shibuya & Konoha MapConfig, RoomState, NetID Assign, 5-Skill Cooldowns & Infinity Stones
+│   │   │   │   ├── characters.go          # 20 Characters (19 Public incl. Jinwoo, Naruto, Sanji, Luffy, Ben10, Diablo + 1 Admin Saitama), 5 Archetypes
+│   │   │   │   └── state.go               # Shibuya, Konoha, Sisaket Island & Circular SCP Site-19 MapConfig, RoomState, Medkit Respawn Timers
 │   │   │   ├── sync/
 │   │   │   │   ├── sync.go                # sync.Pool Marshaling + Dual-Channel Binary/Reliable Synchronizer
 │   │   │   │   └── binary.go              # bin1 Binary Frame Codec (S_STATE_BINARY 0x10, S_PONG 0x11, C_INPUT..C_PING)
@@ -60,6 +60,8 @@ Game/
     │   ├── characters/                    # Local Anime Portraits (.png)
     │   ├── fx/
     │   │   ├── auth_gojo_sukuna_bg.jpg    # Mobile-Game Auth Key-Art Wallpaper (Gojo vs Sukuna)
+    │   │   ├── home_lobby_gojo_sukuna_bg.jpg # Full-Screen MLBB-Style Celestial Sanctuary Gojo vs Sukuna Home Wallpaper
+    │   │   ├── logo_gojo_sukuna.jpg       # Gojo vs Sukuna Metallic Gold & Navy MOBA Game Emblem & Favicon
     │   │   ├── saitama_dead.jpg           # Saitama Crimson Serious Fist Overlay Image
     │   │   └── iconic_domain_clash.jpg    # Gojo vs Sukuna 16:9 Domain Clash Splash Art
     │   ├── maps/
@@ -75,33 +77,44 @@ Game/
         │   ├── realtimeProtocol.ts        # Compact bin1 Little-Endian Binary Encoder/Decoder + EffectKinds Table
         │   └── realtimeTransport.ts       # Dual-Channel HTTP/3 WebTransport QUIC Client + <1.15s Binary WS Fallback
         ├── local-db/sqliteCache.ts        # Browser SQLite (sql.js + IndexedDB, Cache Only, cache_v11)
-        ├── store/useGameStore.ts          # Zustand Store (Auth, Pages & goBack() History, Match Preload State, 3v3 Lobby, Arena HUD)
-        ├── audio/soundEngine.ts           # Origin Character Voices (JP/EN MP3 + Preload Bytes), Arena BGM & Web Audio SFX
+        ├── store/useGameStore.ts          # Zustand Store (Auth, Pages & goBack() History, Match Preload State, 3v3 Lobby, Arena HUD, Voice Chat)
+        ├── audio/
+        │   ├── soundEngine.ts             # Origin Character Voices (JP/EN MP3 + Preload Bytes), Arena BGM & Web Audio SFX
+        │   └── voiceChatEngine.ts         # P2P WebRTC Room Voice Chat Engine (Mic/Speaker Toggle, VAD Speaking Indicator & ICE Signaling)
         ├── animations/gsapPresets.ts      # GSAP Motion Tokens & Showroom Carousel Swap
         ├── pages/
         │   ├── AuthPage.tsx               # Mobile-Game Auth Screen (Gojo vs Sukuna Wallpaper & Bottom-Right Beta Pill)
         │   ├── HomePage.tsx               # Step 1 Main Journey Hub (4-Step Map, Create vs Join 6-Digit Split, My Owned Roster Strip)
         │   ├── BattleSetupPage.tsx        # Step 2 Dedicated Full-Page Battlefield Setup Wizard (Mode + Map + Next-Step Guide)
+        │   ├── JoinHeroSelectPage.tsx     # Pre-Join Hero Selection Screen (Enter 6-Digit Room ID -> Join -> Pick Hero -> Enter Game)
         │   ├── HeroesPage.tsx             # My Owned Characters Gallery & Full Detail/Skill Inspector (No Pre-Match Equip Gate)
         │   └── RoomLobbyPage.tsx          # Step 3 2-Column Waiting Room (Team Roster + In-Room Hero Spotlight & Draft Picker)
         ├── components/
-        │   ├── ArenaHudPanels.tsx         # RoV/MLBB Dark-Metallic Top Scoreboard HUD & Proportional Skill Dock (incl. 5-Stone Snap Dock)
+        │   ├── ArenaHudPanels.tsx         # RoV/MLBB Dark-Metallic Top Scoreboard HUD & Proportional Skill Dock (incl. 5-Stone Snap Dock + Mic/Speaker)
+        │   ├── Hero3dPreview.tsx          # Interactive Three.js 3D Hero Preview Turntable (360° Drag-to-Spin + Live Idle/Companion Animations)
+        │   ├── HeroAimWheel.tsx           # Per-Hero Custom SVG Drag-to-Aim Wheel & Unique Crosshair Pip Overlay (14 Heroes)
         │   ├── IconicBgmPlayer.tsx        # Official YouTube IFrame Player (44pt8w67S8I) for ICONIC Mode + Offline Synth Fallback
-        │   ├── MobaSkillButton.tsx        # Memoized MOBA Drag/Hover Aim Skill Wheel Button (incl. Stone Lock Badge)
+        │   ├── MobaSkillButton.tsx        # Memoized MOBA Drag/Hover Aim Skill Wheel Button (incl. Stone Lock Badge & Custom Wheel)
         │   ├── CreateRoomModal.tsx        # Mode (ICONIC, 1v1, 3v3, Practice, FFA) & Map (Shibuya vs Konoha) Selector Modal
         │   └── BattleResultModal.tsx      # 1v1/ICONIC (5-Kill) & 3v3 (50-Kill / Thanos Snap) Victory/Defeat Post-Match Summary
+        ├── constants/
+        │   └── heroClasses.ts             # 5-Archetype Filter Metadata & Map Display Labels (Shibuya, Konoha, Sisaket Island, SCP Site)
         ├── game/
+        │   ├── adminAutoAi.ts             # Admin-Only Grandmaster Autonomous Combat AI (Dodge, Water-Avoid, SCP Medkit Seek, 20-Hero Combos)
         │   ├── core/eventBus.ts           # Typed React <-> 3D Scene EventBus (Init/Sync/Died/DomainClash/InfinitySnap)
-        │   ├── map3dBuilder.ts            # Three.js 3D Stylized Floor (Shibuya Scramble & Konoha Courtyard), Panorama, Ruins, Torii & Props
-        │   ├── hero3dBuilder.ts           # Three.js Articulated 3D Hero Rigs (13 Heroes incl. Slime/Stand Cat/Bone Throne/Gauntlet + Dummy)
-        │   ├── magicCircleBuilder.ts      # Procedural 512px Arcane Magic Circle & Rune Corridor Generator (13 Per-Hero Aim Sigils + Cancel)
+        │   ├── heroAimThemes.ts           # Per-Hero Unique 32x32 Custom Cursor & Corridors/Palettes Table (20 Heroes)
+        │   ├── map3dBuilder.ts            # Three.js 3D Maps (Shibuya, Konoha, Sisaket Ko Klang Nam, Circular SCP Site-19 + Cryo Pillars)
+        │   ├── hero3dBuilder.ts           # Three.js Articulated 3D Hero Rigs (20 Heroes incl. Naruto Kurama 9-Tail Transformation Rig + Dummy)
+        │   ├── magicCircleBuilder.ts      # Procedural 512px Arcane Magic Circle & Rune Corridor Generator (20 Per-Hero Aim Sigils + Cancel)
+        │   ├── pixelShaderPass.ts         # Single-Pass Client GPU 3D Pixel Art Shader (NearestFilter Target + Depth Outlines + Bayer 4x4 Dither)
         │   ├── vfx3dManager.ts            # Three.js Pooled 3D Slashes, Lightning, Afterimages, Smooth Projectiles, Material Pool & Magic Circle Aim
-        │   ├── Mlbb3dArenaView.tsx        # Three.js MLBB Isometric 3D Arena + RTT-Compensated Prediction/Reconciliation + Cached Minimap
+        │   ├── Mlbb3dArenaView.tsx        # Three.js MLBB Isometric 3D Arena + Client Pixel/HD Switch + RTT Prediction + Cached Minimap
         │   ├── ArenaScene.ts              # Legacy Phaser 2.5D Battlefield Reference
         │   ├── IconicArenaView.tsx        # Over-The-Shoulder 3D Perspective Shibuya Renderer (Gojo vs Sukuna)
         │   └── PhaserArenaView.tsx        # Mode-Aware Arena View Switcher (3D MLBB vs Iconic 3D OTS)
         ├── theme/tokens.css               # Design System Tokens (Bright Orbital 60-30-10, 8pt Grid)
         ├── styles/base.css                # Luminous Aero-Titanium Backing + Lobby Gradient Backdrop
         ├── styles/arena.css               # Auth/Home/Lobby + RoV HUD + Mobile Portrait & Landscape CSS
+        ├── styles/mlbb-theme.css          # INFINITY CLASH Dark Royal-Blue AAA MOBA Theme (MLBB Home, VS Banner Lobby, 3D Hero Turntable)
         └── App.tsx                        # Multi-Page Router, Dynamic Joystick Math & Fullscreen Landscape Helper
 ```

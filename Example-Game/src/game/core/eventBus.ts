@@ -64,6 +64,7 @@ export interface AimPreviewPayload {
   aoeRadius: number
   aimType: SkillAimType
   cancel: boolean
+  chargeRatio?: number
 }
 
 type Listener<T> = (payload: T) => void

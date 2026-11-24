@@ -477,7 +477,7 @@ func (r *Room) run() {
 				for _, p := range r.state.Players {
 					if p.IsDummy {
 						if !p.Alive && !p.RespawnAt.IsZero() && !now.Before(p.RespawnAt) {
-							resetPracticeDummy(p)
+							resetPracticeDummy(p, r.state.MapID)
 							changed = true
 						} else if p.Alive && p.HP < p.MaxHP && !p.LastHitAt.IsZero() && now.Sub(p.LastHitAt) >= dummyHealIdle {
 							p.HP = p.MaxHP
@@ -502,13 +502,16 @@ func (r *Room) run() {
 				projMoved, projHits := r.engine.StepProjectiles(r.state, dt, now)
 				zoneChanged, zoneHits := r.engine.StepZones(r.state, dt, now)
 				beamChanged := r.engine.StepBeams(r.state, dt)
+				waterChanged, waterHits := r.engine.StepWaterHazard(r.state, now)
+				pickupChanged := r.engine.StepMapPickups(r.state, now)
 				r.touchDamagedDummies(dummyBefore, now)
 
-				if projMoved || zoneChanged || beamChanged || len(projHits) > 0 || len(zoneHits) > 0 {
+				if projMoved || zoneChanged || beamChanged || waterChanged || pickupChanged || len(projHits) > 0 || len(zoneHits) > 0 || len(waterHits) > 0 {
 					changed = true
 				}
 
 				allHits := append(projHits, zoneHits...)
+				allHits = append(allHits, waterHits...)
 				r.emitHits(allHits, now)
 
 				// Ensure final 0ms expiration frame ALWAYS broadcasts even if no players move (fixes 0.1s stall).
@@ -618,14 +621,24 @@ func (r *Room) finishMatch(winnerTeam string, now time.Time) {
 	})
 }
 
+func practicePlayerSpawn(mapID string) (float64, float64) {
+	if mapID == state.MapSisaket {
+		return 1320, 1060
+	}
+	if mapID == state.MapSCP {
+		return 1320, 900
+	}
+	return 1480, 900
+}
+
 func (r *Room) respawnPlayer(p *state.PlayerState, now time.Time) {
 	if p.IsDummy {
-		resetPracticeDummy(p)
+		resetPracticeDummy(p, r.state.MapID)
 		return
 	}
 	x, y := r.engine.SpawnPositionForTeam(r.state, p.Team)
 	if r.state.Mode == state.ModePractice {
-		x, y = 1480, 900
+		x, y = practicePlayerSpawn(r.state.MapID)
 	}
 	charDef := state.GetCharacter(p.CharacterID)
 	p.X = x
@@ -648,6 +661,7 @@ func (r *Room) respawnPlayer(p *state.PlayerState, now time.Time) {
 	p.AttackUntil = time.Time{}
 	p.DashUntil = time.Time{}
 	p.RctUntil = time.Time{}
+	p.WaterTickUntil = time.Time{}
 	p.SnapUntil = time.Time{}
 	r.engine.InitHeroState(p)
 	if r.state.Mode == state.ModePractice {
@@ -726,6 +740,15 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		nextMapID := state.NormalizeMapID(cmd.msg.MapID)
 		r.state.MapID = nextMapID
 		r.state.Map = state.MapConfigFor(nextMapID)
+		for _, member := range r.state.Players {
+			if member.IsDummy {
+				resetPracticeDummy(member, nextMapID)
+			} else if r.state.Mode == state.ModePractice {
+				member.X, member.Y = practicePlayerSpawn(nextMapID)
+			} else {
+				member.X, member.Y = r.engine.SpawnPositionForTeam(r.state, member.Team)
+			}
+		}
 		r.refreshSummary()
 		if len(r.sessions) > 0 {
 			r.syncer.BroadcastRoomConfig(r.receivers(), r.state, now)
@@ -799,7 +822,7 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		}
 		for _, member := range r.state.Players {
 			if member.IsDummy {
-				resetPracticeDummy(member)
+				resetPracticeDummy(member, r.state.MapID)
 				continue
 			}
 			member.Kills = 0
@@ -885,9 +908,10 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		p.SnapUntil = time.Time{}
 		p.AttackUntil = time.Time{}
 		p.DashUntil = time.Time{}
+		p.WaterTickUntil = time.Time{}
 		for _, member := range r.state.Players {
 			if member.IsDummy {
-				resetPracticeDummy(member)
+				resetPracticeDummy(member, r.state.MapID)
 			}
 		}
 		if len(r.sessions) > 0 {
@@ -1032,6 +1056,36 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		if len(r.sessions) > 0 {
 			r.syncer.BroadcastPlayerEmote(r.receivers(), p.ID, cmd.msg.Emote)
 		}
+
+	case "voice_signal":
+		if len(cmd.msg.SDP) > 24576 || len(cmd.msg.Candidate) > 4096 || len(cmd.msg.AudioChunk) > 32768 {
+			return
+		}
+		vMsg := gamesync.VoiceSignalMessage{
+			FromID:     p.ID,
+			FromName:   p.Name,
+			TargetID:   cmd.msg.TargetID,
+			SignalType: cmd.msg.SignalType,
+			SDP:        cmd.msg.SDP,
+			Candidate:  cmd.msg.Candidate,
+			MicOn:      cmd.msg.MicOn,
+			SpeakerOn:  cmd.msg.SpeakerOn,
+			Speaking:   cmd.msg.Speaking,
+			AudioChunk: cmd.msg.AudioChunk,
+		}
+		if cmd.msg.TargetID != "" {
+			if targetSess, exists := r.sessions[cmd.msg.TargetID]; exists {
+				r.syncer.SendVoiceSignal(targetSess, vMsg)
+			}
+			return
+		}
+		excludeSessID := ""
+		if senderSess, exists := r.sessions[p.ID]; exists {
+			excludeSessID = senderSess.ID()
+		}
+		if len(r.sessions) > 0 {
+			r.syncer.BroadcastVoiceSignal(r.receivers(), vMsg, excludeSessID)
+		}
 	}
 }
 
@@ -1107,7 +1161,7 @@ func (r *Room) handleJoin(req joinRequest, idleTimer *time.Timer) {
 	r.slotSeq++
 	x, y := r.engine.SpawnPositionForTeam(r.state, team)
 	if r.state.Mode == state.ModePractice {
-		x, y = 1480, 900
+		x, y = practicePlayerSpawn(r.state.MapID)
 	}
 	aimDX := 1.0
 	if r.state.Mode == state.ModeIconic && team == state.TeamRed {
@@ -1275,18 +1329,37 @@ func (r *Room) touchDamagedDummies(before map[string]int, now time.Time) {
 	}
 }
 
+func practiceDummyCoords(id, mapID string) (float64, float64) {
+	if mapID == state.MapSisaket {
+		if id == "dummy-far" {
+			return 1740, 1060
+		}
+		return 1560, 1060
+	}
+	if mapID == state.MapSCP {
+		if id == "dummy-far" {
+			return 1740, 900
+		}
+		return 1560, 900
+	}
+	if id == "dummy-far" {
+		return 1920, 900
+	}
+	return 1730, 900
+}
+
 func seedPracticeDummies(rs *state.RoomState) {
 	dummies := []struct {
 		id    string
 		name  string
-		x     float64
 		color string
 		acc   string
 	}{
-		{"dummy-near", "🎯 หุ่นทดสอบ (ใกล้)", 1730, "#F59E0B", "#FEF08A"},
-		{"dummy-far", "🎯 หุ่นทดสอบ (ไกล)", 1920, "#38BDF8", "#E0F2FE"},
+		{"dummy-near", "🎯 หุ่นทดสอบ (ใกล้)", "#F59E0B", "#FEF08A"},
+		{"dummy-far", "🎯 หุ่นทดสอบ (ไกล)", "#38BDF8", "#E0F2FE"},
 	}
 	for _, dm := range dummies {
+		dx, dy := practiceDummyCoords(dm.id, rs.MapID)
 		p := &state.PlayerState{
 			ID:            dm.id,
 			Name:          dm.name,
@@ -1294,8 +1367,8 @@ func seedPracticeDummies(rs *state.RoomState) {
 			CharacterName: "Training Dummy",
 			Team:          "dummy",
 			IsDummy:       true,
-			X:             dm.x,
-			Y:             900,
+			X:             dx,
+			Y:             dy,
 			Color:         dm.color,
 			AccentColor:   dm.acc,
 			HP:            1000,
@@ -1309,13 +1382,10 @@ func seedPracticeDummies(rs *state.RoomState) {
 	}
 }
 
-func resetPracticeDummy(p *state.PlayerState) {
-	x := 1730.0
-	if p.ID == "dummy-far" {
-		x = 1920.0
-	}
+func resetPracticeDummy(p *state.PlayerState, mapID string) {
+	x, y := practiceDummyCoords(p.ID, mapID)
 	p.X = x
-	p.Y = 900
+	p.Y = y
 	p.HP = 1000
 	p.MaxHP = 1000
 	p.Alive = true

@@ -1,23 +1,23 @@
 {
-  "name": "PulseArena — Multiplayer Sandbox",
-  "short_name": "PulseArena",
-  "description": "Real-time 60Hz Server-Authoritative Multiplayer Arena powered by Go, WebSocket & SQLite",
+  "name": "INFINITY CLASH — Anime Multiverse 3D MOBA",
+  "short_name": "Infinity Clash",
+  "description": "Real-time 60Hz Server-Authoritative 3D Anime MOBA Arena powered by Go, WebTransport & Three.js",
   "start_url": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#F5F5F7",
-  "theme_color": "#0071E3",
+  "background_color": "#071126",
+  "theme_color": "#071126",
   "icons": [
     {
-      "src": "/app-icon.png?v=20261120v2",
+      "src": "/fx/logo_gojo_sukuna.jpg",
       "sizes": "512x512",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     },
     {
-      "src": "/app-icon.png?v=20261120v2",
+      "src": "/fx/logo_gojo_sukuna.jpg",
       "sizes": "192x192",
-      "type": "image/png",
+      "type": "image/jpeg",
       "purpose": "any"
     }
   ]

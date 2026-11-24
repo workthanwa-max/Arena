@@ -114,6 +114,21 @@ type DomainClashMessage struct {
 	Y          float64 `json:"y"`
 }
 
+// VoiceSignalMessage relays WebRTC offer/answer/ICE candidates, mic/speaker state, or fallback voice chunks between peers in the same room.
+type VoiceSignalMessage struct {
+	Type       string `json:"type"`
+	FromID     string `json:"fromId"`
+	FromName   string `json:"fromName"`
+	TargetID   string `json:"targetId,omitempty"`
+	SignalType string `json:"signalType"`
+	SDP        string `json:"sdp,omitempty"`
+	Candidate  string `json:"candidate,omitempty"`
+	MicOn      bool   `json:"micOn"`
+	SpeakerOn  bool   `json:"speakerOn"`
+	Speaking   bool   `json:"speaking"`
+	AudioChunk string `json:"audioChunk,omitempty"`
+}
+
 // ErrorMessage delivers structured error feedback over WebSocket.
 type ErrorMessage struct {
 	Type    string `json:"type"`
@@ -367,6 +382,29 @@ func (s *Synchronizer) BroadcastInfinitySnap(receivers []ClientReceiver, msg Inf
 		return
 	}
 	for _, r := range receivers {
+		r.TrySend(data)
+	}
+}
+
+// SendVoiceSignal delivers a targeted WebRTC offer/answer/ICE candidate to a specific peer in the room.
+func (s *Synchronizer) SendVoiceSignal(target ClientReceiver, msg VoiceSignalMessage) {
+	msg.Type = "voice_signal"
+	if data, ok := s.marshalFrame(msg); ok {
+		target.TrySend(data)
+	}
+}
+
+// BroadcastVoiceSignal broadcasts a player's voice state (mic/speaker/speaking) or audio frame to all other room peers.
+func (s *Synchronizer) BroadcastVoiceSignal(receivers []ClientReceiver, msg VoiceSignalMessage, excludeSessionID string) {
+	msg.Type = "voice_signal"
+	data, ok := s.marshalFrame(msg)
+	if !ok {
+		return
+	}
+	for _, r := range receivers {
+		if r.ID() == excludeSessionID {
+			continue
+		}
 		r.TrySend(data)
 	}
 }
