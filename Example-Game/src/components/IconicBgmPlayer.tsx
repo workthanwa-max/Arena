@@ -1,4 +1,5 @@
 import { memo, useEffect, useRef, useState } from 'react'
+import { IconMusic, IconPlay } from './Icons'
 
 const ICONIC_YT_VIDEO_ID = '44pt8w67S8I'
 
@@ -292,19 +293,22 @@ export const IconicBgmPlayer = memo(function IconicBgmPlayer({
     >
       <div className="iconic-yt-controls">
         {status === 'needs_tap' && !muted ? (
-          <button type="button" className="iconic-yt-pill pulse" onClick={handleTapUnlock}>
-            ▶ แตะเปิดเพลง Judas (YouTube)
+          <button type="button" className="iconic-yt-pill pulse" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }} onClick={handleTapUnlock}>
+            <IconPlay size={11} /> <span>แตะเปิดเพลง Judas (YouTube)</span>
           </button>
         ) : status === 'fallback' ? (
-          <span className="iconic-yt-pill">🎵 Iconic Synth BGM</span>
+          <span className="iconic-yt-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <IconMusic size={12} /> Iconic Synth BGM
+          </span>
         ) : (
           <button
             type="button"
             className="iconic-yt-pill"
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}
             onClick={() => setExpanded((v) => !v)}
             title="ซ่อน/แสดงจอวิดีโอ YouTube (Judas - Gojo vs Sukuna)"
           >
-            {muted ? '🎵 เพลงปิดอยู่' : '♪ YouTube: Judas'} {expanded ? '▾' : '▸'}
+            <IconMusic size={12} /> <span>{muted ? 'เพลงปิดอยู่' : 'YouTube: Judas'}</span> <span>{expanded ? '▾' : '▸'}</span>
           </button>
         )}
       </div>

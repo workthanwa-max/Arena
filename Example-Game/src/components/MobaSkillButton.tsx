@@ -3,6 +3,7 @@ import { gameEventBus } from '../game/core/eventBus'
 import { getSimoLiveAimDirection, setSimoSnipeCharging } from '../store/useGameStore'
 import type { SkillAimType } from '../types/game'
 import { HeroAimWheel } from './HeroAimWheel'
+import { EmblemLock } from './HeroClassEmblem'
 
 export interface SkillAimTrigger {
   dirX?: number
@@ -73,7 +74,7 @@ export const MobaSkillButton = memo(function MobaSkillButton({
   cooldownMs,
   disabled,
   locked = false,
-  lockBadge = '🔒',
+  lockBadge,
   accentColor,
   slotClass,
   castRange = 360,
@@ -474,11 +475,11 @@ export const MobaSkillButton = memo(function MobaSkillButton({
         <img src={iconUrl} alt={label} className="moba-skill-art" draggable={false} />
         <span className="moba-skill-scrim" />
         {locked ? (
-          <span className="moba-skill-lock-badge">{lockBadge}</span>
+          <span className="moba-skill-lock-badge">{lockBadge ?? <EmblemLock size={14} />}</span>
         ) : onCooldown ? (
           <span className="moba-skill-cd-badge">{(cooldownMs / 1000).toFixed(1)}s</span>
         ) : dragState.active && chargeDurationMs ? (
-          <span className="moba-skill-cd-badge">{chargePct >= 95 ? '🎯 100%' : `${chargePct}%`}</span>
+          <span className="moba-skill-cd-badge">{chargePct >= 95 ? 'MAX' : `${chargePct}%`}</span>
         ) : (
           <span className="moba-skill-key-badge">{keyHint}</span>
         )}

@@ -3,7 +3,10 @@ import { animateSpringPop } from './animations/gsapPresets'
 import { soundEngine } from './audio/soundEngine'
 import { ArenaSkillDock, ArenaTopBar } from './components/ArenaHudPanels'
 import { BattleResultModal } from './components/BattleResultModal'
+import { EmblemBolt, EmblemShield } from './components/HeroClassEmblem'
 import { IconicBgmPlayer } from './components/IconicBgmPlayer'
+import { IconClose, IconSwords } from './components/Icons'
+import { getMapDisplayLabel } from './constants/heroClasses'
 import { adminAutoAi } from './game/adminAutoAi'
 import { gameEventBus } from './game/core/eventBus'
 import { PhaserArenaView } from './game/PhaserArenaView'
@@ -602,7 +605,7 @@ export function App() {
           </div>
           {loadingPhase === 'entering' && connected && (
             <div className="pls-progress-meta">
-              <span>{roomMapId === 'konoha' ? '🍃 หมู่บ้านโคโนฮะ' : '🏙️ ชิบูย่า'}</span>
+              <span>{getMapDisplayLabel(roomMapId, roomMode === 'iconic')}</span>
               <strong>{assetsReady ? '100%' : `${preloadProgress}%`}</strong>
             </div>
           )}
@@ -634,7 +637,7 @@ export function App() {
 
           {isPortraitMobile && !rotateHintDismissed && (
             <div className="mobile-rotate-pill">
-              <span>📱 แนะนำหมุนจอแนวนอน</span>
+              <span>แนะนำหมุนจอแนวนอน</span>
               <button
                 type="button"
                 className="rov-icon-btn"
@@ -649,9 +652,10 @@ export function App() {
               <button
                 type="button"
                 className="btn-pill secondary compact"
+                aria-label="ซ่อนคำแนะนำ"
                 onClick={() => setRotateHintDismissed(true)}
               >
-                ✕
+                <IconClose size={12} />
               </button>
             </div>
           )}
@@ -684,7 +688,7 @@ export function App() {
             <div className="infinite-void-overlay" aria-live="polite">
               <div className="void-cosmos-ring" />
               <div className="void-status-banner">
-                👁️ พรมแดนไร้ขีดจำกัด (Infinite Void) • ถูกดึงสู่อีกมิติ ขยับไม่ได้!
+                พรมแดนไร้ขีดจำกัด (Infinite Void) • ถูกดึงสู่อีกมิติ ขยับไม่ได้!
               </div>
             </div>
           )}
@@ -693,7 +697,7 @@ export function App() {
             <div className="thanos-snap-overlay" role="status" aria-live="assertive">
               <div className="thanos-snap-card">
                 <img src="/skills/noone_snap.png" alt="Infinity Snap" className="thanos-snap-emblem" />
-                <div className="thanos-snap-title">🫰 INFINITY SNAP!</div>
+                <div className="thanos-snap-title">INFINITY SNAP!</div>
                 <div className="thanos-snap-sub">
                   {snapOverlay.instantWin ? (
                     <>
@@ -737,7 +741,7 @@ export function App() {
             >
               {saitamaOverlay.blocked ? (
                 <div className="saitama-blocked-card">
-                  <div className="saitama-blocked-icon">🛡️</div>
+                  <div className="saitama-blocked-icon"><EmblemShield size={28} /></div>
                   <div className="saitama-blocked-title">อมตะป้องกันสำเร็จ!</div>
                   <div className="saitama-blocked-sub">
                     รอดพ้นหมัดเอาจริงของ <strong>{saitamaOverlay.attackerName}</strong>
@@ -795,7 +799,7 @@ export function App() {
                       {myRespawnInMs > 0 ? (
                         <span className="death-countdown-num">{secLeft}</span>
                       ) : (
-                        <span className="death-ready-icon">⚡</span>
+                        <span className="death-ready-icon"><EmblemBolt size={18} /></span>
                       )}
                     </div>
                   </div>
@@ -806,7 +810,7 @@ export function App() {
                     {killerThumb ? (
                       <img src={killerThumb} alt={killedBy} className="death-killer-avatar" />
                     ) : (
-                      <span className="death-killer-dot">⚔️</span>
+                      <span className="death-killer-dot"><IconSwords size={15} /></span>
                     )}
                     <span>
                       ถูกกำจัดโดย <strong>{killedBy || 'คู่ต่อสู้'}</strong>
@@ -818,11 +822,12 @@ export function App() {
                       <div className="death-progress-track">
                         <div className="death-progress-bar" style={{ width: `${ringPct * 100}%` }} />
                       </div>
-                      <span className="death-wait-text">⏳ รอเกิดใหม่ {secLeft} วินาที...</span>
+                      <span className="death-wait-text">รอเกิดใหม่ {secLeft} วินาที...</span>
                     </div>
                   ) : (
-                    <button type="button" className="death-respawn-btn" onClick={sendRespawn}>
-                      ⚡ กดเกิดใหม่ทันที
+                    <button type="button" className="death-respawn-btn" onClick={sendRespawn} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                      <EmblemBolt size={15} />
+                      <span>กดเกิดใหม่ทันที</span>
                     </button>
                   )}
                 </div>

@@ -1,12 +1,21 @@
 :root {
-  /* Twilight Sky-Slate Palette — Open, Breathable, Modern MOBA (60-30-10) */
-  --bg-canvas: #0b1426;
-  --bg-sky: #1c355e;
-  --bg-surface: rgba(15, 27, 51, 0.72);
-  --bg-surface-solid: #0f1b33;
-  --bg-elevated: rgba(21, 37, 68, 0.88);
-  --bg-inset: rgba(9, 17, 34, 0.66);
-  --bg-inset-subtle: rgba(30, 50, 88, 0.42);
+  /* Abyssal Cobalt Tactical Shield Palette — Reference Pattern Inspired (60-30-10) */
+  --bg-canvas: #060b16;
+  --bg-sky: #0d1b38;
+  --bg-surface: rgba(10, 19, 39, 0.80);
+  --bg-surface-solid: #0a1327;
+  --bg-elevated: rgba(15, 29, 58, 0.92);
+  --bg-inset: rgba(5, 10, 22, 0.74);
+  --bg-inset-subtle: rgba(24, 44, 86, 0.44);
+
+  /* Accent Tokens — Crimson Tactics CTA, Cobalt Glow & Honor Gold */
+  --accent-crimson: #ff4655;
+  --accent-crimson-hover: #e11d48;
+  --accent-crimson-soft: rgba(255, 70, 85, 0.16);
+  --banner-cream: #f4f1ea;
+  --banner-cream-warm: #fef9c3;
+  --banner-cream-ink: #0f172a;
+  --tactical-navy-border: rgba(125, 211, 252, 0.24);
 
   /* Typography Contrast (WCAG AA/AAA) */
   --text-primary: #f1f5f9;

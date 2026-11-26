@@ -22,10 +22,10 @@ export function BattleResultModal() {
   const winnerSidePlayer = roster.find((p) => p.team === winnerTeam)
   const winnerLabel =
     roomMode === 'iconic'
-      ? `⚡ ${winnerSidePlayer?.name ?? winnerTeam} (${winnerSidePlayer?.characterName ?? 'ผู้ชนะ'}) คว้าชัย ICONIC ครบ ${goal} Kills!`
+      ? `${winnerSidePlayer?.name ?? winnerTeam} (${winnerSidePlayer?.characterName ?? 'ผู้ชนะ'}) คว้าชัย ICONIC ครบ ${goal} Kills`
       : roomMode === 'duel_1v1'
-        ? `${winnerSidePlayer?.name ?? (winnerTeam === 'blue' ? 'ผู้ท้าชิง 1' : 'ผู้ท้าชิง 2')} คว้าชัย 1v1 ครบ ${goal} Kills!`
-        : `${winnerTeam === 'blue' ? 'ทีมสีน้ำเงิน (BLUE TEAM)' : 'ทีมสีแดง (RED TEAM)'} คว้าชัยครบ ${goal} Kills!`
+        ? `${winnerSidePlayer?.name ?? (winnerTeam === 'blue' ? 'ผู้ท้าชิง 1' : 'ผู้ท้าชิง 2')} คว้าชัย 1v1 ครบ ${goal} Kills`
+        : `${winnerTeam === 'blue' ? 'ทีมสีน้ำเงิน (BLUE TEAM)' : 'ทีมสีแดง (RED TEAM)'} คว้าชัยครบ ${goal} Kills`
 
   return (
     <div className="death-overlay" role="dialog" aria-modal="true" aria-label="สรุปผลคะแนนการแข่งขัน">

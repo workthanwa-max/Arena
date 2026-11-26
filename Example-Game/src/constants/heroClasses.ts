@@ -18,7 +18,7 @@ export interface HeroClassMeta {
 export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   {
     id: 'all',
-    icon: '✦',
+    icon: '',
     name: 'ทั้งหมด',
     shortName: 'ทั้งหมด',
     color: '#38BDF8',
@@ -26,7 +26,7 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   },
   {
     id: 'sovereign',
-    icon: '👑',
+    icon: '',
     name: 'ราชันย์อาณาเขต',
     shortName: 'อาณาเขต',
     color: '#A855F7',
@@ -34,7 +34,7 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   },
   {
     id: 'chronos',
-    icon: '⚡',
+    icon: '',
     name: 'ผู้แหวกมิติเวลา',
     shortName: 'มิติเวลา',
     color: '#FACC15',
@@ -42,7 +42,7 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   },
   {
     id: 'deadeye',
-    icon: '🎯',
+    icon: '',
     name: 'เพชฌฆาตเส้นเล็ง',
     shortName: 'เส้นเล็ง',
     color: '#38BDF8',
@@ -50,7 +50,7 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   },
   {
     id: 'vanguard',
-    icon: '🔥',
+    icon: '',
     name: 'ผู้ทลายขีดจำกัด',
     shortName: 'ขีดจำกัด',
     color: '#10B981',
@@ -58,7 +58,7 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
   },
   {
     id: 'cataclysm',
-    icon: '💎',
+    icon: '',
     name: 'ผู้กุมชะตาโลก',
     shortName: 'ชะตาโลก',
     color: '#F43F5E',
@@ -67,9 +67,9 @@ export const HERO_CLASS_FILTERS: HeroClassMeta[] = [
 ]
 
 export function getMapDisplayLabel(mapId: MapId | undefined, isIconic = false): string {
-  if (isIconic || mapId === 'shibuya') return '🏙️ ชิบูย่า'
-  if (mapId === 'sisaket_island') return '🏝️ เกาะกลางน้ำ ศรีสะเกษ'
-  if (mapId === 'scp_site') return '🧪 สถานีวิจัย SCP'
-  if (mapId === 'konoha') return '🍃 โคโนฮะ'
-  return '🏙️ ชิบูย่า'
+  if (isIconic || mapId === 'shibuya') return 'ชิบูย่า (Shibuya)'
+  if (mapId === 'sisaket_island') return 'เกาะกลางน้ำ ศรีสะเกษ'
+  if (mapId === 'scp_site') return 'สถานีวิจัย SCP'
+  if (mapId === 'konoha') return 'หมู่บ้านโคโนฮะ'
+  return 'ชิบูย่า (Shibuya)'
 }

@@ -3,6 +3,7 @@ import { getBasicAttackRange, isTeamMatchMode, useGameStore } from '../store/use
 import type { PlayerState } from '../types/game'
 import {
   IconBot,
+  IconClose,
   IconCopy,
   IconFullscreen,
   IconHeadphones,
@@ -11,8 +12,10 @@ import {
   IconMusic,
   IconSettings,
   IconSparkles,
+  IconTarget,
   IconVolume,
 } from './Icons'
+import { EmblemShield } from './HeroClassEmblem'
 import { MobaSkillButton } from './MobaSkillButton'
 
 function formatClock(totalSec: number): string {
@@ -193,7 +196,7 @@ export const ArenaTopBar = memo(function ArenaTopBar({
       <div
         key={p.id}
         className={`rov-hero-pip ${side} ${isMe ? 'me' : ''} ${p.alive ? 'alive' : 'dead'} ${isSpeaking ? 'voice-speaking' : ''}`}
-        title={`${p.name} (${p.characterName}) • K:${p.kills}${vState?.micOn ? ' • 🎙️ เปิดไมค์' : ''}`}
+        title={`${p.name} (${p.characterName}) • K:${p.kills}${vState?.micOn ? ' • เปิดไมค์' : ''}`}
       >
         <img src={getHeroThumb(p.characterId)} alt={p.name} className="rov-hero-thumb" />
         <div className="rov-mini-hp-track">
@@ -201,12 +204,12 @@ export const ArenaTopBar = memo(function ArenaTopBar({
         </div>
         {vState?.micOn && (
           <span className={`rov-voice-pip ${isSpeaking ? 'speaking' : ''}`} aria-hidden="true">
-            🎙️
+            <IconMic size={10} />
           </span>
         )}
         {!p.alive && (
           <span className="rov-dead-cd">
-            {p.respawnInMs && p.respawnInMs > 0 ? Math.ceil(p.respawnInMs / 1000) : '✕'}
+            {p.respawnInMs && p.respawnInMs > 0 ? Math.ceil(p.respawnInMs / 1000) : <IconClose size={10} />}
           </span>
         )}
         {side === 'ffa' && <span className="rov-ffa-k">{p.kills}</span>}
@@ -594,8 +597,9 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
       )}
       {isSaitama && myAlive && (
         <div className="saitama-target-strip" role="group" aria-label="เลือกเป้าหมายหมัดเอาจริง">
-          <div className="saitama-strip-label">
-            👊 เลือกเป้าหมายปลิดชีพ ({punchCdMs > 0 ? `รอ ${(punchCdMs / 1000).toFixed(1)}วิ` : 'พร้อมต่อย'})
+          <div className="saitama-strip-label" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <IconTarget size={13} />
+            <span>เลือกเป้าหมายปลิดชีพ ({punchCdMs > 0 ? `รอ ${(punchCdMs / 1000).toFixed(1)}วิ` : 'พร้อมต่อย'})</span>
           </div>
           <div className="saitama-strip-list">
             {livingEnemies.length === 0 ? (
@@ -617,8 +621,8 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
                     alt={enemy.name}
                     className="saitama-target-thumb"
                   />
-                  <span className="saitama-target-name">
-                    {enemy.invulnerable ? '🛡️ ' : ''}
+                  <span className="saitama-target-name" style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {enemy.invulnerable ? <EmblemShield size={11} /> : null}
                     {enemy.name}
                   </span>
                 </button>
@@ -707,7 +711,6 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
               cooldownMs={myCooldowns[sk.slot - 1] ?? 0}
               disabled={!myAlive || isStoneLocked}
               locked={isStoneLocked}
-              lockBadge="🔒"
               accentColor={
                 isNarutoKurama
                   ? '#A855F7'

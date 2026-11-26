@@ -9,8 +9,9 @@
   min-height: 100dvh;
   width: 100%;
   background:
-    radial-gradient(ellipse 75% 55% at 22% 35%, rgba(56, 189, 248, 0.16), transparent 68%),
-    linear-gradient(135deg, #162a4d 0%, #0f1d38 45%, #091224 100%);
+    radial-gradient(ellipse 68% 58% at 50% 44%, rgba(37, 99, 235, 0.24), transparent 68%),
+    radial-gradient(ellipse 52% 45% at 50% 78%, rgba(56, 189, 248, 0.14), transparent 70%),
+    linear-gradient(160deg, #09152c 0%, #060b16 58%, #040812 100%);
   color: var(--text-primary);
   padding: max(14px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right))
     max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
@@ -1551,5 +1552,1071 @@
   .rov-right-cluster {
     order: 3;
     width: auto !important;
+  }
+}
+
+
+/* ============================================================================
+   TACTICAL COBALT SHIELD LOBBY SYSTEM (.val-*)
+   Inspired by Valorant Tactical Lobby + ArenaVV Live 3D/2D Hero Roster
+   ============================================================================ */
+
+.val-page {
+  position: relative;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background:
+    radial-gradient(ellipse 64% 52% at 50% 48%, rgba(37, 99, 235, 0.34) 0%, rgba(14, 116, 144, 0.14) 38%, transparent 72%),
+    radial-gradient(ellipse 90% 45% at 50% 100%, rgba(15, 23, 42, 0.92), transparent 72%),
+    linear-gradient(180deg, #050a14 0%, #09142b 52%, #060c1a 100%);
+  color: var(--text-primary);
+}
+
+/* Faint atmospheric tactical horizon line behind banners */
+.val-page::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(6, 11, 22, 0.85) 0%, transparent 18%, transparent 82%, rgba(6, 11, 22, 0.85) 100%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(125, 211, 252, 0.025) 0px,
+      rgba(125, 211, 252, 0.025) 1px,
+      transparent 1px,
+      transparent 44px
+    );
+  z-index: 0;
+}
+
+.val-stage {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
+}
+
+/* 1. TOP TACTICAL HEADER BAR (48px) */
+.val-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px max(16px, env(safe-area-inset-right)) 6px max(16px, env(safe-area-inset-left));
+  background: linear-gradient(180deg, rgba(5, 10, 22, 0.94) 0%, rgba(8, 16, 34, 0.86) 100%);
+  border-bottom: 1px solid rgba(148, 197, 255, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* Top-bar inline Graphics selector dropdown */
+.val-gfx-anchor {
+  position: relative;
+}
+
+.val-gfx-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  z-index: 60;
+  width: 248px;
+  padding: 8px;
+  border-radius: 10px;
+  background: rgba(7, 14, 30, 0.96);
+  border: 1px solid rgba(125, 211, 252, 0.32);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.val-gfx-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 10px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: rgba(15, 29, 58, 0.45);
+  color: #e2e8f0;
+  text-align: left;
+  cursor: pointer;
+  transition: all 130ms ease;
+}
+
+.val-gfx-option:hover {
+  background: rgba(30, 58, 110, 0.72);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+
+.val-gfx-option.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.val-gfx-opt-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.val-gfx-opt-hint {
+  font-size: 10.5px;
+  color: rgba(186, 230, 253, 0.72);
+}
+
+.val-top-left,
+.val-top-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.val-top-left {
+  justify-content: flex-start;
+}
+
+.val-top-right {
+  justify-content: flex-end;
+}
+
+.val-brand-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid rgba(148, 197, 255, 0.16);
+  background: rgba(15, 29, 58, 0.56);
+  color: var(--text-primary);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.val-brand-link:hover {
+  background: rgba(30, 58, 110, 0.72);
+  border-color: rgba(125, 211, 252, 0.42);
+}
+
+.val-nav-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(226, 232, 240, 0.78);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 140ms ease, background 140ms ease, border-color 140ms ease;
+}
+
+.val-nav-icon-btn:hover {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(125, 211, 252, 0.25);
+}
+
+.val-nav-icon-btn.active {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.36);
+}
+
+.val-nav-icon-btn.danger:hover {
+  color: #fda4af;
+  background: rgba(244, 63, 94, 0.16);
+  border-color: rgba(244, 63, 94, 0.35);
+}
+
+/* Center Trapezoid PLAY CTA */
+.val-play-trapezoid {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 146px;
+  padding: 0 28px;
+  margin-bottom: -4px;
+  border: none;
+  background: linear-gradient(180deg, #334155 0%, #1e293b 100%);
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 88% 100%, 12% 100%);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.55);
+  transition: transform 140ms ease, background 140ms ease;
+}
+
+.val-play-trapezoid.crimson {
+  background: linear-gradient(180deg, #ff4655 0%, #be123c 100%);
+  color: #ffffff;
+}
+
+.val-play-trapezoid:hover:not(:disabled) {
+  transform: translateY(1px);
+  filter: brightness(1.08);
+}
+
+.val-play-trapezoid:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 2. MODE TAB STRIP (Horizontal with Active Bottom Underline) */
+.val-mode-bar-wrap {
+  position: relative;
+  z-index: 15;
+  width: min(1040px, calc(100% - 28px));
+  margin: 8px auto 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.val-mode-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  width: 100%;
+  border-bottom: 1px solid rgba(148, 197, 255, 0.14);
+}
+
+.val-mode-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px 10px;
+  border: none;
+  background: transparent;
+  color: rgba(203, 213, 225, 0.72);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 140ms ease;
+}
+
+.val-mode-tab:hover {
+  color: #f8fafc;
+}
+
+.val-mode-tab.active {
+  color: #ffffff;
+}
+
+.val-mode-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #38bdf8, #facc15);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.75);
+}
+
+.val-mode-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.14);
+  color: #7dd3fc;
+}
+
+.val-map-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.val-map-pill {
+  height: 26px;
+  padding: 0 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 197, 255, 0.2);
+  background: rgba(9, 17, 34, 0.7);
+  color: rgba(203, 213, 225, 0.85);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.val-map-pill:hover:not(:disabled) {
+  border-color: rgba(125, 211, 252, 0.5);
+  color: #ffffff;
+}
+
+.val-map-pill.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+}
+
+.val-map-pill:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* 3. CENTERPIECE: VERTICAL PENTAGON SHIELD BANNER DECK */
+.val-banner-deck {
+  position: relative;
+  z-index: 10;
+  width: min(1120px, calc(100% - 24px));
+  margin: 10px auto;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 14px;
+}
+
+.val-banner-col {
+  flex: 1 1 0;
+  max-width: 178px;
+  min-width: 122px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: transform 180ms ease;
+}
+
+.val-banner-col.featured {
+  flex: 1.25 1 0;
+  max-width: 224px;
+  min-width: 174px;
+  transform: translateY(-6px);
+}
+
+.val-banner-col.clickable:hover {
+  transform: translateY(-4px);
+}
+
+.val-banner-col.featured.clickable:hover {
+  transform: translateY(-9px);
+}
+
+.val-banner-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1px;
+  min-height: 32px;
+}
+
+.val-banner-role {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(186, 230, 253, 0.72);
+}
+
+.val-banner-col.featured .val-banner-role {
+  color: #fde047;
+}
+
+.val-banner-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #f8fafc;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.val-banner-col.featured .val-banner-title {
+  font-size: 15.5px;
+  text-shadow: 0 2px 12px rgba(56, 189, 248, 0.55);
+}
+
+/* Outer gradient ring shaped as a chamfered pentagon shield */
+.val-shield-outer {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  padding: 2px;
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+  background: linear-gradient(180deg, rgba(148, 197, 255, 0.38) 0%, rgba(56, 189, 248, 0.16) 70%, rgba(148, 197, 255, 0.45) 100%);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.55);
+  transition: background 180ms ease, filter 180ms ease;
+}
+
+.val-banner-col.featured .val-shield-outer {
+  height: 332px;
+  padding: 2.5px;
+  background: linear-gradient(180deg, rgba(254, 240, 138, 0.92) 0%, rgba(56, 189, 248, 0.85) 55%, rgba(254, 240, 138, 0.95) 100%);
+  filter: drop-shadow(0 0 18px rgba(56, 189, 248, 0.35));
+}
+
+.val-banner-col.tone-blue.occupied .val-shield-outer {
+  background: linear-gradient(180deg, rgba(56, 189, 248, 0.88) 0%, rgba(37, 99, 235, 0.42) 60%, rgba(125, 211, 252, 0.88) 100%);
+}
+
+.val-banner-col.tone-red.occupied .val-shield-outer {
+  background: linear-gradient(180deg, rgba(251, 113, 133, 0.88) 0%, rgba(225, 29, 72, 0.42) 60%, rgba(253, 164, 175, 0.88) 100%);
+}
+
+.val-banner-col.empty .val-shield-outer {
+  background: linear-gradient(180deg, rgba(148, 197, 255, 0.22) 0%, rgba(148, 197, 255, 0.08) 65%, rgba(148, 197, 255, 0.28) 100%);
+}
+
+.val-banner-col.empty.clickable:hover .val-shield-outer {
+  background: linear-gradient(180deg, rgba(125, 211, 252, 0.58) 0%, rgba(56, 189, 248, 0.24) 65%, rgba(125, 211, 252, 0.65) 100%);
+}
+
+.val-shield-outer[role='button'] {
+  cursor: pointer;
+}
+
+.val-shield-frame {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  clip-path: polygon(0 0, 100% 0, 100% 85%, 50% 100%, 0 85%);
+  background: linear-gradient(180deg, rgba(13, 27, 56, 0.88) 0%, rgba(7, 15, 32, 0.94) 100%);
+  display: flex;
+  flex-direction: column;
+}
+
+.val-banner-col.empty .val-shield-frame {
+  background: linear-gradient(180deg, rgba(14, 29, 60, 0.42) 0%, rgba(7, 15, 32, 0.52) 100%);
+  backdrop-filter: blur(8px);
+}
+
+.val-shield-meta {
+  position: relative;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 7px 8px 0;
+  pointer-events: none;
+}
+
+.val-shield-meta-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.val-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 197, 255, 0.3);
+  color: #e2e8f0;
+}
+
+.val-badge.tone-gold {
+  border-color: rgba(250, 204, 21, 0.65);
+  color: #fde047;
+}
+
+.val-badge.tone-blue {
+  border-color: rgba(56, 189, 248, 0.65);
+  color: #7dd3fc;
+}
+
+.val-badge.tone-red {
+  border-color: rgba(251, 113, 133, 0.65);
+  color: #fda4af;
+}
+
+.val-ping-chip {
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: rgba(6, 11, 22, 0.78);
+  color: #86efac;
+}
+
+.val-voice-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #64748b;
+}
+
+.val-voice-dot.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+.val-voice-dot.muted {
+  background: #f43f5e;
+}
+
+.val-shield-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.val-shield-img {
+  width: 100%;
+  height: 84%;
+  object-fit: cover;
+  object-position: center 14%;
+  display: block;
+}
+
+.val-shield-3d-wrap {
+  position: relative;
+  width: 100%;
+  height: 82%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.val-shield-3d-wrap .hero-3d-preview-box {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  min-height: 0 !important;
+}
+
+.val-shield-3d-wrap .hero-3d-view-toggle {
+  top: 8px;
+  right: 8px;
+  bottom: auto;
+  transform: scale(0.88);
+  transform-origin: top right;
+}
+
+.val-shield-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(6, 11, 22, 0.1) 0%, transparent 32%, rgba(6, 11, 22, 0.72) 78%);
+}
+
+/* Empty `+` Slot Inside Shield */
+.val-shield-empty-body {
+  position: relative;
+  z-index: 2;
+  margin: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  text-align: center;
+  color: rgba(186, 230, 253, 0.75);
+}
+
+.val-plus-box {
+  width: 30px;
+  height: 30px;
+  border-radius: 5px;
+  border: 1.5px solid rgba(186, 230, 253, 0.45);
+  background: rgba(15, 29, 58, 0.48);
+  display: grid;
+  place-items: center;
+  color: #e0f2fe;
+}
+
+.val-empty-hint {
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: rgba(203, 213, 225, 0.76);
+}
+
+/* Cream Ivory Nameplate anchored near bottom chevron of shield */
+.val-cream-plate {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  height: 31%;
+  padding: 6px 10px 24px;
+  background: linear-gradient(180deg, #fbf8f1 0%, #ebe5d5 100%);
+  border-top: 2px solid rgba(250, 204, 21, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--banner-cream-ink, #0f172a);
+}
+
+.val-cream-crest {
+  margin-top: -18px;
+  margin-bottom: 3px;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  transform: rotate(45deg);
+  background: linear-gradient(135deg, #0b1630, #172a52);
+  border: 2px solid #fef08a;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.val-cream-crest > svg,
+.val-cream-crest > * {
+  transform: rotate(-45deg);
+}
+
+.val-cream-name {
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.2;
+  color: #0f172a;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.val-cream-sub {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #475569;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 4. BOTTOM TACTICAL CONTROL STRIP */
+.val-bottom-bar {
+  position: relative;
+  z-index: 20;
+  width: min(1140px, calc(100% - 28px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding-top: 6px;
+}
+
+.val-bottom-left {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.val-bottom-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.val-bottom-right {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.val-cta-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 5px;
+  border: 1px solid rgba(148, 197, 255, 0.28);
+  background: rgba(15, 29, 58, 0.72);
+  color: #e2e8f0;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 140ms ease;
+}
+
+.val-cta-secondary:hover:not(:disabled) {
+  background: rgba(30, 58, 110, 0.85);
+  border-color: rgba(125, 211, 252, 0.55);
+  color: #ffffff;
+}
+
+.val-cta-crimson {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  min-width: 158px;
+  padding: 0 26px;
+  border-radius: 4px;
+  border: 1px solid rgba(253, 164, 175, 0.55);
+  background: linear-gradient(180deg, #ff4655 0%, #e11d48 100%);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 10px 26px rgba(225, 29, 72, 0.42);
+  transition: transform 140ms ease, filter 140ms ease, box-shadow 140ms ease;
+}
+
+.val-cta-crimson:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.07);
+  box-shadow: 0 12px 30px rgba(255, 70, 85, 0.55);
+}
+
+.val-cta-crimson:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.val-code-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 6px;
+  background: rgba(7, 14, 30, 0.84);
+  border: 1px solid rgba(148, 197, 255, 0.24);
+}
+
+.val-code-box input {
+  width: 78px;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+/* Room Lobby VS Separator & Hero Drawer */
+.val-vs-divider {
+  flex: 0 0 auto;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 4px;
+}
+
+.val-vs-diamond {
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  transform: rotate(45deg);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #ff4655, #be123c);
+  border: 1.5px solid rgba(254, 240, 138, 0.8);
+  box-shadow: 0 0 18px rgba(255, 70, 85, 0.45);
+}
+
+.val-vs-diamond span {
+  transform: rotate(-45deg);
+  font-size: 12px;
+  font-weight: 900;
+  color: #ffffff;
+}
+
+.val-lobby-drawer {
+  width: min(1040px, calc(100% - 28px));
+  margin: 0 auto 8px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(8, 15, 33, 0.9);
+  border: 1px solid rgba(148, 197, 255, 0.22);
+  backdrop-filter: blur(14px);
+}
+
+/* Middle Workspace: Left Rectangular Map Cards + Center Mode-Matched Banner Roster */
+.val-workspace {
+  position: relative;
+  z-index: 10;
+  width: min(1300px, calc(100% - 28px));
+  margin: 8px auto;
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr);
+  align-items: center;
+  gap: 18px;
+}
+
+.val-map-dock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.val-map-dock-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(186, 230, 253, 0.72);
+  padding-left: 2px;
+}
+
+.val-map-card {
+  position: relative;
+  width: 100%;
+  height: 74px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1.5px solid rgba(148, 197, 255, 0.24);
+  background: rgba(7, 14, 30, 0.86);
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.val-map-card:hover:not(:disabled) {
+  transform: translateX(3px);
+  border-color: rgba(125, 211, 252, 0.65);
+}
+
+.val-map-card.active {
+  border-color: #ff4655;
+  box-shadow: 0 0 18px rgba(255, 70, 85, 0.4), inset 0 0 0 1px rgba(254, 240, 138, 0.45);
+}
+
+.val-map-card:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.val-map-card-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(1.1) brightness(0.84);
+  transition: transform 240ms ease, filter 180ms ease;
+}
+
+.val-map-card:hover:not(:disabled) .val-map-card-img,
+.val-map-card.active .val-map-card-img {
+  transform: scale(1.06);
+  filter: saturate(1.2) brightness(1);
+}
+
+.val-map-card-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(4, 8, 18, 0.88) 0%, rgba(6, 11, 22, 0.48) 65%, rgba(6, 11, 22, 0.16) 100%);
+}
+
+.val-map-card-info {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.val-map-card-name {
+  font-size: 12.5px;
+  font-weight: 900;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
+}
+
+.val-map-card-tag {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+}
+
+.val-map-card.active .val-map-card-tag {
+  color: #fde047;
+}
+
+.val-roster-stage {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.val-roster-stage .val-banner-deck {
+  width: 100%;
+  margin: 0;
+}
+
+/* 6-slot 3v3 layout beside left map dock */
+.val-banner-deck.six-up {
+  gap: 8px;
+}
+
+.val-banner-deck.six-up .val-banner-col {
+  max-width: 146px;
+  min-width: 106px;
+}
+
+.val-banner-deck.six-up .val-banner-col.featured {
+  max-width: 172px;
+  min-width: 136px;
+}
+
+.val-banner-deck.six-up .val-shield-outer {
+  height: 282px;
+}
+
+.val-banner-deck.six-up .val-banner-col.featured .val-shield-outer {
+  height: 312px;
+}
+
+@media (max-width: 1080px) {
+  .val-workspace {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .val-map-dock {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .val-map-dock-label {
+    grid-column: 1 / -1;
+  }
+  .val-map-card {
+    height: 60px;
+  }
+}
+
+@media (max-width: 900px) {
+  .val-topbar {
+    padding: 4px 10px;
+  }
+  .val-play-trapezoid {
+    min-width: 112px;
+    padding: 0 18px;
+    height: 38px;
+    font-size: 13px;
+  }
+  .val-banner-deck {
+    gap: 8px;
+    overflow-x: auto;
+    justify-content: safe center;
+    padding: 4px 8px;
+  }
+  .val-banner-col {
+    flex: 0 0 130px;
+    min-width: 120px;
+  }
+  .val-banner-col.featured {
+    flex: 0 0 166px;
+    min-width: 158px;
+  }
+  .val-shield-outer {
+    height: 236px;
+  }
+  .val-banner-col.featured .val-shield-outer {
+    height: 264px;
+  }
+  .val-bottom-bar {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .val-bottom-left,
+  .val-bottom-center,
+  .val-bottom-right {
+    justify-content: center;
+  }
+}
+
+@media (max-height: 560px) {
+  .val-shield-outer {
+    height: 205px;
+  }
+  .val-banner-col.featured .val-shield-outer {
+    height: 228px;
+  }
+  .val-banner-head {
+    min-height: 24px;
+  }
+  .val-cta-crimson {
+    height: 38px;
+  }
+  .val-cta-secondary {
+    height: 34px;
   }
 }

@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
 import { Hero3dPreview } from '../components/Hero3dPreview'
+import { HeroClassEmblem } from '../components/HeroClassEmblem'
 import { HeroPickerPanel } from '../components/HeroPickerPanel'
 import { IconArrowLeft, IconPlay, IconVolume } from '../components/Icons'
 import { getMapDisplayLabel } from '../constants/heroClasses'
@@ -91,11 +92,14 @@ export function JoinHeroSelectPage() {
             <section className="ui-card" aria-label="ข้อมูลฮีโร่ที่เลือก">
               <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>
-                    {activeHero.displayName}
-                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <HeroClassEmblem heroClass={activeHero.heroClass ?? 'all'} size={18} />
+                    <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800 }}>
+                      {activeHero.displayName}
+                    </h2>
+                  </div>
                   <p className="ui-card-sub">
-                    {activeHero.animeTitle} · HP {activeHero.maxHp} · Speed {activeHero.moveSpeed}
+                    {activeHero.className ? `${activeHero.className} · ` : ''}{activeHero.animeTitle} · HP {activeHero.maxHp} · Speed {activeHero.moveSpeed}
                   </p>
                 </div>
                 <button
@@ -113,7 +117,7 @@ export function JoinHeroSelectPage() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <Hero3dPreview character={activeHero} size="lg" frameless />
+                <Hero3dPreview character={activeHero} size="lg" frameless allowViewToggle />
               </div>
 
               <div className="clean-skill-grid">
@@ -146,7 +150,7 @@ export function JoinHeroSelectPage() {
               <span className="ui-pill accent">เลือกแล้ว: {activeHero?.displayName ?? 'กิลกาเมซ (Gilgamesh)'}</span>
               <button
                 type="button"
-                className="ui-btn cta-gold join-confirm-btn"
+                className="val-cta-crimson join-confirm-btn"
                 disabled={joining || !activeHero}
                 onClick={() => void confirmPendingJoin(activeHero?.id)}
               >

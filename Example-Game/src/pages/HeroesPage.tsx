@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { animateShowroomSwap } from '../animations/gsapPresets'
 import { CHARACTER_VOICES, soundEngine } from '../audio/soundEngine'
 import { Hero3dPreview } from '../components/Hero3dPreview'
+import { HeroClassEmblem } from '../components/HeroClassEmblem'
 import { HeroPickerPanel } from '../components/HeroPickerPanel'
 import { IconArrowLeft, IconSwords, IconTarget, IconVolume } from '../components/Icons'
 import { useGameStore } from '../store/useGameStore'
@@ -71,8 +72,8 @@ export function HeroesPage() {
             )}
             <button
               type="button"
-              className="ui-btn cta-gold"
-              style={{ height: 36, padding: '0 16px', fontSize: 13 }}
+              className="val-cta-crimson"
+              style={{ height: 36, minWidth: 120, padding: '0 16px', fontSize: 13 }}
               onClick={() => {
                 soundEngine.unlock()
                 setView('battle_setup')
@@ -128,7 +129,7 @@ export function HeroesPage() {
                 </div>
 
                 <div ref={showroomContentRef} className="clean-showroom-top">
-                  <Hero3dPreview character={activeChar} size="lg" frameless />
+                  <Hero3dPreview character={activeChar} size="lg" frameless allowViewToggle />
 
                   <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div>
@@ -142,8 +143,9 @@ export function HeroesPage() {
 
                     <div className="ui-topbar-group" style={{ gap: 8 }}>
                       {activeChar.className && (
-                        <span className="ui-pill accent">
-                          {activeChar.classIcon} {activeChar.className}
+                        <span className="ui-pill accent" style={{ gap: 6 }}>
+                          <HeroClassEmblem heroClass={activeChar.heroClass ?? 'all'} size={14} />
+                          <span>{activeChar.className}</span>
                         </span>
                       )}
                       <button

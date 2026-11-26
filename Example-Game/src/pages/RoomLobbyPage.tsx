@@ -1,22 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
-import { Hero3dPreview } from '../components/Hero3dPreview'
 import { HeroPickerPanel } from '../components/HeroPickerPanel'
 import {
   IconArrowLeft,
+  IconClose,
   IconCopy,
   IconHeadphones,
+  IconLogOut,
   IconMic,
   IconPlay,
+  IconSwords,
+  IconUsers,
   IconVolume,
 } from '../components/Icons'
+import { TacticalBannerCard, type TacticalBannerSlot } from '../components/TacticalBannerDeck'
 import { getMapDisplayLabel } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
-import type { PlayerState, TeamSide } from '../types/game'
+import type { MapId, PlayerState, TeamSide } from '../types/game'
+
+const PRACTICE_MAPS: Array<{ id: MapId; label: string; tag: string; img: string }> = [
+  { id: 'shibuya', label: 'ชิบูย่า', tag: 'SHIBUYA', img: '/maps/shibuya_bg.webp' },
+  { id: 'konoha', label: 'โคโนฮะ', tag: 'KONOHA', img: '/maps/konoha_bg.webp' },
+  { id: 'sisaket_island', label: 'เกาะศรีสะเกษ', tag: 'SISAKET', img: '/maps/sisaket_bg.webp' },
+  { id: 'scp_site', label: 'สถานี SCP', tag: 'SCP SITE', img: '/maps/scp_bg.webp' },
+]
 
 export function RoomLobbyPage() {
   const [copied, setCopied] = useState(false)
+  const [heroDrawerOpen, setHeroDrawerOpen] = useState(false)
 
   const activeRoomId = useGameStore((s) => s.activeRoomId)
   const roomMode = useGameStore((s) => s.roomMode)
@@ -76,187 +88,243 @@ export function RoomLobbyPage() {
     const ch = characters.find((c) => c.id === charId)
     soundEngine.speakCharacterQuote(charId, ch?.voiceLine)
     selectRoomCharacter(charId)
+    setHeroDrawerOpen(false)
   }
 
-  function renderBannerSlot(p: PlayerState | undefined, team: TeamSide, idx: number, canJoinSide: boolean) {
+  function buildPlayerSlot(
+    p: PlayerState | undefined,
+    team: TeamSide,
+    idx: number,
+    canJoinSide: boolean,
+  ): TacticalBannerSlot {
+    const tone: TacticalBannerSlot['tone'] = team === 'blue' ? 'blue' : team === 'red' ? 'red' : 'cobalt'
     if (!p) {
-      return (
-        <div key={`${team}-empty-${idx}`} className="clean-player-card empty">
-          <div className="mlbb-banner-avatar-ring empty" style={{ width: 46, height: 46, fontSize: 16 }}>
-            <span>?</span>
-          </div>
-          <div className="mlbb-banner-name">รอผู้เล่น</div>
-          {canJoinSide && (
-            <button
-              type="button"
-              className="ui-btn"
-              style={{ height: 26, fontSize: 11, padding: '0 10px' }}
-              onClick={() => selectTeam(team as 'blue' | 'red')}
-            >
-              สลับฝั่ง
-            </button>
-          )}
-        </div>
-      )
+      return {
+        id: `${team}-empty-${idx}`,
+        topRole: team === 'blue' ? `BLUE ${idx + 1}` : `RED ${idx + 1}`,
+        topTitle: 'รอผู้เล่น',
+        tone,
+        emptyHint: canJoinSide ? 'คลิกย้ายฝั่งนี้' : 'ช่องว่าง',
+        onClick: canJoinSide ? () => selectTeam(team as 'blue' | 'red') : undefined,
+        actionLabel: canJoinSide ? `ย้ายเข้าทีม ${team === 'blue' ? 'BLUE' : 'RED'}` : undefined,
+      }
     }
 
-    const ch = characters.find((c) => c.id === p.characterId)
-    const isMe = p.id === myPlayerId
-    const vState = isMe
-      ? { micOn: voiceMicEnabled, speakerOn: voiceSpeakerEnabled, speaking: voiceSpeaking }
-      : peerVoiceStates[p.id]
-    const isSpeaking = Boolean(vState?.micOn && vState?.speaking)
+    const isSelf = p.id === myPlayerId
+    const heroDef = characters.find((c) => c.id === p.characterId) ?? myHeroDef
+    const peerVoice = !isSelf ? peerVoiceStates[p.id] : undefined
+    const speaking = isSelf ? voiceMicEnabled && voiceSpeaking : Boolean(peerVoice?.speaking)
+    const muted = isSelf ? !voiceMicEnabled : Boolean(peerVoice && !peerVoice.micOn)
+    const badge = p.isDummy ? 'BOT' : p.isHost ? 'HOST' : p.ready ? 'READY' : isSelf ? 'YOU' : undefined
 
-    return (
-      <div
-        key={p.id}
-        className={`clean-player-card team-slot-card ${isMe ? 'me' : ''} ${isSpeaking ? 'voice-speaking' : ''}`}
-      >
-        <div className="mlbb-banner-top-row">
-          <span className="mlbb-banner-ping" style={{ fontSize: 10 }}>
-            {p.isDummy ? 'DUMMY' : isMe && pingMs !== null ? `${pingMs}ms` : 'ONLINE'}
-          </span>
-          <span className={`mlbb-ready-dot ${p.isHost || p.ready || p.isDummy ? 'ready' : ''}`}>
-            {p.isHost ? 'H' : p.ready || p.isDummy ? '✓' : '…'}
-          </span>
-        </div>
-
-        <div
-          className="mlbb-banner-avatar-ring"
-          style={{ width: 48, height: 48, borderColor: ch?.color || (team === 'blue' ? '#38bdf8' : '#f87171') }}
-        >
-          <img
-            src={
-              p.isDummy
-                ? '/app-icon.png?v=20261120v2'
-                : ch?.imageUrl || (p.characterId === 'noone' ? '/characters/noone.png?v=mcu1' : `/characters/${p.characterId}.png`)
-            }
-            alt={p.characterName}
-            className="mlbb-banner-avatar-img"
-          />
-        </div>
-
-        <div className="mlbb-banner-name slot-player-name">
-          {p.name}
-          {isMe ? ' (คุณ)' : ''}
-        </div>
-        <div className="mlbb-banner-hero slot-hero-name" style={{ color: 'var(--text-secondary)' }}>
-          {p.isDummy ? `HP ${p.maxHp}` : p.characterName}
-        </div>
-      </div>
-    )
+    return {
+      id: p.id,
+      topRole: p.isDummy ? 'TRAINING BOT' : heroDef?.roleTag || (team === 'blue' ? 'BLUE TEAM' : 'RED TEAM'),
+      topTitle: heroDef?.displayName || p.characterName,
+      featured: isSelf,
+      character: heroDef ?? null,
+      use3dPreview: isSelf,
+      playerName: p.name + (isSelf ? ' (คุณ)' : ''),
+      subLabel: p.isDummy ? 'เป้านิ่งทดสอบสกิล' : heroDef?.displayName || p.characterName,
+      statusBadge: badge,
+      tone: p.isHost && !p.isDummy ? 'gold' : tone,
+      pingMs: isSelf ? (pingMs ?? undefined) : undefined,
+      speaking,
+      muted,
+      actionLabel: isSelf && !isIconic ? 'คลิกสลับฮีโร่' : undefined,
+    }
   }
 
-  const leftSlots = isPractice ? [0] : is1v1Side ? [0] : [0, 1, 2]
-  const rightSlots = isPractice ? [0, 1] : is1v1Side ? [0] : [0, 1, 2]
-  const leftList = isPractice ? humanRoster : bluePlayers
-  const rightList = isPractice ? dummyRoster : redPlayers
+  const leftSlots: TacticalBannerSlot[] = isPractice
+    ? [buildPlayerSlot(me ?? humanRoster[0], 'blue', 0, false)]
+    : Array.from({ length: sideCap }).map((_, i) => {
+        const p = bluePlayers[i]
+        return buildPlayerSlot(p, 'blue', i, Boolean(me && me.team !== 'blue' && !isPractice))
+      })
+
+  const rightSlots: TacticalBannerSlot[] = isPractice
+    ? (dummyRoster.length > 0 ? dummyRoster : [undefined]).map((d, i) =>
+        buildPlayerSlot(d, 'red', i, false),
+      )
+    : Array.from({ length: sideCap }).map((_, i) => {
+        const p = redPlayers[i]
+        return buildPlayerSlot(p, 'red', i, Boolean(me && me.team !== 'red' && !isPractice))
+      })
+
+  const mainStartText = me?.isHost
+    ? isReadyToStart
+      ? isPractice
+        ? 'START PRACTICE'
+        : 'START'
+      : `รอผู้เล่น (${humanRoster.length}/${totalCap})`
+    : me?.ready
+      ? 'พร้อมแล้ว (ยกเลิก)'
+      : 'กดพร้อม'
 
   return (
-    <div className="ui-page waiting-room-backdrop">
-      <div ref={shellRef} className="ui-shell waiting-room-shell">
-        {/* Top Bar: Clean 4-item Room Header */}
-        <header className="ui-topbar waiting-room-header">
-          <div className="ui-topbar-group">
+    <div className="val-page">
+      <div ref={shellRef} className="val-stage">
+        {/* 1. TOP TACTICAL HEADER */}
+        <header className="val-topbar waiting-room-header">
+          <div className="val-top-left">
             <button
               type="button"
-              className="ui-btn page-back-btn"
+              className="val-nav-icon-btn danger page-back-btn"
               onClick={() => leaveRoom()}
-              aria-label="ออกจากห้อง"
+              title="ออกจากห้องกลับหน้าหลัก"
             >
               <IconArrowLeft size={15} />
-              <span>ออกจากห้อง</span>
+              <span>LEAVE</span>
             </button>
 
             <button
               type="button"
-              className="ui-pill gold room-code-banner clickable-code"
+              className="val-brand-link room-code-banner"
               onClick={copyCode}
-              title="คลิกเพื่อคัดลอกรหัสห้อง"
+              title="คลิกคัดลอกรหัสห้อง 6 หลัก"
             >
+              <IconCopy size={13} />
               <span>#{activeRoomId}</span>
-              <IconCopy size={13} copied={copied} />
+              <span style={{ color: copied ? '#4ade80' : '#7dd3fc', fontSize: 10 }}>
+                {copied ? 'COPIED' : 'COPY'}
+              </span>
             </button>
 
-            <h1 className="ui-page-title">
-              {isPractice
-                ? 'ห้องฝึกซ้อม'
-                : isIconic
-                  ? `ICONIC 1v1 (${goalKills} Kills)`
-                  : is1v1Side
-                    ? `1v1 Duel (${goalKills} Kills)`
-                    : `ทีม 3v3 (${goalKills} Kills)`}
-            </h1>
+            {pingMs != null && pingMs > 0 && (
+              <span className="val-ping-chip" title="ความหน่วงการเชื่อมต่อ">
+                {pingMs}ms
+              </span>
+            )}
           </div>
 
-          <div className="ui-topbar-group">
-            <span className="ui-pill">{getMapDisplayLabel(roomMapId, isIconic)}</span>
-            <span className="ui-pill accent">
-              {humanRoster.length}/{totalCap} คน
+          <div className="val-top-right">
+            <span className="val-nav-icon-btn active" style={{ cursor: 'default' }}>
+              <IconSwords size={14} />
+              <span>{isPractice ? 'TRAINING' : isIconic ? 'ICONIC 1v1' : is1v1Side ? '1v1 DUEL' : '3v3 TEAM'}</span>
             </span>
+
+            {!isPractice && (
+              <span className="val-nav-icon-btn" style={{ cursor: 'default' }}>
+                <span>First to {goalKills}</span>
+              </span>
+            )}
           </div>
         </header>
 
-        {error && (
-          <div className="ui-alert" role="alert">
-            <span>{error}</span>
-            <button type="button" className="ui-btn" style={{ height: 28 }} onClick={() => setError('')}>
-              ปิด
-            </button>
+        {/* 2. ROOM STATUS HEADER LINE */}
+        <div className="val-mode-bar-wrap">
+          <div className="val-map-strip">
+            <span className="val-map-pill active" style={{ cursor: 'default' }}>
+              {getMapDisplayLabel(roomMapId, isIconic)}
+            </span>
+            <span className="ui-card-sub" style={{ fontSize: 11.5 }}>
+              BLUE {bluePlayers.length}/{sideCap} · RED {redPlayers.length}/{isPractice ? dummyRoster.length || 1 : sideCap}
+            </span>
           </div>
+
+          {error && (
+            <div className="ui-alert error" style={{ maxWidth: 560, width: '100%' }}>
+              <span>{error}</span>
+              <button type="button" className="ui-alert-close" onClick={() => setError('')} aria-label="ปิดการแจ้งเตือน">
+                <IconClose size={13} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. MIDDLE WORKSPACE: LEFT RECTANGULAR MAP CARD(S) + VERTICAL SHIELD BANNER ROSTER */}
+        <main className="val-workspace">
+          <aside className="val-map-dock" aria-label="แผนที่ของห้อง">
+            <span className="val-map-dock-label">{isPractice ? 'เลือกแมพซ้อม' : 'MAP ARENA'}</span>
+            {PRACTICE_MAPS.map((mp) => {
+              const currentMap = isIconic ? 'shibuya' : roomMapId
+              const isSelected = currentMap === mp.id
+              const disabled = !isPractice
+              if (!isPractice && !isSelected) return null
+              return (
+                <button
+                  key={mp.id}
+                  type="button"
+                  disabled={disabled}
+                  className={`val-map-card ${isSelected ? 'active' : ''}`}
+                  style={!isPractice ? { height: 116, opacity: 1, cursor: 'default' } : undefined}
+                  onClick={() => selectRoomMap(mp.id)}
+                >
+                  <img src={mp.img} alt={mp.label} className="val-map-card-img" loading="lazy" />
+                  <div className="val-map-card-scrim" aria-hidden="true" />
+                  <div className="val-map-card-info">
+                    <span className="val-map-card-tag">{isSelected ? 'SELECTED' : mp.tag}</span>
+                    <span className="val-map-card-name">{mp.label}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </aside>
+
+          <section className="val-roster-stage" aria-label="รายชื่อผู้เล่นในห้องแบบแบนเนอร์โล่">
+            <div className={`val-banner-deck ${sideCap === 3 ? 'six-up' : ''}`}>
+              {leftSlots.map((slot) => (
+                <TacticalBannerCard key={slot.id} slot={slot} />
+              ))}
+
+              <div className="val-vs-divider" aria-hidden="true">
+                <div className="val-vs-diamond">
+                  <span>VS</span>
+                </div>
+              </div>
+
+              {rightSlots.map((slot) => (
+                <TacticalBannerCard key={slot.id} slot={slot} />
+              ))}
+            </div>
+          </section>
+        </main>
+
+        {/* 3.5 COLLAPSIBLE BOTTOM HERO PICKER DRAWER */}
+        {heroDrawerOpen && (
+          <section className="val-lobby-drawer" aria-label="เลือกเปลี่ยนฮีโร่ในห้องรอ">
+            <div className="ui-topbar-group" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+              <div className="ui-topbar-group" style={{ gap: 8 }}>
+                <strong style={{ fontSize: 13 }}>เลือกฮีโร่สำหรับแมตช์นี้</strong>
+                {myHeroDef && (
+                  <span className="ui-card-sub" style={{ fontSize: 11.5 }}>
+                    ปัจจุบัน: {myHeroDef.displayName} (HP {myHeroDef.maxHp} · SPD {myHeroDef.moveSpeed})
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="ui-btn icon-only"
+                style={{ width: 28, height: 28 }}
+                onClick={() => setHeroDrawerOpen(false)}
+              >
+                <IconClose size={14} />
+              </button>
+            </div>
+
+            {!isIconic ? (
+              <HeroPickerPanel
+                characters={characters}
+                selectedId={me?.characterId ?? ''}
+                compactTabs
+                maxHeight={190}
+                onSelect={handlePickHeroInRoom}
+              />
+            ) : (
+              <div className="ui-card-sub" style={{ textAlign: 'center', padding: 12 }}>
+                โหมด ICONIC ระบบจะสุ่ม Gojo และ Sukuna ให้อัตโนมัติทั้ง 2 ฝั่ง
+              </div>
+            )}
+          </section>
         )}
 
-        {/* Symmetrical VS Stage */}
-        <section className="clean-vs-stage" aria-label="รายชื่อทีมในห้อง">
-          <div className="clean-wing">
-            <div className="clean-wing-head blue">
-              <span>{isPractice ? 'ผู้เล่น' : 'BLUE TEAM'}</span>
-              <span>
-                {leftList.length}/{isPractice ? 1 : sideCap}
-              </span>
-            </div>
-            <div className="clean-slot-row">
-              {leftSlots.map((idx) =>
-                renderBannerSlot(
-                  leftList[idx],
-                  'blue',
-                  idx,
-                  !isPractice && bluePlayers.length < sideCap && me?.team !== 'blue',
-                ),
-              )}
-            </div>
-          </div>
-
-          <div className="clean-vs-badge" aria-hidden="true">
-            VS
-          </div>
-
-          <div className="clean-wing">
-            <div className="clean-wing-head red">
-              <span>{isPractice ? 'หุ่นซ้อม (DUMMY)' : 'RED TEAM'}</span>
-              <span>
-                {rightList.length}/{isPractice ? dummyRoster.length : sideCap}
-              </span>
-            </div>
-            <div className="clean-slot-row">
-              {rightSlots.map((idx) =>
-                renderBannerSlot(
-                  rightList[idx],
-                  'red',
-                  idx,
-                  !isPractice && redPlayers.length < sideCap && me?.team !== 'red',
-                ),
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Action Strip: Voice + Map Switch (Practice) + Ready / Start */}
-        <div className="ui-topbar waiting-footer-bar">
-          <div className="ui-topbar-group waiting-my-hero">
+        {/* 4. BOTTOM TACTICAL CONTROL STRIP */}
+        <footer className="val-bottom-bar">
+          {/* Bottom-Left: Voice Mic + Speaker (Matches reference bottom-left audio icons) */}
+          <div className="val-bottom-left">
             <button
               type="button"
-              className={`ui-btn ${voiceMicEnabled ? 'success' : ''}`}
+              className={`val-nav-icon-btn ${voiceMicEnabled ? 'active' : 'danger'}`}
               onClick={() => void toggleVoiceMic()}
               title={voiceMicEnabled ? 'ปิดไมค์' : 'เปิดไมค์'}
             >
@@ -266,146 +334,77 @@ export function RoomLobbyPage() {
 
             <button
               type="button"
-              className={`ui-btn ${voiceSpeakerEnabled ? 'active' : 'danger'}`}
+              className={`val-nav-icon-btn ${voiceSpeakerEnabled ? 'active' : 'danger'}`}
               onClick={toggleVoiceSpeaker}
               title={voiceSpeakerEnabled ? 'ปิดเสียงเพื่อน' : 'เปิดฟังเพื่อน'}
             >
               <IconHeadphones size={15} off={!voiceSpeakerEnabled} />
               <span>{voiceSpeakerEnabled ? 'ลำโพงเปิด' : 'ลำโพงปิด'}</span>
             </button>
+          </div>
 
-            {isPractice && (
-              <div className="ui-topbar-group" style={{ gap: 6 }}>
-                {(
-                  [
-                    ['shibuya', 'ชิบูย่า'],
-                    ['konoha', 'โคโนฮะ'],
-                    ['sisaket_island', 'เกาะศรีสะเกษ'],
-                    ['scp_site', 'สถานี SCP'],
-                  ] as const
-                ).map(([mId, label]) => (
-                  <button
-                    key={mId}
-                    type="button"
-                    className={`ui-btn ${roomMapId === mId ? 'active' : ''}`}
-                    style={{ height: 30, fontSize: 12, padding: '0 10px' }}
-                    onClick={() => selectRoomMap(mId)}
+          {/* Bottom-Center: Trio CTA (Change Hero | Crimson START / READY | Leave Party) */}
+          <div className="val-bottom-center">
+            <button
+              type="button"
+              className="val-cta-secondary"
+              disabled={isIconic}
+              onClick={() => setHeroDrawerOpen((v) => !v)}
+            >
+              <IconUsers size={14} />
+              <span>{heroDrawerOpen ? 'ซ่อนตัวเลือก' : 'เปลี่ยนฮีโร่'}</span>
+            </button>
+
+            <button
+              type="button"
+              className="val-cta-crimson waiting-start-btn"
+              disabled={me?.isHost ? !isReadyToStart : false}
+              onClick={me?.isHost ? startMatch : toggleReady}
+            >
+              <IconPlay size={15} />
+              <span>{mainStartText}</span>
+            </button>
+
+            <button
+              type="button"
+              className="val-cta-secondary"
+              onClick={() => leaveRoom()}
+            >
+              <IconLogOut size={14} />
+              <span>Leave Party</span>
+            </button>
+          </div>
+
+          {/* Bottom-Right: Voice Preview + Mini Skill Summary */}
+          <div className="val-bottom-right">
+            {myHeroDef && (
+              <>
+                <button
+                  type="button"
+                  className="val-nav-icon-btn"
+                  onClick={() => {
+                    soundEngine.unlock()
+                    soundEngine.speakCharacterQuote(myHeroDef.id, myHeroDef.voiceLine)
+                  }}
+                  title="ทดลองเสียงพากย์"
+                >
+                  <IconVolume size={14} />
+                  <span>{myHeroDef.displayName}</span>
+                </button>
+                {myHeroDef.skills.slice(0, 3).map((sk) => (
+                  <span
+                    key={sk.slot}
+                    className="val-map-pill"
+                    title={`${sk.keyHint}: ${sk.name} — ${sk.description}`}
+                    style={{ cursor: 'default' }}
                   >
-                    {label}
-                  </button>
+                    {sk.keyHint} {sk.name.split(' ')[0]}
+                  </span>
                 ))}
-              </div>
+              </>
             )}
           </div>
-
-          <div className="ui-topbar-group">
-            {!me?.isHost && (
-              <button
-                type="button"
-                className={`ui-btn ${me?.ready ? 'success' : 'primary'}`}
-                onClick={toggleReady}
-              >
-                {me?.ready ? 'พร้อมแล้ว' : 'กดพร้อม'}
-              </button>
-            )}
-
-            {me?.isHost ? (
-              <button
-                type="button"
-                className="ui-btn cta-gold waiting-start-btn"
-                disabled={!isReadyToStart}
-                onClick={startMatch}
-              >
-                <IconPlay size={15} />
-                <span>
-                  {isReadyToStart
-                    ? isPractice
-                      ? 'เริ่มฝึกซ้อม'
-                      : 'เริ่มเกม'
-                    : `รอผู้เล่นครบ (${humanRoster.length}/${totalCap})`}
-                </span>
-              </button>
-            ) : (
-              <span className="ui-card-sub">รอหัวหน้าห้องกดเริ่มเกม...</span>
-            )}
-          </div>
-        </div>
-
-        {/* Bottom Panel: Compact 3D Preview + Searchable Hero Grid */}
-        <section className="clean-lobby-draft" aria-label="เลือกตัวละคร">
-          {myHeroDef && (
-            <div className="ui-card" style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <Hero3dPreview character={myHeroDef} size="md" frameless />
-              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
-                      {myHeroDef.displayName}
-                    </h2>
-                    <div className="ui-card-sub">
-                      {myHeroDef.animeTitle} · HP {myHeroDef.maxHp} · Speed {myHeroDef.moveSpeed}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="ui-btn icon-only"
-                    style={{ height: 30, width: 30 }}
-                    title="ทดลองเสียงพากย์"
-                    onClick={() => {
-                      soundEngine.unlock()
-                      soundEngine.speakCharacterQuote(myHeroDef.id, myHeroDef.voiceLine)
-                    }}
-                  >
-                    <IconVolume size={14} />
-                  </button>
-                </div>
-
-                {myHeroDef.classTraitLabel && (
-                  <div className="ui-card-sub" style={{ fontSize: 12 }}>
-                    {myHeroDef.classIcon} {myHeroDef.classTraitLabel}
-                  </div>
-                )}
-
-                <div className="mlbb-draft-skills-row">
-                  {myHeroDef.skills.map((sk) => (
-                    <div key={sk.slot} className="mlbb-mini-skill-chip" title={sk.description}>
-                      <img src={sk.iconUrl || `/skills/${myHeroDef.id}_${sk.slot}.png`} alt={sk.name} />
-                      <span>
-                        <strong>{sk.keyHint}</strong> {sk.name.split(' ')[0]}
-                      </span>
-                    </div>
-                  ))}
-                  {isIconic && (
-                    <div className="mlbb-mini-skill-chip">
-                      <img src="/skills/iconic_rct.png" alt="RCT" />
-                      <span>
-                        <strong>G</strong> ไสยเวทย้อนกลับ
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!isIconic ? (
-            <div className="ui-card room-hero-draft-box">
-              <HeroPickerPanel
-                characters={characters}
-                selectedId={me?.characterId ?? ''}
-                compactTabs
-                maxHeight={220}
-                onSelect={handlePickHeroInRoom}
-              />
-            </div>
-          ) : (
-            <div className="ui-card" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
-              <span className="ui-card-sub">
-                โหมด ICONIC ระบบจะสุ่ม Gojo และ Sukuna ให้อัตโนมัติทั้ง 2 ฝั่ง
-              </span>
-            </div>
-          )}
-        </section>
+        </footer>
       </div>
     </div>
   )

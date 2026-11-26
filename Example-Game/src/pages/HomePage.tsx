@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
-import { Hero3dPreview } from '../components/Hero3dPreview'
+import { EmblemCheck } from '../components/HeroClassEmblem'
 import { HeroPickerPanel } from '../components/HeroPickerPanel'
 import {
   IconClose,
@@ -10,11 +10,12 @@ import {
   IconLogOut,
   IconPlay,
   IconSettings,
+  IconSwords,
   IconTarget,
   IconUsers,
   IconVolume,
 } from '../components/Icons'
-import { getMapDisplayLabel } from '../constants/heroClasses'
+import { TacticalBannerCard, type TacticalBannerSlot } from '../components/TacticalBannerDeck'
 import { useGameStore } from '../store/useGameStore'
 import type { GameMode, GraphicsQuality, MapId } from '../types/game'
 
@@ -25,55 +26,23 @@ const GRAPHICS_TIERS: Array<{ id: GraphicsQuality; label: string; hint: string }
   { id: 'ultra', label: 'ULTRA MAX', hint: 'Retina + เงา 3D + Bloom' },
 ]
 
-const DIAMOND_MODES: Array<{
+const MODE_TABS: Array<{
   id: GameMode
-  posClass: string
   title: string
   sub: string
-  thumb: string
 }> = [
-  {
-    id: 'tdm_3v3',
-    posClass: 'pos-3v3',
-    title: 'TEAM 3v3',
-    sub: '6 คน • 50 Kills',
-    thumb: '/maps/konoha_bg.webp',
-  },
-  {
-    id: 'duel_1v1',
-    posClass: 'pos-1v1',
-    title: '1 vs 1',
-    sub: '2 คน • 5 Kills',
-    thumb: '/maps/shibuya_bg.webp',
-  },
-  {
-    id: 'ffa',
-    posClass: 'pos-ffa',
-    title: 'FFA 5 คน',
-    sub: 'เข้าทันที',
-    thumb: '/maps/sisaket_bg.webp',
-  },
-  {
-    id: 'iconic',
-    posClass: 'pos-iconic',
-    title: 'ICONIC',
-    sub: 'Gojo × Sukuna',
-    thumb: '/fx/logo_gojo_sukuna.jpg',
-  },
-  {
-    id: 'practice',
-    posClass: 'pos-practice',
-    title: 'TRAINING',
-    sub: 'ฝึกซ้อม',
-    thumb: '/maps/scp_bg.webp',
-  },
+  { id: 'tdm_3v3', title: 'TEAM 3v3', sub: '6 คน • 50 Kills' },
+  { id: 'duel_1v1', title: '1 vs 1', sub: '2 คน • 5 Kills' },
+  { id: 'ffa', title: 'FFA 5 คน', sub: 'เข้าทันที' },
+  { id: 'iconic', title: 'ICONIC', sub: 'Gojo × Sukuna' },
+  { id: 'practice', title: 'PRACTICE', sub: 'ฝึกซ้อม' },
 ]
 
-const MAP_CHIPS: Array<{ id: MapId; label: string }> = [
-  { id: 'shibuya', label: 'ชิบูย่า' },
-  { id: 'konoha', label: 'โคโนฮะ' },
-  { id: 'sisaket_island', label: 'เกาะศรีสะเกษ' },
-  { id: 'scp_site', label: 'สถานี SCP' },
+const MAP_CARDS: Array<{ id: MapId; label: string; tag: string; img: string }> = [
+  { id: 'shibuya', label: 'ชิบูย่า', tag: 'SHIBUYA', img: '/maps/shibuya_bg.webp' },
+  { id: 'konoha', label: 'โคโนฮะ', tag: 'KONOHA', img: '/maps/konoha_bg.webp' },
+  { id: 'sisaket_island', label: 'เกาะศรีสะเกษ', tag: 'SISAKET', img: '/maps/sisaket_bg.webp' },
+  { id: 'scp_site', label: 'สถานี SCP', tag: 'SCP SITE', img: '/maps/scp_bg.webp' },
 ]
 
 interface HomePageProps {
@@ -84,9 +53,13 @@ interface HomePageProps {
 }
 
 export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFullscreen }: HomePageProps) {
-  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [gfxMenuOpen, setGfxMenuOpen] = useState(false)
   const [heroSwapOpen, setHeroSwapOpen] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
+  const [joinPopoverOpen, setJoinPopoverOpen] = useState(false)
+
+  const gfxAnchorRef = useRef<HTMLDivElement | null>(null)
+  const stageRef = useRef<HTMLDivElement | null>(null)
 
   const authUser = useGameStore((s) => s.authUser)
   const rawCharacters = useGameStore((s) => s.characters)
@@ -114,10 +87,20 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
   const startPracticeMode = useGameStore((s) => s.startPracticeMode)
   const logoutAccount = useGameStore((s) => s.logoutAccount)
 
-  const stageRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
     animateCardEnter(stageRef.current)
   }, [])
+
+  useEffect(() => {
+    if (!gfxMenuOpen) return
+    const onPointerDown = (e: PointerEvent) => {
+      if (gfxAnchorRef.current && !gfxAnchorRef.current.contains(e.target as Node)) {
+        setGfxMenuOpen(false)
+      }
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    return () => window.removeEventListener('pointerdown', onPointerDown)
+  }, [gfxMenuOpen])
 
   const activeTier = GRAPHICS_TIERS.find((t) => t.id === graphicsQuality) ?? GRAPHICS_TIERS[0]
   const activeHero = characters.find((c) => c.id === selectedCharId) ?? characters[0]
@@ -140,50 +123,319 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
     await createAndJoinRoom(mode, mode === 'iconic' ? 'shibuya' : mapId)
   }
 
-  return (
-    <div className="tw-home-stage">
-      <img
-        src="/fx/home_lobby_gojo_sukuna_bg.jpg"
-        alt="Infinity Clash Backdrop"
-        className="tw-home-bg"
-      />
-      <div className="tw-home-atmosphere" aria-hidden="true" />
+  const selfSlot: TacticalBannerSlot = {
+    id: 'self-banner',
+    topRole: mode === 'iconic' ? 'GOJO / SUKUNA' : activeHero?.roleTag || activeHero?.className || 'YOU',
+    topTitle: activeHero?.displayName || 'HERO',
+    featured: true,
+    character: activeHero ?? null,
+    use3dPreview: true,
+    playerName: `${authUser?.displayName || activeHero?.displayName || 'Player'} (คุณ)`,
+    subLabel: activeHero ? `${activeHero.displayName} · ${activeHero.animeTitle}` : '',
+    statusBadge: mode === 'ffa' ? 'PLAYER 1' : mode === 'practice' ? 'TRAINING' : 'YOU · HOST',
+    tone: mode === 'ffa' ? 'gold' : 'blue',
+  }
 
-      <div ref={stageRef} className="tw-home-chrome">
-        {/* TOP BAR: Profile Pill (Left) | Quick Join 6-Digit + Settings + FS + Logout (Right) */}
-        <header className="tw-topbar">
-          <div className="tw-profile-pill">
-            {activeHero && (
-              <img
-                src={activeHero.imageUrl}
-                alt={activeHero.displayName}
-                className="tw-profile-avatar"
-              />
-            )}
-            <div>
-              <div className="tw-profile-name">
-                {authUser?.displayName}
-              </div>
-              <div className="tw-profile-sub">
-                @{authUser?.username} · {characters.length} ฮีโร่
-              </div>
+  const openWaitingAction = () => {
+    soundEngine.unlock()
+    setJoinPopoverOpen(true)
+  }
+
+  function makeWaitingSlot(
+    id: string,
+    topRole: string,
+    topTitle: string,
+    tone: TacticalBannerSlot['tone'],
+    emptyHint: string,
+  ): TacticalBannerSlot {
+    return {
+      id,
+      topRole,
+      topTitle,
+      tone,
+      emptyHint,
+      onClick: openWaitingAction,
+      actionLabel: `${topTitle} — สร้างห้องรอหรือใส่รหัส 6 หลัก`,
+    }
+  }
+
+  const isTeamSplit = mode === 'tdm_3v3' || mode === 'duel_1v1' || mode === 'iconic' || mode === 'practice'
+
+  const leftSlots: TacticalBannerSlot[] =
+    mode === 'tdm_3v3'
+      ? [
+          selfSlot,
+          makeWaitingSlot('blue-wait-2', 'BLUE 2', 'รอเพื่อนร่วมทีม', 'blue', '+ ชวนเพื่อน / สร้างห้อง'),
+          makeWaitingSlot('blue-wait-3', 'BLUE 3', 'รอเพื่อนร่วมทีม', 'blue', '+ ชวนเพื่อน / สร้างห้อง'),
+        ]
+      : [selfSlot]
+
+  const rightSlots: TacticalBannerSlot[] =
+    mode === 'tdm_3v3'
+      ? [
+          makeWaitingSlot('red-wait-1', 'RED 1', 'รอคู่แข่ง', 'red', '+ หาคู่แข่ง 3v3'),
+          makeWaitingSlot('red-wait-2', 'RED 2', 'รอคู่แข่ง', 'red', '+ หาคู่แข่ง 3v3'),
+          makeWaitingSlot('red-wait-3', 'RED 3', 'รอคู่แข่ง', 'red', '+ หาคู่แข่ง 3v3'),
+        ]
+      : mode === 'duel_1v1'
+        ? [makeWaitingSlot('duel-wait', 'RED DUELIST', 'รอคู่ดวล 1v1', 'red', '+ ชวนเพื่อน / ใส่รหัส')]
+        : mode === 'iconic'
+          ? [
+              makeWaitingSlot(
+                'iconic-wait',
+                'GOJO × SUKUNA',
+                'รอคู่ดวล ICONIC',
+                'red',
+                'สุ่ม Gojo / Sukuna เมื่อครบ 2 คน',
+              ),
+            ]
+          : [
+              {
+                id: 'practice-bot-slot',
+                topRole: 'TRAINING BOT',
+                topTitle: 'หุ่นซ้อมในสนาม',
+                tone: 'red',
+                emptyHint: 'พร้อมฝึกสกิลทันทีเมื่อกด START',
+                onClick: () => void handleLaunchMatch(),
+                actionLabel: 'เริ่มฝึกซ้อมกับบอททันที',
+              },
+            ]
+
+  const ffaSlots: TacticalBannerSlot[] = [
+    makeWaitingSlot('ffa-wait-2', 'CHALLENGER 2', 'รอผู้ท้าชิง', 'cobalt', '+ ร่วมห้อง FFA'),
+    makeWaitingSlot('ffa-wait-3', 'CHALLENGER 3', 'รอผู้ท้าชิง', 'cobalt', '+ ร่วมห้อง FFA'),
+    selfSlot,
+    makeWaitingSlot('ffa-wait-4', 'CHALLENGER 4', 'รอผู้ท้าชิง', 'cobalt', '+ ร่วมห้อง FFA'),
+    makeWaitingSlot('ffa-wait-5', 'CHALLENGER 5', 'รอผู้ท้าชิง', 'cobalt', '+ ร่วมห้อง FFA'),
+  ]
+
+  const primaryCtaLabel = joining
+    ? 'กำลังเข้าห้อง...'
+    : mode === 'practice'
+      ? 'START TRAINING'
+      : mode === 'ffa'
+        ? 'START FFA'
+        : mode === 'duel_1v1' || mode === 'iconic'
+          ? 'สร้างห้องรอ 1v1'
+          : 'สร้างห้องรอ 3v3'
+
+  return (
+    <div className="val-page">
+      <div ref={stageRef} className="val-stage">
+        {/* 1. TOP TACTICAL BAR (Clean 2-side layout, no top-center Play overlap) */}
+        <header className="val-topbar">
+          <div className="val-top-left">
+            <div className="val-brand-link" title={`@${authUser?.username}`}>
+              {activeHero?.imageUrl && (
+                <img
+                  src={activeHero.imageUrl}
+                  alt={activeHero.displayName}
+                  style={{ width: 20, height: 20, borderRadius: 4, objectFit: 'cover' }}
+                />
+              )}
+              <span>{authUser?.displayName || 'Player'}</span>
+            </div>
+
+            <button type="button" className="val-nav-icon-btn active" title="ล็อบบี้หลัก">
+              <IconSwords size={15} />
+              <span>LOBBY</span>
+            </button>
+
+            <button
+              type="button"
+              className="val-nav-icon-btn home-heroes-nav-btn"
+              onClick={() => inspectCharacter(activeHero?.id)}
+              title={`คลังฮีโร่ (${characters.length} ตัว)`}
+            >
+              <IconUsers size={15} />
+              <span>ฮีโร่ ({characters.length})</span>
+            </button>
+
+            {/* Inline Top-Bar Graphics Quality Dropdown */}
+            <div ref={gfxAnchorRef} className="val-gfx-anchor">
+              <button
+                type="button"
+                className={`val-nav-icon-btn home-gfx-pill ${gfxMenuOpen ? 'active' : ''}`}
+                onClick={() => setGfxMenuOpen((v) => !v)}
+                aria-expanded={gfxMenuOpen}
+                title={`ปรับระดับกราฟิก (${activeTier.label})`}
+              >
+                <IconSettings size={15} />
+                <span>{activeTier.label}</span>
+              </button>
+
+              {gfxMenuOpen && (
+                <div className="val-gfx-popover" role="menu" aria-label="เลือกระดับกราฟิก 3D">
+                  {GRAPHICS_TIERS.map((tier) => (
+                    <button
+                      key={tier.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={graphicsQuality === tier.id}
+                      className={`val-gfx-option ${graphicsQuality === tier.id ? 'active' : ''}`}
+                      onClick={() => {
+                        soundEngine.unlock()
+                        setGraphicsQuality(tier.id)
+                        setGfxMenuOpen(false)
+                      }}
+                    >
+                      <div className="val-gfx-opt-head">
+                        <span>{tier.label}</span>
+                        {graphicsQuality === tier.id && (
+                          <span style={{ color: '#38bdf8', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <EmblemCheck size={12} /> ใช้งานอยู่
+                          </span>
+                        )}
+                      </div>
+                      <span className="val-gfx-opt-hint">{tier.hint}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="ui-topbar-group">
-            <div className="tw-quick-join" aria-label="เข้าร่วมห้องเพื่อน">
-              <IconKey size={14} style={{ color: 'var(--accent-blue)' }} />
+          <div className="val-top-right">
+            <button
+              type="button"
+              className={`val-nav-icon-btn ${joinPopoverOpen ? 'active' : ''}`}
+              onClick={() => setJoinPopoverOpen((v) => !v)}
+              title="เข้าร่วมห้องเพื่อนด้วยรหัส 6 หลัก"
+            >
+              <IconKey size={15} />
+              <span>JOIN CODE</span>
+            </button>
+
+            <button
+              type="button"
+              className={`val-nav-icon-btn ${!soundMuted ? 'active' : ''}`}
+              onClick={onToggleSound}
+              title={soundMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
+            >
+              <IconVolume size={15} muted={soundMuted} />
+            </button>
+
+            <button
+              type="button"
+              className="val-nav-icon-btn home-fs-btn"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'ย่อหน้าต่าง' : 'เต็มจอ'}
+            >
+              <IconFullscreen size={15} exit={isFullscreen} />
+            </button>
+
+            <button
+              type="button"
+              className="val-nav-icon-btn danger home-logout-btn"
+              onClick={() => setLogoutConfirmOpen(true)}
+              title="ออกจากระบบ"
+            >
+              <IconLogOut size={15} />
+            </button>
+          </div>
+        </header>
+
+        {/* 2. MODE TAB STRIP (Horizontal Underlined) */}
+        <div className="val-mode-bar-wrap">
+          <nav className="val-mode-tabs" aria-label="โหมดเกมทั้งหมด">
+            {MODE_TABS.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className={`val-mode-tab ${mode === m.id ? 'active' : ''}`}
+                onClick={() => handleSelectMode(m.id)}
+              >
+                <span>{m.title}</span>
+                <span className="val-mode-tag">{m.sub}</span>
+              </button>
+            ))}
+          </nav>
+
+          {error && (
+            <div className="ui-alert error" style={{ maxWidth: 560, width: '100%' }}>
+              <span>{error}</span>
+              <button type="button" className="ui-alert-close" onClick={() => setError('')} aria-label="ปิดการแจ้งเตือน">
+                <IconClose size={13} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* 3. MIDDLE WORKSPACE: LEFT RECTANGULAR MAP CARDS + CENTER MODE-MATCHED BANNER DECK */}
+        <main className="val-workspace">
+          <aside className="val-map-dock" aria-label="เลือกสมรภูมิ">
+            <span className="val-map-dock-label">MAP ARENA</span>
+            {MAP_CARDS.map((mp) => {
+              const lockedIconic = mode === 'iconic' && mp.id !== 'shibuya'
+              const isSelected = (mode === 'iconic' ? 'shibuya' : mapId) === mp.id
+              return (
+                <button
+                  key={mp.id}
+                  type="button"
+                  disabled={lockedIconic}
+                  className={`val-map-card ${isSelected ? 'active' : ''}`}
+                  onClick={() => {
+                    soundEngine.unlock()
+                    setMapId(mp.id)
+                  }}
+                >
+                  <img src={mp.img} alt={mp.label} className="val-map-card-img" loading="lazy" />
+                  <div className="val-map-card-scrim" aria-hidden="true" />
+                  <div className="val-map-card-info">
+                    <span className="val-map-card-tag">
+                      {mode === 'iconic' && mp.id === 'shibuya' ? 'ICONIC LOCKED' : isSelected ? 'SELECTED' : mp.tag}
+                    </span>
+                    <span className="val-map-card-name">{mp.label}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </aside>
+
+          <section className="val-roster-stage" aria-label="ห้องเตรียมพร้อมตามโหมดที่เลือก">
+            {isTeamSplit ? (
+              <div className={`val-banner-deck ${mode === 'tdm_3v3' ? 'six-up' : ''}`}>
+                {leftSlots.map((slot) => (
+                  <TacticalBannerCard key={slot.id} slot={slot} />
+                ))}
+
+                <div className="val-vs-divider" aria-hidden="true">
+                  <div className="val-vs-diamond">
+                    <span>VS</span>
+                  </div>
+                </div>
+
+                {rightSlots.map((slot) => (
+                  <TacticalBannerCard key={slot.id} slot={slot} />
+                ))}
+              </div>
+            ) : (
+              <div className="val-banner-deck">
+                {ffaSlots.map((slot) => (
+                  <TacticalBannerCard key={slot.id} slot={slot} />
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
+
+        {/* 4. BOTTOM TACTICAL CONTROL STRIP */}
+        <footer className="val-bottom-bar">
+          {/* Bottom-Left: 6-Digit Room Join & Recent Rooms */}
+          <div className="val-bottom-left">
+            <div className="val-code-box" aria-label="เข้าร่วมด้วยรหัส 6 หลัก">
+              <IconKey size={13} style={{ color: '#7dd3fc' }} />
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={6}
-                className="tw-quick-join-input home-code-input"
-                placeholder="รหัสห้อง 6 หลัก"
+                className="home-code-input"
+                placeholder="รหัส 6 หลัก"
                 value={roomInput}
                 onChange={(e) => setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && /^\d{6}$/.test(roomInput.trim())) {
+                  if (e.key === 'Enter' && roomInput.length === 6) {
                     void prepareJoinRoom(roomInput)
                   }
                 }}
@@ -191,298 +443,178 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
               <button
                 type="button"
                 className="ui-btn primary home-join-btn"
-                style={{ height: 30, padding: '0 12px', fontSize: 12.5, borderRadius: 8 }}
-                disabled={joining || checkingJoinRoom || !/^\d{6}$/.test(roomInput.trim())}
-                onClick={() => void prepareJoinRoom()}
+                style={{ height: 28, fontSize: 11, padding: '0 10px' }}
+                disabled={checkingJoinRoom || roomInput.length !== 6}
+                onClick={() => void prepareJoinRoom(roomInput)}
               >
-                {checkingJoinRoom || joining ? '...' : 'เข้าห้อง'}
+                {checkingJoinRoom ? '...' : 'เข้าห้อง'}
               </button>
             </div>
 
-            <div className="clean-settings-anchor">
+            {validRecentRooms.map((r) => (
               <button
+                key={r.roomId}
                 type="button"
-                className={`ui-btn ${settingsOpen ? 'active' : ''}`}
+                className="val-map-pill"
                 onClick={() => {
-                  soundEngine.unlock()
-                  setSettingsOpen((v) => !v)
+                  setRoomInput(r.roomId)
+                  void prepareJoinRoom(r.roomId)
                 }}
-                aria-expanded={settingsOpen}
-                title="ตั้งค่าภาพ 3D และเสียง"
+                title={`เข้าร่วมห้องล่าสุด #${r.roomId}`}
               >
-                <IconSettings size={15} />
-                <span className="hide-xs">{activeTier.label}</span>
+                #{r.roomId}
               </button>
-
-              {settingsOpen && (
-                <div className="clean-popover home-graphics-bar" role="dialog" aria-label="ตั้งค่าภาพและเสียง">
-                  <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
-                    <span className="clean-popover-label">ความละเอียด 3D</span>
-                    <button
-                      type="button"
-                      className="ui-btn icon-only"
-                      style={{ height: 26, width: 26 }}
-                      onClick={() => setSettingsOpen(false)}
-                      aria-label="ปิดตั้งค่า"
-                    >
-                      <IconClose size={13} />
-                    </button>
-                  </div>
-                  <div className="clean-gfx-grid" role="radiogroup" aria-label="เลือกระดับความละเอียดภาพ">
-                    {GRAPHICS_TIERS.map((tier) => (
-                      <button
-                        key={tier.id}
-                        type="button"
-                        role="radio"
-                        aria-checked={graphicsQuality === tier.id}
-                        className={`clean-gfx-chip home-gfx-pill ${tier.id} ${graphicsQuality === tier.id ? 'active' : ''}`}
-                        onClick={() => {
-                          soundEngine.unlock()
-                          setGraphicsQuality(tier.id)
-                        }}
-                      >
-                        <div>{tier.label}</div>
-                        <div style={{ fontSize: 10.5, opacity: 0.72, fontWeight: 500 }}>{tier.hint}</div>
-                      </button>
-                    ))}
-                  </div>
-                  <button
-                    type="button"
-                    className={`ui-btn sound-toggle ${!soundMuted ? 'active' : ''}`}
-                    onClick={onToggleSound}
-                    style={{ width: '100%', justifyContent: 'space-between' }}
-                  >
-                    <span className="ui-topbar-group" style={{ gap: 7 }}>
-                      <IconVolume size={15} muted={soundMuted} />
-                      <span>เสียงเอฟเฟกต์</span>
-                    </span>
-                    <span style={{ fontSize: 11.5 }}>{soundMuted ? 'ปิด' : 'เปิด'}</span>
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <button
-              type="button"
-              className="ui-btn icon-only home-fs-btn"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
-              aria-label={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
-            >
-              <IconFullscreen size={16} exit={isFullscreen} />
-            </button>
-
-            <button
-              type="button"
-              className="ui-btn icon-only danger home-logout-btn"
-              onClick={() => {
-                soundEngine.unlock()
-                setLogoutConfirmOpen(true)
-              }}
-              title="ออกจากระบบ"
-              aria-label="ออกจากระบบ"
-            >
-              <IconLogOut size={16} />
-            </button>
+            ))}
           </div>
-        </header>
 
-        {error && (
-          <div className="ui-alert" role="alert">
-            <span>{error}</span>
-            <button type="button" className="ui-btn" style={{ height: 28 }} onClick={() => setError('')}>
-              ปิด
-            </button>
-          </div>
-        )}
-
-        {/* MAIN SPLIT: Left Open 3D Hero Showcase | Right Diagonal Diamond Mode Cluster */}
-        <main className="tw-main-split">
-          <section className="tw-hero-stage" aria-label="ตัวละคร 3D ของฉัน">
-            {activeHero && (
-              <>
-                <Hero3dPreview character={activeHero} size="hero" frameless />
-                <div className="tw-hero-caption">
-                  <div className="tw-hero-name-row">
-                    <span className="tw-hero-title">{activeHero.displayName}</span>
-                    {activeHero.className && (
-                      <span className="ui-pill accent" style={{ height: 22, fontSize: 11 }}>
-                        {activeHero.classIcon} {activeHero.className}
-                      </span>
-                    )}
-                  </div>
-                  <div className="tw-hero-actions">
-                    <button
-                      type="button"
-                      className="ui-btn"
-                      style={{ height: 32, fontSize: 12.5 }}
-                      onClick={() => setHeroSwapOpen(true)}
-                    >
-                      <IconUsers size={14} />
-                      <span>เปลี่ยนฮีโร่</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="ui-btn icon-only"
-                      style={{ height: 32, width: 32 }}
-                      title="ทดลองเสียงพากย์"
-                      aria-label="ทดลองเสียงพากย์"
-                      onClick={() => {
-                        soundEngine.unlock()
-                        soundEngine.speakCharacterQuote(activeHero.id, activeHero.voiceLine)
-                      }}
-                    >
-                      <IconVolume size={14} />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </section>
-
-          <section className="tw-modes-panel" aria-label="เลือกโหมดและแผนที่">
-            <div className="tw-diamond-cluster" role="radiogroup" aria-label="โหมดการเล่น">
-              {DIAMOND_MODES.map((m) => {
-                const isSelected = mode === m.id
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    className={`tw-diamond-card ${m.posClass} ${isSelected ? 'selected' : ''}`}
-                    onClick={() => handleSelectMode(m.id)}
-                  >
-                    <div className="tw-diamond-inner">
-                      <img src={m.thumb} alt={m.title} className="tw-diamond-art" />
-                      <div className="tw-diamond-scrim" />
-                      <div className="tw-diamond-copy">
-                        <div className="tw-diamond-title">{m.title}</div>
-                        <div className="tw-diamond-sub">{m.sub}</div>
-                      </div>
-                    </div>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="tw-launch-bar">
-              <div className="tw-map-row" role="radiogroup" aria-label="เลือกแผนที่">
-                {MAP_CHIPS.map((mp) => {
-                  const lockedByIconic = mode === 'iconic' && mp.id !== 'shibuya'
-                  const isActive = (mode === 'iconic' ? 'shibuya' : mapId) === mp.id
-                  return (
-                    <button
-                      key={mp.id}
-                      type="button"
-                      role="radio"
-                      aria-checked={isActive}
-                      disabled={lockedByIconic}
-                      className={`tw-map-chip ${isActive ? 'active' : ''}`}
-                      onClick={() => setMapId(mp.id)}
-                    >
-                      {mp.label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              <div className="tw-launch-cta-row">
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {DIAMOND_MODES.find((d) => d.id === mode)?.title}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
-                    {getMapDisplayLabel(mode === 'iconic' ? 'shibuya' : mapId, mode === 'iconic')}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="ui-btn cta-gold home-play-btn"
-                  disabled={joining}
-                  onClick={() => void handleLaunchMatch()}
-                >
-                  <IconPlay size={15} />
-                  <span>
-                    {joining
-                      ? 'กำลังเข้า...'
-                      : mode === 'ffa'
-                        ? 'เข้าสมรภูมิทันที'
-                        : mode === 'practice'
-                          ? 'เริ่มฝึกซ้อม'
-                          : 'สร้างห้องประลอง'}
-                  </span>
-                </button>
-              </div>
-            </div>
-          </section>
-        </main>
-
-        {/* BOTTOM NAVIGATION RAIL (Real Features Only) */}
-        <footer className="tw-bottom-rail">
-          <nav className="ui-topbar-group" aria-label="เมนูหลัก">
+          {/* Bottom-Center: Trio CTA (Practice | Crimson START | Change Hero) */}
+          <div className="val-bottom-center">
             <button
               type="button"
-              className="tw-rail-btn home-heroes-nav-btn"
-              onClick={() => {
-                soundEngine.unlock()
-                inspectCharacter(activeHero?.id)
-              }}
-            >
-              <IconUsers size={15} />
-              <span>คลังฮีโร่ ({characters.length})</span>
-            </button>
-
-            <button
-              type="button"
-              className="tw-rail-btn home-practice-btn"
-              disabled={joining}
+              className="val-cta-secondary home-practice-btn"
               onClick={() => {
                 soundEngine.unlock()
                 void startPracticeMode(activeHero?.id, mapId)
               }}
             >
-              <IconTarget size={15} />
-              <span>ซ้อมด่วน</span>
+              <IconTarget size={14} />
+              <span>ซ้อมมือ</span>
             </button>
-          </nav>
 
-          {validRecentRooms.length > 0 && (
-            <div className="ui-topbar-group" style={{ gap: 6 }}>
-              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ห้องล่าสุด:</span>
-              {validRecentRooms.map((r) => (
+            <button
+              type="button"
+              className="val-cta-crimson home-play-btn"
+              disabled={joining}
+              onClick={() => void handleLaunchMatch()}
+            >
+              <IconPlay size={15} />
+              <span>{primaryCtaLabel}</span>
+            </button>
+
+            <button
+              type="button"
+              className="val-cta-secondary"
+              onClick={() => {
+                soundEngine.unlock()
+                setHeroSwapOpen(true)
+              }}
+            >
+              <IconUsers size={14} />
+              <span>เปลี่ยนฮีโร่</span>
+            </button>
+          </div>
+
+          {/* Bottom-Right: Voice Preview + Quick Inspect Hero */}
+          <div className="val-bottom-right">
+            {activeHero && (
+              <>
                 <button
-                  key={r.roomId}
                   type="button"
-                  className="clean-recent-btn"
-                  onClick={() => setRoomInput(r.roomId)}
+                  className="val-nav-icon-btn"
+                  onClick={() => {
+                    soundEngine.unlock()
+                    soundEngine.speakCharacterQuote(activeHero.id, activeHero.voiceLine)
+                  }}
+                  title="ฟังเสียงพากย์ประจำตัว"
                 >
-                  #{r.roomId}
+                  <IconVolume size={14} />
+                  <span>เสียงพากย์</span>
                 </button>
-              ))}
-            </div>
-          )}
+                <button
+                  type="button"
+                  className="val-nav-icon-btn"
+                  onClick={() => inspectCharacter(activeHero.id)}
+                  title="ดูค่าสถานะและสกิลทั้งหมด"
+                >
+                  <IconSwords size={14} />
+                  <span>ดูสกิล</span>
+                </button>
+              </>
+            )}
+          </div>
         </footer>
       </div>
 
-      {/* Quick Hero Switch Modal */}
-      {heroSwapOpen && (
-        <div
-          className="clean-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-label="เลือกฮีโร่โชว์หน้าหลัก"
-          onClick={() => setHeroSwapOpen(false)}
-        >
-          <div className="clean-modal-card" onClick={(e) => e.stopPropagation()}>
+      {/* Waiting Slot / Join 6-Digit Room Modal */}
+      {joinPopoverOpen && (
+        <div className="tw-modal-backdrop" onClick={() => setJoinPopoverOpen(false)}>
+          <div className="ui-card tw-modal-card" style={{ maxWidth: 430 }} onClick={(e) => e.stopPropagation()}>
             <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
-              <h2 className="ui-page-title">เลือกฮีโร่ ({characters.length})</h2>
+              <h3 className="ui-card-title">เข้าห้องเพื่อน หรือ เปิดห้องรอผู้เล่น</h3>
               <button
                 type="button"
                 className="ui-btn icon-only"
+                style={{ width: 30, height: 30 }}
+                onClick={() => setJoinPopoverOpen(false)}
+              >
+                <IconClose size={14} />
+              </button>
+            </div>
+            <p className="ui-card-sub">
+              ใส่รหัสห้อง 6 หลักของเพื่อนเพื่อเข้าร่วม หรือสร้างห้องโหมด {MODE_TABS.find((m) => m.id === mode)?.title} เพื่อชวนเพื่อนเข้ามา
+            </p>
+            <div className="ui-topbar-group">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                className="ui-input"
+                style={{ flex: 1, letterSpacing: '0.2em', textAlign: 'center', fontWeight: 800 }}
+                placeholder="000000"
+                value={roomInput}
+                onChange={(e) => setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && roomInput.length === 6) {
+                    setJoinPopoverOpen(false)
+                    void prepareJoinRoom(roomInput)
+                  }
+                }}
+              />
+              <button
+                type="button"
+                className="ui-btn primary"
+                disabled={checkingJoinRoom || roomInput.length !== 6}
+                onClick={() => {
+                  setJoinPopoverOpen(false)
+                  void prepareJoinRoom(roomInput)
+                }}
+              >
+                {checkingJoinRoom ? 'กำลังตรวจ...' : 'เข้าร่วม'}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="val-cta-crimson"
+              style={{ width: '100%', height: 40, fontSize: 13 }}
+              disabled={joining}
+              onClick={() => {
+                setJoinPopoverOpen(false)
+                void handleLaunchMatch()
+              }}
+            >
+              <IconPlay size={14} />
+              <span>สร้างห้องรอ {MODE_TABS.find((m) => m.id === mode)?.title} ทันที</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Hero Quick Swap Modal */}
+      {heroSwapOpen && (
+        <div className="tw-modal-backdrop" onClick={() => setHeroSwapOpen(false)}>
+          <div className="ui-card tw-modal-card tw-modal-lg" onClick={(e) => e.stopPropagation()}>
+            <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
+              <div>
+                <h3 className="ui-card-title">เปลี่ยนฮีโร่หลัก</h3>
+                <p className="ui-card-sub">คลิกเลือกตัวละครจากทั้ง {characters.length} ตัว (แสดงทันทีในแบนเนอร์)</p>
+              </div>
+              <button
+                type="button"
+                className="ui-btn icon-only"
+                style={{ width: 32, height: 32 }}
                 onClick={() => setHeroSwapOpen(false)}
-                aria-label="ปิด"
               >
                 <IconClose size={15} />
               </button>
@@ -494,9 +626,9 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
               maxHeight={340}
               onSelect={(charId) => {
                 soundEngine.unlock()
-                setSelectedCharId(charId)
                 const ch = characters.find((c) => c.id === charId)
                 soundEngine.speakCharacterQuote(charId, ch?.voiceLine)
+                setSelectedCharId(charId)
                 setHeroSwapOpen(false)
               }}
             />
@@ -506,37 +638,23 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
 
       {/* Logout Confirmation Modal */}
       {logoutConfirmOpen && (
-        <div
-          className="clean-modal-backdrop"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="logout-confirm-title"
-          onClick={() => setLogoutConfirmOpen(false)}
-        >
-          <div className="clean-modal-card sm" onClick={(e) => e.stopPropagation()}>
-            <h2 id="logout-confirm-title" className="ui-page-title">
-              ยืนยันออกจากระบบ?
-            </h2>
-            <p className="ui-card-sub">
-              บัญชี <strong style={{ color: 'var(--text-primary)' }}>@{authUser?.username}</strong> จะถูกออกจากระบบบนอุปกรณ์นี้
-            </p>
-            <div className="clean-home-actions" style={{ width: '100%' }}>
-              <button
-                type="button"
-                className="ui-btn mlbb-logout-cancel"
-                onClick={() => setLogoutConfirmOpen(false)}
-              >
+        <div className="tw-modal-backdrop" onClick={() => setLogoutConfirmOpen(false)}>
+          <div className="ui-card tw-modal-card" style={{ maxWidth: 380 }} onClick={(e) => e.stopPropagation()}>
+            <h3 className="ui-card-title">ออกจากระบบ</h3>
+            <p className="ui-card-sub">ต้องการออกจากบัญชี @{authUser?.username} ใช่ไหม?</p>
+            <div className="ui-topbar-group" style={{ justifyContent: 'flex-end' }}>
+              <button type="button" className="ui-btn" onClick={() => setLogoutConfirmOpen(false)}>
                 ยกเลิก
               </button>
               <button
                 type="button"
-                className="ui-btn danger mlbb-logout-confirm"
+                className="ui-btn danger"
                 onClick={() => {
                   setLogoutConfirmOpen(false)
                   void logoutAccount()
                 }}
               >
-                ยืนยันออกจากระบบ
+                ออกจากระบบ
               </button>
             </div>
           </div>

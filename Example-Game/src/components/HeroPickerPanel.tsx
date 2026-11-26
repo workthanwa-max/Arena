@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { HERO_CLASS_FILTERS, type HeroClassFilter } from '../constants/heroClasses'
 import type { CharacterDef } from '../types/game'
+import { HeroClassEmblem } from './HeroClassEmblem'
 import { IconClose, IconSearch } from './Icons'
 
 interface HeroPickerPanelProps {
@@ -81,6 +82,7 @@ export function HeroPickerPanel({
               title={cls.traitSummary}
               onClick={() => setClassFilter(cls.id)}
             >
+              <HeroClassEmblem heroClass={cls.id} size={14} />
               <span>{compactTabs ? cls.shortName : cls.name}</span>
               <span className="hp-tab-count">{count}</span>
             </button>
@@ -111,7 +113,11 @@ export function HeroPickerPanel({
               >
                 <div className="hp-thumb-wrap">
                   <img src={ch.imageUrl} alt={ch.displayName} className="hp-thumb" loading="lazy" />
-                  {ch.adminOnly && <span className="moba-crown-tag">👑</span>}
+                  {ch.adminOnly && (
+                    <span className="moba-crown-tag" title="ผู้ดูแลระบบ">
+                      <HeroClassEmblem heroClass="sovereign" size={11} />
+                    </span>
+                  )}
                 </div>
                 <span className="hp-name">{ch.displayName}</span>
               </button>

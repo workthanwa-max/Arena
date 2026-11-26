@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/useGameStore'
 import type { GameMode, MapId } from '../types/game'
+import { EmblemBolt, EmblemShield, HeroClassEmblem } from './HeroClassEmblem'
+import { IconClose, IconSwords, IconTarget } from './Icons'
 
 interface CreateRoomModalProps {
   onClose: () => void
@@ -39,8 +41,8 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
             <h2>สร้างห้องเล่นใหม่</h2>
             <p>เลือกรูปแบบการต่อสู้และสนามประลอง ระบบจะสร้างรหัสห้อง 6 หลักให้อัตโนมัติ</p>
           </div>
-          <button type="button" className="btn-pill secondary compact" onClick={onClose}>
-            ✕
+          <button type="button" className="btn-pill secondary compact" onClick={onClose} aria-label="ปิดหน้าต่าง">
+            <IconClose size={13} />
           </button>
         </div>
 
@@ -53,7 +55,9 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
             onClick={() => selectMode('iconic')}
           >
             <div className="iconic-card-row">
-              <span className="iconic-badge-tag">⚡ NEW SPECIAL MODE</span>
+              <span className="iconic-badge-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <EmblemBolt size={12} /> NEW SPECIAL MODE
+              </span>
               <span className="iconic-meta-pill">1 vs 1 • ชิบูย่า 3D • เป้า 5 Kills</span>
             </div>
             <div className="choice-title">ICONIC 1v1: โกะโจ ซาโตรุ vs เรียวเมน สุคุนะ</div>
@@ -68,7 +72,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               className={`choice-card ${mode === 'duel_1v1' ? 'selected' : ''}`}
               onClick={() => selectMode('duel_1v1')}
             >
-              <div className="choice-icon">⚔️</div>
+              <div className="choice-icon"><IconSwords size={18} /></div>
               <div className="choice-title">1 vs 1 ดวลเดือด (5 Kills ชนะ)</div>
               <div className="choice-desc">
                 รอหน้าห้องครบ 2/2 คน แล้วกดเริ่มพร้อมกัน ใครครบ 5 คิลก่อนชนะ!
@@ -80,7 +84,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               className={`choice-card ${mode === 'tdm_3v3' ? 'selected' : ''}`}
               onClick={() => selectMode('tdm_3v3')}
             >
-              <div className="choice-icon">🛡️</div>
+              <div className="choice-icon"><EmblemShield size={18} /></div>
               <div className="choice-title">ทีม 3 vs 3 (ครบ 50 Kills ชนะ)</div>
               <div className="choice-desc">
                 รอหน้าห้องฝั่งละ 3 คนจนครบ 6/6 จึงกดเริ่มเข้าสมรภูมิพร้อมกัน!
@@ -92,7 +96,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               className={`choice-card ${mode === 'practice' ? 'selected' : ''}`}
               onClick={() => selectMode('practice')}
             >
-              <div className="choice-icon">🎯</div>
+              <div className="choice-icon"><IconTarget size={18} /></div>
               <div className="choice-title">ฝึกซ้อมกับหุ่น Dummy</div>
               <div className="choice-desc">
                 เข้าห้องเตรียมตัวเลือกฮีโร่/แผนที่ แล้วกดเริ่มลงทดสอบสกิลและดาเมจ
@@ -104,7 +108,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               className={`choice-card ${mode === 'ffa' ? 'selected' : ''}`}
               onClick={() => selectMode('ffa')}
             >
-              <div className="choice-icon">🔥</div>
+              <div className="choice-icon"><HeroClassEmblem heroClass="vanguard" size={18} /></div>
               <div className="choice-title">ตะลุมบอน 5 คน (FFA)</div>
               <div className="choice-desc">
                 โหมดเดียวที่เข้าสู่สมรภูมิได้ทันที (ไม่ต้องรอหน้าห้อง) พร้อมรหัส 6 หลัก!
@@ -124,7 +128,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               onClick={() => setMapId('shibuya')}
             >
               <img src="/maps/shibuya_bg.webp" alt="Shibuya" className="map-thumb" />
-              <div className="choice-title">🏙️ ชิบูย่า (Shibuya Incident)</div>
+              <div className="choice-title">ชิบูย่า (Shibuya Incident)</div>
               <div className="choice-desc">
                 {mode === 'iconic'
                   ? 'สนามชิบูย่า 3D Over-The-Shoulder พร้อมเอฟเฟกต์กางอาณาเขตสุดอลังการ'
@@ -139,7 +143,7 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
               onClick={() => setMapId('konoha')}
             >
               <img src="/maps/konoha_bg.webp" alt="Konoha" className="map-thumb" />
-              <div className="choice-title">🍃 หมู่บ้านโคโนฮะ (นารุโตะ)</div>
+              <div className="choice-title">หมู่บ้านโคโนฮะ (นารุโตะ)</div>
               <div className="choice-desc">
                 ลานนินจาใต้ผาหน้าโฮคาเงะ ฐาน 2 ฝั่งสมดุลเหมาะกับ 3v3
               </div>
@@ -179,14 +183,14 @@ export function CreateRoomModal({ onClose }: CreateRoomModalProps) {
             {joining
               ? 'กำลังสร้างห้อง...'
               : mode === 'iconic'
-                ? '⚡ สร้างห้อง ICONIC Gojo vs Sukuna (รหัส 6 หลัก)'
+                ? 'สร้างห้อง ICONIC Gojo vs Sukuna (รหัส 6 หลัก)'
                 : mode === 'duel_1v1'
-                  ? '⚔️ สร้างห้อง 1v1 (รหัส 6 หลัก)'
+                  ? 'สร้างห้อง 1v1 (รหัส 6 หลัก)'
                   : mode === 'tdm_3v3'
-                    ? '🛡️ สร้างห้องรอ 3v3 (รหัส 6 หลัก)'
+                    ? 'สร้างห้องรอ 3v3 (รหัส 6 หลัก)'
                     : mode === 'practice'
-                      ? '🎯 สร้างห้องฝึกซ้อม (รหัส 6 หลัก)'
-                      : '🔥 สร้างห้อง FFA 5 คน (เข้าเกมทันที)'}
+                      ? 'สร้างห้องฝึกซ้อม (รหัส 6 หลัก)'
+                      : 'สร้างห้อง FFA 5 คน (เข้าเกมทันที)'}
           </button>
         </div>
       </div>
