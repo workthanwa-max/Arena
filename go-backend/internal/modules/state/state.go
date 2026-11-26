@@ -233,61 +233,88 @@ func DefaultMapConfig() MapConfig {
 
 // PlayerState holds the server-authoritative state of one player in a room.
 type PlayerState struct {
-	ID               string       `json:"id"`
-	NetID            uint16       `json:"netId"`
-	UserID           string       `json:"userId,omitempty"`
-	Name             string       `json:"name"`
-	CharacterID      string       `json:"characterId"`
-	CharacterName    string       `json:"characterName"`
-	Team             string       `json:"team"`
-	IsDummy          bool         `json:"isDummy,omitempty"`
-	Ready            bool         `json:"ready"`
-	IsHost           bool         `json:"isHost"`
-	X                float64      `json:"x"`
-	Y                float64      `json:"y"`
-	Color            string       `json:"color"`
-	AccentColor      string       `json:"accentColor"`
-	HP               int          `json:"hp"`
-	MaxHP            int          `json:"maxHp"`
-	Alive            bool         `json:"alive"`
-	Kills            int          `json:"kills"`
-	Deaths           int          `json:"deaths"`
-	KilledBy         string       `json:"killedBy,omitempty"`
-	Stunned          bool         `json:"stunned"`
-	Slowed           bool         `json:"slowed"`
-	Godspeed         bool         `json:"godspeed"`
-	FastAttack       bool         `json:"fastAttack"`
-	Invulnerable     bool         `json:"invulnerable"`
-	Seated           bool         `json:"seated"`
-	InVoid           bool         `json:"inVoid"`
-	RespawnInMs      int64        `json:"respawnInMs"`
-	CooldownsMs      [5]int64     `json:"cooldownsMs"`
-	InfinityStones   []int        `json:"infinityStones,omitempty"`
-	SnapCooldownMs   int64        `json:"snapCooldownMs"`
-	BasicCooldownMs  int64        `json:"basicCooldownMs"`
-	DashCooldownMs   int64        `json:"dashCooldownMs"`
-	RctCooldownMs    int64        `json:"rctCooldownMs"`
-	InputDX          float64      `json:"dx"`
-	InputDY          float64      `json:"dy"`
-	AimDX            float64      `json:"aimDx"`
-	AimDY            float64      `json:"aimDy"`
-	LastSeq          uint64       `json:"lastSeq"`
-	StunUntil        time.Time    `json:"-"`
-	SlowUntil        time.Time    `json:"-"`
-	BuffUntil        time.Time    `json:"-"`
-	RapidAttackUntil time.Time    `json:"-"`
-	InvulnUntil      time.Time    `json:"-"`
-	ThroneUntil      time.Time    `json:"-"`
-	VoidUntil        time.Time    `json:"-"`
-	RespawnAt        time.Time    `json:"-"`
-	LastHitAt        time.Time    `json:"-"`
-	CooldownUntil    [5]time.Time `json:"-"`
-	SnapUntil        time.Time    `json:"-"`
-	AttackUntil      time.Time    `json:"-"`
-	DashUntil        time.Time    `json:"-"`
-	RctUntil         time.Time    `json:"-"`
-	LastEmoteAt      time.Time    `json:"-"`
-	WaterTickUntil   time.Time    `json:"-"`
+	ID                  string         `json:"id"`
+	NetID               uint16         `json:"netId"`
+	UserID              string         `json:"userId,omitempty"`
+	Name                string         `json:"name"`
+	CharacterID         string         `json:"characterId"`
+	CharacterName       string         `json:"characterName"`
+	Team                string         `json:"team"`
+	IsDummy             bool           `json:"isDummy,omitempty"`
+	Ready               bool           `json:"ready"`
+	IsHost              bool           `json:"isHost"`
+	X                   float64        `json:"x"`
+	Y                   float64        `json:"y"`
+	Color               string         `json:"color"`
+	AccentColor         string         `json:"accentColor"`
+	HP                  int            `json:"hp"`
+	MaxHP               int            `json:"maxHp"`
+	Alive               bool           `json:"alive"`
+	Kills               int            `json:"kills"`
+	Deaths              int            `json:"deaths"`
+	KilledBy            string         `json:"killedBy,omitempty"`
+	Stunned             bool           `json:"stunned"`
+	Slowed              bool           `json:"slowed"`
+	Godspeed            bool           `json:"godspeed"`
+	FastAttack          bool           `json:"fastAttack"`
+	Invulnerable        bool           `json:"invulnerable"`
+	Seated              bool           `json:"seated"`
+	InVoid              bool           `json:"inVoid"`
+	TimeErased          bool           `json:"timeErased,omitempty"`
+	RasenganCharged     bool           `json:"rasenganCharged,omitempty"`
+	RespawnInMs         int64          `json:"respawnInMs"`
+	CooldownsMs         [5]int64       `json:"cooldownsMs"`
+	InfinityStones      []int          `json:"infinityStones,omitempty"`
+	SnapCooldownMs      int64          `json:"snapCooldownMs"`
+	BasicCooldownMs     int64          `json:"basicCooldownMs"`
+	DashCooldownMs      int64          `json:"dashCooldownMs"`
+	RctCooldownMs       int64          `json:"rctCooldownMs"`
+	InputDX             float64        `json:"dx"`
+	InputDY             float64        `json:"dy"`
+	AimDX               float64        `json:"aimDx"`
+	AimDY               float64        `json:"aimDy"`
+	LastSeq             uint64         `json:"lastSeq"`
+	StunUntil           time.Time      `json:"-"`
+	SlowUntil           time.Time      `json:"-"`
+	BuffUntil           time.Time      `json:"-"`
+	RapidAttackUntil    time.Time      `json:"-"`
+	InvulnUntil         time.Time      `json:"-"`
+	ThroneUntil         time.Time      `json:"-"`
+	VoidUntil           time.Time      `json:"-"`
+	TimeEraseUntil      time.Time      `json:"-"`
+	RespawnAt           time.Time      `json:"-"`
+	LastHitAt           time.Time      `json:"-"`
+	CooldownUntil       [5]time.Time   `json:"-"`
+	SnapUntil           time.Time      `json:"-"`
+	AttackUntil         time.Time      `json:"-"`
+	DashUntil           time.Time      `json:"-"`
+	RctUntil            time.Time      `json:"-"`
+	LastEmoteAt         time.Time      `json:"-"`
+	WaterTickUntil      time.Time      `json:"-"`
+	HypnosisStacks      map[string]int `json:"-"`
+	HypnosisUntil       time.Time      `json:"-"`
+	HypnosisMirageAt    time.Time      `json:"-"`
+	GourmetStacks       int            `json:"-"`
+	GourmetUntil        time.Time      `json:"-"`
+	GourmetTickAt       time.Time      `json:"-"`
+	ArcaneStacks        int            `json:"-"`
+	ArcaneUntil         time.Time      `json:"-"`
+	IsSummon            bool           `json:"-"`
+	SummonOwnerID       string         `json:"-"`
+	SummonOwner         *PlayerState   `json:"-"`
+	SummonExpireAt      time.Time      `json:"-"`
+	BotLeapNextAt       time.Time      `json:"-"`
+	BotFireNextAt       time.Time      `json:"-"`
+	RasenganChargeUntil time.Time      `json:"-"`
+	ArcChargeStartAt    time.Time      `json:"-"`
+	IronManFlight       bool           `json:"-"`
+	IronManSnapReady    bool           `json:"-"`
+	PassiveStacks       int            `json:"-"`
+	PassiveUntil        time.Time      `json:"-"`
+	PassiveTickAt       time.Time      `json:"-"`
+	CounterUntil        time.Time      `json:"-"`
+	LastHitByID         string         `json:"-"`
+	LastHitDamage       int            `json:"-"`
 }
 
 // Projectile represents a flying skill projectile simulated by the server.
@@ -323,20 +350,28 @@ type Projectile struct {
 	MaxLife       float64         `json:"-"`
 }
 
-// BeamEffect represents a line/slash wave attack rendered briefly on clients.
+// BeamEffect represents a line/slash wave attack rendered briefly (or sustained & growing) on clients.
 type BeamEffect struct {
-	ID          string  `json:"id"`
-	OwnerID     string  `json:"ownerId"`
-	Kind        string  `json:"kind"`
-	X1          float64 `json:"x1"`
-	Y1          float64 `json:"y1"`
-	X2          float64 `json:"x2"`
-	Y2          float64 `json:"y2"`
-	Width       float64 `json:"width"`
-	Color       string  `json:"color"`
-	AccentColor string  `json:"accentColor"`
-	Life        float64 `json:"life"`
-	MaxLife     float64 `json:"maxLife"`
+	ID            string  `json:"id"`
+	OwnerID       string  `json:"ownerId"`
+	OwnerName     string  `json:"-"`
+	OwnerTeam     string  `json:"-"`
+	Kind          string  `json:"kind"`
+	X1            float64 `json:"x1"`
+	Y1            float64 `json:"y1"`
+	X2            float64 `json:"x2"`
+	Y2            float64 `json:"y2"`
+	Width         float64 `json:"width"`
+	BaseWidth     float64 `json:"-"`
+	GrowEndWidth  float64 `json:"-"`
+	Color         string  `json:"color"`
+	AccentColor   string  `json:"accentColor"`
+	Life          float64 `json:"life"`
+	MaxLife       float64 `json:"maxLife"`
+	DamagePerTick int     `json:"-"`
+	TickInterval  float64 `json:"-"`
+	NextTickIn    float64 `json:"-"`
+	Knockback     float64 `json:"-"`
 }
 
 // ZoneEffect represents an AoE field (e.g. Tsukuyomi, Amaterasu, Narukami, Malevolent Shrine).
@@ -371,21 +406,21 @@ type ZoneEffect struct {
 
 // RoomState holds the authoritative state of a single game room.
 type RoomState struct {
-	RoomID         string
-	MaxPlayers     int
-	Mode           string
-	MapID          string
-	Phase          string
-	HostUserID     string
-	TargetKills    int
-	BlueKills      int
-	RedKills       int
-	WinnerTeam     string
-	MatchStartedAt time.Time
-	MatchEndedAt   time.Time
-	Map            MapConfig
-	Tick           uint64
-	NextNetID      uint16
+	RoomID             string
+	MaxPlayers         int
+	Mode               string
+	MapID              string
+	Phase              string
+	HostUserID         string
+	TargetKills        int
+	BlueKills          int
+	RedKills           int
+	WinnerTeam         string
+	MatchStartedAt     time.Time
+	MatchEndedAt       time.Time
+	Map                MapConfig
+	Tick               uint64
+	NextNetID          uint16
 	Players            map[string]*PlayerState
 	Projectiles        []Projectile
 	Beams              []BeamEffect
@@ -436,9 +471,11 @@ func (rs *RoomState) SnapshotPlayers(now time.Time) []PlayerState {
 		cp.Slowed = now.Before(p.SlowUntil)
 		cp.Godspeed = now.Before(p.BuffUntil)
 		cp.FastAttack = now.Before(p.RapidAttackUntil)
-		cp.Invulnerable = now.Before(p.InvulnUntil)
+		cp.Invulnerable = now.Before(p.InvulnUntil) || now.Before(p.TimeEraseUntil)
 		cp.Seated = now.Before(p.ThroneUntil)
 		cp.InVoid = now.Before(p.VoidUntil)
+		cp.TimeErased = now.Before(p.TimeEraseUntil)
+		cp.RasenganCharged = now.Before(p.RasenganChargeUntil)
 		if !p.Alive && !p.RespawnAt.IsZero() && now.Before(p.RespawnAt) {
 			cp.RespawnInMs = p.RespawnAt.Sub(now).Milliseconds()
 		} else {
@@ -449,6 +486,26 @@ func (rs *RoomState) SnapshotPlayers(now time.Time) []PlayerState {
 				cp.CooldownsMs[i] = rem
 			} else {
 				cp.CooldownsMs[i] = 0
+			}
+		}
+		if p.CharacterID == "iron_man" {
+			if p.Alive && !p.ArcChargeStartAt.IsZero() {
+				elapsed := now.Sub(p.ArcChargeStartAt).Seconds()
+				pct := int64(elapsed * 10.0)
+				if pct < 1 {
+					pct = 1
+				} else if pct > 100 {
+					pct = 100
+				}
+				cp.CooldownsMs[3] = pct
+			} else {
+				cp.CooldownsMs[3] = 0
+			}
+			if p.IronManFlight {
+				cp.CooldownsMs[4] = 1
+				cp.Godspeed = true
+			} else {
+				cp.CooldownsMs[4] = 0
 			}
 		}
 		if len(p.InfinityStones) > 0 {

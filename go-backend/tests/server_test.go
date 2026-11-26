@@ -57,8 +57,8 @@ func registerTestUser(t *testing.T, srvURL, username, displayName string) (strin
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		t.Fatalf("decode register %s: %v", username, err)
 	}
-	if len(out.User.OwnedCharacterIDs) != 19 || out.Token == "" {
-		t.Fatalf("expected 19 public starter heroes and session token on register, got %+v", out)
+	if len(out.User.OwnedCharacterIDs) != 50 || out.Token == "" {
+		t.Fatalf("expected 50 public starter heroes and session token on register, got %+v", out)
 	}
 	return out.User.ID, out.Token
 }
@@ -122,10 +122,34 @@ func TestEngineMovementBoundsAndRandomSpawn(t *testing.T) {
 	rsTest.Players["pa1"] = &state.PlayerState{ID: "pa1", Name: "Pa", CharacterID: "pa", X: 500, Y: 500, HP: 220, MaxHP: 220, Alive: true}
 	rsTest.Players["def1"] = &state.PlayerState{ID: "def1", Name: "Def", CharacterID: "default", X: 620, Y: 500, HP: 240, MaxHP: 240, Alive: true}
 	hits, ok := eng.CastSkill(rsTest, rsTest.Players["pa1"], 3, 620, 500, now)
-	eng.StepZones(rsTest, 0.2, now)
-	eng.StepZones(rsTest, 0.02, now)
-	if !ok || len(hits) != 0 || !rsTest.Players["def1"].Alive || rsTest.Players["def1"].HP >= 240 {
-		t.Fatalf("expected non-lethal sword rain damage from single ult tick: alive=%v hp=%d hits=%d", rsTest.Players["def1"].Alive, rsTest.Players["def1"].HP, len(hits))
+	if !ok || len(rsTest.Beams) != 1 || rsTest.Beams[0].Kind != "enuma_elish" || rsTest.Beams[0].X2 < cfg.Width-1 || rsTest.Beams[0].MaxLife != 5.0 {
+		t.Fatalf("expected full-map 5s enuma_elish beam: ok=%v beams=%+v", ok, rsTest.Beams)
+	}
+	w0 := rsTest.Beams[0].Width
+	_, beamHits := eng.StepBeams(rsTest, 0.25, now)
+	if len(hits) != 0 || len(beamHits) != 0 || !rsTest.Players["def1"].Alive || rsTest.Players["def1"].HP >= 240 {
+		t.Fatalf("expected non-lethal Enuma Elish damage from single tick: alive=%v hp=%d hits=%d beamHits=%d", rsTest.Players["def1"].Alive, rsTest.Players["def1"].HP, len(hits), len(beamHits))
+	}
+	eng.StepBeams(rsTest, 1.0, now)
+	if len(rsTest.Beams) != 1 || rsTest.Beams[0].Width <= w0 {
+		t.Fatalf("expected enuma_elish beam width to grow over time: w0=%v now=%+v", w0, rsTest.Beams)
+	}
+
+	// Verify Gilgamesh Skill 2 (E): 7s Gate Overdrive grants 0ms basic attack cooldown + faster swords (10s skill CD)
+	if _, ok2 := eng.CastSkill(rsTest, rsTest.Players["pa1"], 2, 500, 500, now); !ok2 {
+		t.Fatalf("expected pa skill 2 gate overdrive to succeed")
+	}
+	if _, bOk1 := eng.CastBasicAttack(rsTest, rsTest.Players["pa1"], 620, 500, now); !bOk1 {
+		t.Fatalf("expected first pa basic attack during E to succeed")
+	}
+	if _, bOk2 := eng.CastBasicAttack(rsTest, rsTest.Players["pa1"], 620, 500, now); !bOk2 {
+		t.Fatalf("expected immediate second pa basic attack with zero cooldown to succeed")
+	}
+	snapPa := rsTest.SnapshotPlayers(now)
+	for _, sp := range snapPa {
+		if sp.ID == "pa1" && (!sp.FastAttack || sp.BasicCooldownMs != 0) {
+			t.Fatalf("expected pa1 FastAttack=true and BasicCooldownMs=0 during E, got fast=%v bcd=%d", sp.FastAttack, sp.BasicCooldownMs)
+		}
 	}
 
 	// Verify each character executes a distinct Basic Attack and deals damage cleanly (including Simo at long range 460px!)
@@ -218,8 +242,8 @@ func TestCharactersCatalogAndSkillsCombat(t *testing.T) {
 	if err := json.NewDecoder(charResp.Body).Decode(&charPayload); err != nil {
 		t.Fatalf("decode characters: %v", err)
 	}
-	if len(charPayload.Characters) != 19 {
-		t.Fatalf("expected 19 public characters, got %d", len(charPayload.Characters))
+	if len(charPayload.Characters) != 50 {
+		t.Fatalf("expected 50 public characters, got %d", len(charPayload.Characters))
 	}
 	for _, c := range charPayload.Characters {
 		if c.AdminOnly {
@@ -471,18 +495,34 @@ func (c *testWSClient) writeJSON(t *testing.T, v any) {
 	}
 }
 
-func (c *testWSClient) readJSON(t *testing.T) map[string]any {
-	t.Helper()
-	_ = c.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+func readWSFrameLen(br *bufio.Reader) (byte, int, error) {
 	var hdr [2]byte
-	if _, err := io.ReadFull(c.br, hdr[:]); err != nil {
-		t.Fatalf("read ws header: %v", err)
+	if _, err := io.ReadFull(br, hdr[:]); err != nil {
+		return 0, 0, err
 	}
 	length := int(hdr[1] & 0x7F)
 	if length == 126 {
 		var ext [2]byte
-		_, _ = io.ReadFull(c.br, ext[:])
+		if _, err := io.ReadFull(br, ext[:]); err != nil {
+			return 0, 0, err
+		}
 		length = int(binary.BigEndian.Uint16(ext[:]))
+	} else if length == 127 {
+		var ext [8]byte
+		if _, err := io.ReadFull(br, ext[:]); err != nil {
+			return 0, 0, err
+		}
+		length = int(binary.BigEndian.Uint64(ext[:]))
+	}
+	return hdr[0] & 0x0F, length, nil
+}
+
+func (c *testWSClient) readJSON(t *testing.T) map[string]any {
+	t.Helper()
+	_ = c.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	_, length, err := readWSFrameLen(c.br)
+	if err != nil {
+		t.Fatalf("read ws header: %v", err)
 	}
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(c.br, payload); err != nil {
@@ -520,21 +560,15 @@ func (c *testWSClient) writeBinary(t *testing.T, payload []byte) {
 func (c *testWSClient) readFrame(t *testing.T) (byte, []byte) {
 	t.Helper()
 	_ = c.conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	var hdr [2]byte
-	if _, err := io.ReadFull(c.br, hdr[:]); err != nil {
+	opcode, length, err := readWSFrameLen(c.br)
+	if err != nil {
 		t.Fatalf("read ws header: %v", err)
-	}
-	length := int(hdr[1] & 0x7F)
-	if length == 126 {
-		var ext [2]byte
-		_, _ = io.ReadFull(c.br, ext[:])
-		length = int(binary.BigEndian.Uint16(ext[:]))
 	}
 	payload := make([]byte, length)
 	if _, err := io.ReadFull(c.br, payload); err != nil {
 		t.Fatalf("read ws payload: %v", err)
 	}
-	return hdr[0] & 0x0F, payload
+	return opcode, payload
 }
 
 func (c *testWSClient) close() {
@@ -715,22 +749,22 @@ func TestDistinctHeroSkillMechanics(t *testing.T) {
 		t.Fatalf("expected sukuna shrine hitting enemy to grant invulnerability & slow target (invuln=%v, slow=%v, hp=%d)", sukunaUlt.InvulnUntil.After(now), trapped.SlowUntil.After(now), trapped.HP)
 	}
 
-	// Gilgamesh (pa) Skill 2 Enkidu AoE Slow & Skill 3 Sword Rain falling beams
+	// Gilgamesh (pa) Skill 2 Gate Overdrive (7s fast zero-CD basic attacks, 10s CD) & Skill 3 Enuma Elish EA Beam (5s, 20s CD)
 	rsPa := state.NewRoomState("pa-room", 5, cfg)
 	pa := &state.PlayerState{ID: "pa-h", Name: "Gilga", CharacterID: "pa", X: 500, Y: 500, HP: 225, MaxHP: 225, Alive: true}
 	targetPa := &state.PlayerState{ID: "pa-e", Name: "Target", CharacterID: "default", X: 700, Y: 500, HP: 240, MaxHP: 240, Alive: true}
 	rsPa.Players[pa.ID] = pa
 	rsPa.Players[targetPa.ID] = targetPa
-	eng.CastSkill(rsPa, pa, 2, 700, 500, now)
-	eng.StepZones(rsPa, 0.02, now)
-	if !targetPa.SlowUntil.After(now) {
-		t.Fatalf("expected pa skill 2 enkidu AoE to slow enemies inside zone")
+	eng.CastSkill(rsPa, pa, 2, 500, 500, now)
+	if !pa.RapidAttackUntil.After(now.Add(6500*time.Millisecond)) || pa.CooldownUntil[1].Sub(now) < 9500*time.Millisecond {
+		t.Fatalf("expected pa skill 2 to grant 7s RapidAttackUntil and 10s cooldown: rapid=%v cd=%v", pa.RapidAttackUntil.Sub(now), pa.CooldownUntil[1].Sub(now))
+	}
+	if _, bOk := eng.CastBasicAttack(rsPa, pa, 700, 500, now); !bOk || pa.AttackUntil.After(now) {
+		t.Fatalf("expected pa basic attack during E to have zero cooldown")
 	}
 	eng.CastSkill(rsPa, pa, 3, 700, 500, now)
-	eng.StepZones(rsPa, 0.2, now)
-	eng.StepZones(rsPa, 0.02, now)
-	if len(rsPa.Beams) == 0 {
-		t.Fatalf("expected pa skill 3 sword rain to spawn falling sky sword beams")
+	if len(rsPa.Beams) < 2 || pa.CooldownUntil[2].Sub(now) < 19500*time.Millisecond {
+		t.Fatalf("expected pa skill 3 Enuma Elish beam and 20s cooldown: beams=%d cd=%v", len(rsPa.Beams), pa.CooldownUntil[2].Sub(now))
 	}
 
 	// Kaem (Rimuru) Skill 1 Black Lightning, Skill 2 Black Flame, Skill 3 Beelzebuth void pull + heal
@@ -1081,8 +1115,8 @@ func TestAdminSaitamaAndGojoHeroes(t *testing.T) {
 	if err := json.NewDecoder(adminCharsResp.Body).Decode(&adminChars); err != nil {
 		t.Fatalf("decode admin characters: %v", err)
 	}
-	if len(adminChars.Characters) != 20 {
-		t.Fatalf("expected 20 heroes for admin, got %d", len(adminChars.Characters))
+	if len(adminChars.Characters) != 51 {
+		t.Fatalf("expected 51 heroes for admin, got %d", len(adminChars.Characters))
 	}
 
 	// 3. Saitama (luangphi_sorn): 1 skill with 20s CD, guaranteed instant kill unless target is Invulnerable
@@ -2252,10 +2286,70 @@ func TestSCPSiteCircularMapMedkitsAndSixNewHeroes(t *testing.T) {
 				t.Fatalf("expected hero %s slot %d to cast cleanly", cid, slot)
 			}
 		}
+		if cid == "jinwoo" {
+			// Verify Sung Jin-Woo closer Q Dagger Rush (250px), 30s R cooldown, and 15s Igris autonomous bot with Leap Slash & Hellfire Wave
+			if ch.Skills[0].CastRange != 250 || ch.Skills[2].CooldownSec != 30.0 {
+				t.Fatalf("expected Jin-Woo Q range=250 & R cd=30s, got Q=%.1f R=%.1f", ch.Skills[0].CastRange, ch.Skills[2].CooldownSec)
+			}
+			bot := rsH.Players["igris_"+hero.ID]
+			if bot == nil || !bot.IsSummon || bot.CharacterID != "igris" || bot.SummonExpireAt.Sub(now) < 14900*time.Millisecond {
+				t.Fatalf("expected Jin-Woo R to summon autonomous Igris bot for 15s, got %+v", bot)
+			}
+			foeHPBefore := foe.HP
+			// Step at +400ms -> Igris executes Leap Slash (กระโดดฟัน)
+			eng.StepSummons(rsH, 0.05, now.Add(400*time.Millisecond))
+			if foe.HP >= foeHPBefore {
+				t.Fatalf("expected Igris Leap Slash to damage enemy, HP stayed %d", foe.HP)
+			}
+			// Step at +1200ms -> Igris fires Hellfire Wave projectile (ยิงไฟ)
+			eng.StepSummons(rsH, 0.05, now.Add(1200*time.Millisecond))
+			foundFire := false
+			for _, pr := range rsH.Projectiles {
+				if pr.Kind == "igris_fireball" {
+					foundFire = true
+					break
+				}
+			}
+			if !foundFire {
+				t.Fatalf("expected Igris bot to fire igris_fireball projectile")
+			}
+			// Step past 15s -> Igris bot despawns cleanly
+			_, rosterChanged, _ := eng.StepSummons(rsH, 0.05, now.Add(15200*time.Millisecond))
+			if !rosterChanged || rsH.Players["igris_"+hero.ID] != nil {
+				t.Fatalf("expected Igris bot to expire after 15s")
+			}
+		}
 		if cid == "naruto" {
-			// Verify Kurama Mode transformation heals +30 HP and activates BuffUntil + RapidAttackUntil + kurama aura!
-			if hero.HP != ch.MaxHP-10 || !hero.BuffUntil.After(now) || !hero.RapidAttackUntil.After(now) {
-				t.Fatalf("expected Naruto Kurama transform buff & +30 heal, got hp=%d buff=%v", hero.HP, hero.BuffUntil.After(now))
+			// Verify Kurama Mode transformation heals +35 HP, activates 9s BuffUntil + RapidAttackUntil, spawns 2 Rasengan Shadow Clones on E, and fires Bijuudama on R recast!
+			if hero.HP != ch.MaxHP-5 || !hero.BuffUntil.After(now) || !hero.RapidAttackUntil.After(now) {
+				t.Fatalf("expected Naruto Kurama transform buff & +35 heal, got hp=%d buff=%v", hero.HP, hero.BuffUntil.After(now))
+			}
+			c1, c2 := rsH.Players["nclone1_"+hero.ID], rsH.Players["nclone2_"+hero.ID]
+			if c1 == nil || c2 == nil || c1.CharacterID != "naruto_clone" || c2.CharacterID != "naruto_clone" {
+				t.Fatalf("expected Naruto E to summon 2 Rasengan Shadow Clones, got c1=%+v c2=%+v", c1, c2)
+			}
+			// StepSummons drives the 2 Shadow Clones to rush & detonate Rasengan on the enemy
+			foeHPBeforeClones := foe.HP
+			for step := 1; step <= 6; step++ {
+				eng.StepSummons(rsH, 0.05, now.Add(time.Duration(step*100)*time.Millisecond))
+			}
+			if foe.HP >= foeHPBeforeClones {
+				t.Fatalf("expected Naruto Shadow Clones to detonate Rasengan on enemy, HP stayed %d", foe.HP)
+			}
+			// Recast R while in Kurama Mode -> fires Tailed Beast Bomb (naruto_bijuudama)
+			hero.CooldownUntil[2] = time.Time{}
+			if _, ok := eng.CastSkill(rsH, hero, 3, foe.X, foe.Y, now.Add(700*time.Millisecond)); !ok {
+				t.Fatalf("expected Naruto R recast in Kurama Mode to succeed")
+			}
+			foundBijuu := false
+			for _, pr := range rsH.Projectiles {
+				if pr.Kind == "naruto_bijuudama" {
+					foundBijuu = true
+					break
+				}
+			}
+			if !foundBijuu {
+				t.Fatalf("expected Naruto R recast in Kurama Mode to fire naruto_bijuudama projectile")
 			}
 		}
 	}
@@ -2282,5 +2376,380 @@ func TestSCPSiteCircularMapMedkitsAndSixNewHeroes(t *testing.T) {
 	}
 	if victim.Alive || pOut.HP <= 100 || !pOut.DashUntil.IsZero() {
 		t.Fatalf("expected Kill Momentum Reward (+18%% HP & instant Dash CD reset), got alive=%v hp=%d dashUntil=%v", victim.Alive, pOut.HP, pOut.DashUntil)
+	}
+}
+
+func TestAizenTorikoAndFrierenMechanicsAndPassives(t *testing.T) {
+	eng := engine.NewEngine()
+	cfg := state.DefaultMapConfig()
+	now := time.Now()
+
+	// 1. Verify catalog definitions & archetype assignments
+	wantClasses := map[string]string{
+		"aizen":   state.ClassSovereign,
+		"toriko":  state.ClassVanguard,
+		"frieren": state.ClassDeadeye,
+	}
+	for cid, wantClass := range wantClasses {
+		ch := state.GetCharacter(cid)
+		if ch.ID != cid || ch.HeroClass != wantClass || len(ch.Skills) != 3 || ch.MaxHP < 200 {
+			t.Fatalf("unexpected definition for %s: %+v", cid, ch)
+		}
+	}
+
+	// 2. Aizen: Black Coffin, Kyoka Suigetsu, Hogyoku Evolution + Complete Hypnosis passive (3 hits -> HypnosisUntil + mirage)
+	rsA := state.NewRoomState("aizen-test", 4, cfg)
+	rsA.Phase = state.PhasePlaying
+	aizen := &state.PlayerState{ID: "az1", Name: "Aizen", CharacterID: "aizen", X: 600, Y: 500, HP: 180, MaxHP: 210, Alive: true}
+	foeA := &state.PlayerState{ID: "foeA", Name: "TargetA", CharacterID: "default", X: 820, Y: 500, HP: 320, MaxHP: 320, Alive: true}
+	rsA.Players[aizen.ID] = aizen
+	rsA.Players[foeA.ID] = foeA
+
+	// Cast Skill 2 (Kyoka Suigetsu): evasion invulnerability + blink + decoy + 1st hypnosis hit on beam
+	if _, ok := eng.CastSkill(rsA, aizen, 2, foeA.X, foeA.Y, now); !ok || !aizen.InvulnUntil.After(now) || aizen.X <= 650 {
+		t.Fatalf("expected Kyoka Suigetsu invuln & blink, got invuln=%v x=%v", aizen.InvulnUntil.After(now), aizen.X)
+	}
+	// Reset attack cooldowns and land two more basic orb hits to trigger 3-stack Complete Hypnosis
+	for i := 0; i < 2; i++ {
+		aizen.AttackUntil = time.Time{}
+		if _, ok := eng.CastBasicAttack(rsA, aizen, foeA.X, foeA.Y, now); !ok {
+			t.Fatalf("expected aizen basic orb cast #%d to succeed", i+1)
+		}
+		for s := 0; s < 30; s++ {
+			eng.StepProjectiles(rsA, 0.02, now.Add(time.Duration(s*20)*time.Millisecond))
+		}
+	}
+	if !foeA.HypnosisUntil.After(now) {
+		t.Fatalf("expected 3rd Aizen hit to trigger Complete Hypnosis on victim, stacks=%+v hp=%d", aizen.HypnosisStacks, foeA.HP)
+	}
+	// StepZones spawns aizen_hypnosis_mirage decoy and Hypnosis disorients foeA's aim away from pure +X
+	eng.StepZones(rsA, 0.05, now.Add(100*time.Millisecond))
+	hasMirage := false
+	for _, z := range rsA.Zones {
+		if z.Kind == "aizen_hypnosis_mirage" {
+			hasMirage = true
+			break
+		}
+	}
+	if !hasMirage {
+		t.Fatalf("expected Complete Hypnosis to spawn aizen_hypnosis_mirage zone")
+	}
+	if _, ok := eng.CastBasicAttack(rsA, foeA, aizen.X, aizen.Y, now.Add(100*time.Millisecond)); !ok || math.Abs(foeA.AimDY) < 0.25 {
+		t.Fatalf("expected Complete Hypnosis to disorient victim AimDY, got (%v, %v)", foeA.AimDX, foeA.AimDY)
+	}
+	// Black Coffin (Q) & Hogyoku Evolution (R)
+	if _, ok := eng.CastSkill(rsA, aizen, 1, foeA.X, foeA.Y, now); !ok {
+		t.Fatalf("expected Aizen Black Coffin to cast")
+	}
+	aizen.HP = 180
+	if _, ok := eng.CastSkill(rsA, aizen, 3, foeA.X, foeA.Y, now); !ok || !aizen.BuffUntil.After(now) || !aizen.RapidAttackUntil.After(now) || aizen.HP <= 180 {
+		t.Fatalf("expected Hogyoku Evolution buff + rapid attack + self heal, got hp=%d", aizen.HP)
+	}
+
+	// 3. Toriko: Knife & Fork, Leg Knife, Ultimate Routine + Gourmet Cells (stacks + HP regeneration)
+	rsT := state.NewRoomState("toriko-test", 4, cfg)
+	rsT.Phase = state.PhasePlaying
+	toriko := &state.PlayerState{ID: "tr1", Name: "Toriko", CharacterID: "toriko", X: 600, Y: 500, HP: 190, MaxHP: 245, Alive: true}
+	foeT := &state.PlayerState{ID: "foeT", Name: "TargetT", CharacterID: "default", X: 710, Y: 500, HP: 400, MaxHP: 400, Alive: true}
+	rsT.Players[toriko.ID] = toriko
+	rsT.Players[foeT.ID] = foeT
+
+	if _, ok := eng.CastSkill(rsT, toriko, 1, foeT.X, foeT.Y, now); !ok || toriko.GourmetStacks == 0 {
+		t.Fatalf("expected Knife & Fork hit to build Gourmet Cells stacks, got %d", toriko.GourmetStacks)
+	}
+	// StepPlayer triggers Gourmet Cells periodic HP regeneration
+	hpBeforeRegen := toriko.HP
+	if !eng.StepPlayer(toriko, 0.05, cfg, now.Add(1*time.Second)) || toriko.HP <= hpBeforeRegen {
+		t.Fatalf("expected Gourmet Cells to regenerate HP on StepPlayer tick, before=%d after=%d", hpBeforeRegen, toriko.HP)
+	}
+	// Leg Knife knockback & stun
+	xBeforeKick := foeT.X
+	if _, ok := eng.CastSkill(rsT, toriko, 2, foeT.X, foeT.Y, now); !ok || foeT.X <= xBeforeKick || !foeT.StunUntil.After(now) {
+		t.Fatalf("expected Leg Knife to knock back & stun target, xBefore=%v xAfter=%v stun=%v", xBeforeKick, foeT.X, foeT.StunUntil.After(now))
+	}
+	// Ultimate Routine sets max Gourmet stacks (5), heals +22 HP, and spawns giant fist zone
+	hpPreUlt := toriko.HP
+	if _, ok := eng.CastSkill(rsT, toriko, 3, foeT.X, foeT.Y, now); !ok || toriko.GourmetStacks != 5 || toriko.HP <= hpPreUlt {
+		t.Fatalf("expected Ultimate Routine to max Gourmet stacks & heal, stacks=%d hpBefore=%d hpAfter=%d", toriko.GourmetStacks, hpPreUlt, toriko.HP)
+	}
+
+	// 4. Frieren: Zoltraak, Mana Barrier, Supreme Spell + Ancient Magic passive stacking damage
+	rsF := state.NewRoomState("frieren-test", 4, cfg)
+	rsF.Phase = state.PhasePlaying
+	frieren := &state.PlayerState{ID: "fr1", Name: "Frieren", CharacterID: "frieren", X: 500, Y: 500, HP: 165, MaxHP: 205, Alive: true}
+	foeF := &state.PlayerState{ID: "foeF", Name: "TargetF", CharacterID: "default", X: 760, Y: 500, HP: 400, MaxHP: 400, Alive: true}
+	rsF.Players[frieren.ID] = frieren
+	rsF.Players[foeF.ID] = foeF
+
+	hpFoe0 := foeF.HP
+	if _, ok := eng.CastSkill(rsF, frieren, 1, foeF.X, foeF.Y, now); !ok || frieren.ArcaneStacks != 1 {
+		t.Fatalf("expected 1st Zoltraak to build 1 Ancient Magic stack, got %d", frieren.ArcaneStacks)
+	}
+	firstCastDmg := hpFoe0 - foeF.HP
+	if _, ok := eng.CastSkill(rsF, frieren, 2, foeF.X, foeF.Y, now); !ok || !frieren.InvulnUntil.After(now) || frieren.HP != 181 || frieren.ArcaneStacks != 2 {
+		t.Fatalf("expected Mana Barrier invuln, +16 heal (165->181), & 2nd Arcane stack, got hp=%d stacks=%d", frieren.HP, frieren.ArcaneStacks)
+	}
+	// Reset cooldown to verify Zoltraak deals higher damage at higher Ancient Magic stacks
+	frieren.CooldownUntil[0] = time.Time{}
+	hpFoe1 := foeF.HP
+	if _, ok := eng.CastSkill(rsF, frieren, 1, foeF.X, foeF.Y, now.Add(100*time.Millisecond)); !ok || frieren.ArcaneStacks != 3 {
+		t.Fatalf("expected 3rd skill cast to grant 3 Ancient Magic stacks")
+	}
+	boostedDmg := hpFoe1 - foeF.HP
+	if boostedDmg <= firstCastDmg {
+		t.Fatalf("expected Ancient Magic stacks to boost spell damage (%d -> %d)", firstCastDmg, boostedDmg)
+	}
+	if _, ok := eng.CastSkill(rsF, frieren, 3, foeF.X, foeF.Y, now.Add(200*time.Millisecond)); !ok || frieren.ArcaneStacks != 4 {
+		t.Fatalf("expected Supreme Spell to build 4th Ancient Magic stack, got %d", frieren.ArcaneStacks)
+	}
+}
+
+func TestAll28ExtendedHeroesSkillsAndPassives(t *testing.T) {
+	eng := engine.NewEngine()
+	cfg := state.DefaultMapConfig()
+	now := time.Now()
+
+	extendedIDs := []string{
+		"gray", "diavolo", "cid", "pop", "speed_grandma", "krahang", "krasue",
+		"po", "tai_lung", "kai", "gambit", "iron_man", "law", "garp",
+		"tansan", "wukong", "nezha", "king", "gon", "steve", "doraemon",
+		"yami", "escanor", "meliodas", "adam", "beelzebub", "buddha", "cj_palony",
+	}
+	for _, cid := range extendedIDs {
+		ch := state.GetCharacter(cid)
+		if ch.ID != cid || len(ch.Skills) != 3 || ch.MaxHP < 200 || ch.HeroClass == "" {
+			t.Fatalf("invalid extended hero %s: %+v", cid, ch)
+		}
+		rs := state.NewRoomState("ext-"+cid, 4, cfg)
+		rs.Phase = state.PhasePlaying
+		hero := &state.PlayerState{ID: "h", Name: ch.DisplayName, CharacterID: cid, X: 1200, Y: 900, HP: ch.MaxHP - 20, MaxHP: ch.MaxHP, Alive: true}
+		foe := &state.PlayerState{ID: "f", Name: "Foe", CharacterID: "default", X: 1310, Y: 900, HP: 500, MaxHP: 500, Alive: true}
+		rs.Players[hero.ID] = hero
+		rs.Players[foe.ID] = foe
+		if _, ok := eng.CastBasicAttack(rs, hero, foe.X, foe.Y, now); !ok {
+			t.Fatalf("expected basic attack for %s to cast cleanly", cid)
+		}
+		for slot := 1; slot <= 3; slot++ {
+			if _, ok := eng.CastSkill(rs, hero, slot, foe.X, foe.Y, now); !ok {
+				t.Fatalf("expected skill slot %d for %s to cast cleanly", slot, cid)
+			}
+		}
+		eng.StepZones(rs, 0.25, now.Add(600*time.Millisecond))
+	}
+
+	// Verify signature Passives:
+	// 1) Krasue Spirit Blood lifesteal heals attacker on hit
+	rsK := state.NewRoomState("krasue-p", 4, cfg)
+	rsK.Phase = state.PhasePlaying
+	kr := &state.PlayerState{ID: "kr", Name: "Krasue", CharacterID: "krasue", X: 600, Y: 500, HP: 120, MaxHP: 205, Alive: true}
+	foeK := &state.PlayerState{ID: "fk", Name: "Foe", CharacterID: "default", X: 760, Y: 500, HP: 300, MaxHP: 300, Alive: true}
+	rsK.Players[kr.ID], rsK.Players[foeK.ID] = kr, foeK
+	if _, ok := eng.CastSkill(rsK, kr, 1, foeK.X, foeK.Y, now); !ok || kr.HP <= 120 {
+		t.Fatalf("expected Krasue Spirit Blood passive lifesteal to heal (>120), got hp=%d", kr.HP)
+	}
+
+	// 2) Gray Ice Devil: 3 hits apply Slow & Freeze stun
+	rsG := state.NewRoomState("gray-p", 4, cfg)
+	rsG.Phase = state.PhasePlaying
+	gr := &state.PlayerState{ID: "gr", Name: "Gray", CharacterID: "gray", X: 600, Y: 500, HP: 225, MaxHP: 225, Alive: true}
+	foeG := &state.PlayerState{ID: "fg", Name: "Foe", CharacterID: "default", X: 740, Y: 500, HP: 350, MaxHP: 350, Alive: true}
+	rsG.Players[gr.ID], rsG.Players[foeG.ID] = gr, foeG
+	for i := 0; i < 3; i++ {
+		gr.CooldownUntil[0] = time.Time{}
+		eng.CastSkill(rsG, gr, 1, foeG.X, foeG.Y, now)
+	}
+	if !foeG.StunUntil.After(now) || !foeG.SlowUntil.After(now) {
+		t.Fatalf("expected Gray 3-hit Ice Devil passive to freeze & slow victim")
+	}
+
+	// 3) Diavolo: Epitaph 1/4 dodge + Time Erasure (5s stealth & invuln) + Fate Has Been Decided (behind-target finisher)
+	rsD := state.NewRoomState("diavolo-p", 4, cfg)
+	rsD.Phase = state.PhasePlaying
+	di := &state.PlayerState{ID: "di", Name: "Diavolo", CharacterID: "diavolo", X: 700, Y: 500, HP: 215, MaxHP: 215, Alive: true}
+	atkD := &state.PlayerState{ID: "ad", Name: "Attacker", CharacterID: "default", X: 600, Y: 500, AimDX: 1, AimDY: 0, HP: 240, MaxHP: 240, Alive: true}
+	rsD.Players[di.ID], rsD.Players[atkD.ID] = di, atkD
+
+	// 3a) Epitaph 1/4 chance: across 200 direct attacks, Diavolo dodges roughly 25% of hits
+	dodgedCount := 0
+	for i := 0; i < 200; i++ {
+		di.HP = di.MaxHP
+		di.X, di.Y = 700, 500
+		di.StunUntil = time.Time{}
+		atkD.AttackUntil = time.Time{}
+		rsD.Projectiles = nil
+		tNow := now.Add(time.Duration(i*50) * time.Millisecond)
+		eng.CastBasicAttack(rsD, atkD, di.X, di.Y, tNow)
+		for s := 0; s < 20; s++ {
+			eng.StepProjectiles(rsD, 0.02, tNow.Add(time.Duration(s*20)*time.Millisecond))
+		}
+		if di.HP == di.MaxHP {
+			dodgedCount++
+		}
+	}
+	if dodgedCount < 20 || dodgedCount > 90 {
+		t.Fatalf("expected Diavolo Epitaph 1/4 dodge count in [20,90] over 200 hits, got %d", dodgedCount)
+	}
+
+	// 3b) Time Erasure (Skill 2): 5 seconds of invisibility + invulnerability + blocks enemy lock-on
+	teNow := now.Add(15 * time.Second)
+	di.HP = di.MaxHP
+	di.X, di.Y = 700, 500
+	di.CooldownUntil[1] = time.Time{}
+	eng.CastSkill(rsD, di, 2, di.X, di.Y, teNow)
+	if di.TimeEraseUntil.Sub(teNow) < 4900*time.Millisecond {
+		t.Fatalf("expected Time Erasure to last 5s, got %v", di.TimeEraseUntil.Sub(teNow))
+	}
+	snapsDuring := rsD.SnapshotPlayers(teNow.Add(500 * time.Millisecond))
+	var diSnap state.PlayerState
+	for _, sp := range snapsDuring {
+		if sp.ID == di.ID {
+			diSnap = sp
+		}
+	}
+	if !diSnap.TimeErased || !diSnap.Invulnerable {
+		t.Fatalf("expected SnapshotPlayers to mark Diavolo TimeErased=true & Invulnerable=true, got %+v", diSnap)
+	}
+	rsD.Projectiles = nil
+	atkD.AttackUntil = time.Time{}
+	eng.CastBasicAttack(rsD, atkD, di.X, di.Y, teNow.Add(600*time.Millisecond))
+	for _, pr := range rsD.Projectiles {
+		if pr.TargetID == di.ID {
+			t.Fatalf("expected enemy basic attack NOT to lock onto Time-Erased Diavolo")
+		}
+	}
+	for s := 0; s < 20; s++ {
+		eng.StepProjectiles(rsD, 0.02, teNow.Add(time.Duration(600+s*20)*time.Millisecond))
+	}
+	if di.HP != di.MaxHP {
+		t.Fatalf("expected Diavolo to take 0 damage during Time Erasure, got HP %d/%d", di.HP, di.MaxHP)
+	}
+	snapsAfter := rsD.SnapshotPlayers(teNow.Add(5200 * time.Millisecond))
+	for _, sp := range snapsAfter {
+		if sp.ID == di.ID && sp.TimeErased {
+			t.Fatalf("expected TimeErased to expire after 5s")
+		}
+	}
+
+	// 3c) Fate Has Been Decided (Skill 3): warps directly behind facing enemy with heavy stun finisher
+	rNow := teNow.Add(1 * time.Second) // still in Time Erasure before casting R
+	atkD.X, atkD.Y = 820, 500
+	atkD.AimDX, atkD.AimDY = 1, 0 // facing East (+X), so behind is West (< 820)
+	atkD.HP = atkD.MaxHP
+	atkD.StunUntil = time.Time{}
+	di.X, di.Y = 600, 500
+	di.CooldownUntil[2] = time.Time{}
+	eng.CastSkill(rsD, di, 3, atkD.X, atkD.Y, rNow)
+	if di.X >= atkD.X {
+		t.Fatalf("expected Fate Has Been Decided to warp Diavolo behind East-facing target (di.X=%.1f, target.X=%.1f)", di.X, atkD.X)
+	}
+	if rNow.Before(di.TimeEraseUntil) {
+		t.Fatalf("expected Fate Has Been Decided to exit Time Erasure upon finishing strike")
+	}
+	if atkD.HP >= atkD.MaxHP-40 {
+		t.Fatalf("expected Fate Has Been Decided finisher to deal heavy damage, HP=%d/%d", atkD.HP, atkD.MaxHP)
+	}
+	if atkD.StunUntil.Sub(rNow) < 950*time.Millisecond {
+		t.Fatalf("expected Fate Has Been Decided to stun target >= 1s, got %v", atkD.StunUntil.Sub(rNow))
+	}
+
+	// 4) Speed Grandma Endless Sprint: continuous running ramps speed stacks and position delta
+	sg := &state.PlayerState{ID: "sg", Name: "Grandma", CharacterID: "speed_grandma", X: 600, Y: 500, HP: 205, MaxHP: 205, InputDX: 1, Alive: true}
+	for i := 0; i < 6; i++ {
+		eng.StepPlayer(sg, 0.05, cfg, now.Add(time.Duration(i*500)*time.Millisecond))
+	}
+	if sg.PassiveStacks < 3 {
+		t.Fatalf("expected Speed Grandma Endless Sprint to ramp passive stacks, got %d", sg.PassiveStacks)
+	}
+
+	// 5) Iron Man (iron_man): 10s Arc Reactor gauge upgrades Q to Mega Beam, E fires 6 missiles, R toggles Flight Mode (reduced MaxHP + higher speed), killing Thanos unlocks secret I AM IRON MAN Snap!
+	rsIM := state.NewRoomState("im-room", 4, cfg)
+	rsIM.Phase = state.PhasePlaying
+	im := &state.PlayerState{ID: "im", Name: "Tony", CharacterID: "iron_man", Team: state.TeamBlue, X: 600, Y: 500, HP: 225, MaxHP: 225, Alive: true}
+	thanosVictim := &state.PlayerState{ID: "th", Name: "Thanos", CharacterID: "noone", Team: state.TeamRed, X: 780, Y: 500, HP: 260, MaxHP: 260, Alive: true}
+	eng.InitHeroState(im)
+	eng.InitHeroState(thanosVictim)
+	im.ArcChargeStartAt = now
+	rsIM.Players[im.ID] = im
+	rsIM.Players[thanosVictim.ID] = thanosVictim
+
+	// 5a) Before 10s (at t+4s -> 40% gauge), Q fires normal ironman_repulsor_blast (30 dmg) and resets gauge
+	t4 := now.Add(4 * time.Second)
+	snaps4 := rsIM.SnapshotPlayers(t4)
+	for _, sp := range snaps4 {
+		if sp.ID == im.ID && sp.CooldownsMs[3] != 40 {
+			t.Fatalf("expected Iron Man 4s Arc Reactor gauge to report 40%%, got %d", sp.CooldownsMs[3])
+		}
+	}
+	eng.CastSkill(rsIM, im, 1, thanosVictim.X, thanosVictim.Y, t4)
+	if len(rsIM.Beams) == 0 || rsIM.Beams[len(rsIM.Beams)-1].Kind != "ironman_repulsor_blast" {
+		t.Fatalf("expected uncharged Q to fire ironman_repulsor_blast, got %+v", rsIM.Beams)
+	}
+	hpAfterNormalQ := thanosVictim.HP
+	if hpAfterNormalQ >= 260 {
+		t.Fatalf("expected normal Repulsor Blast to damage target")
+	}
+
+	// 5b) After 10s full charge (at t4+10s -> 100% gauge), Q fires colossal ironman_mega_unibeam (58 dmg + Stun)
+	t14 := t4.Add(10 * time.Second)
+	snaps14 := rsIM.SnapshotPlayers(t14)
+	for _, sp := range snaps14 {
+		if sp.ID == im.ID && sp.CooldownsMs[3] != 100 {
+			t.Fatalf("expected Iron Man 10s Arc Reactor gauge to report 100%%, got %d", sp.CooldownsMs[3])
+		}
+	}
+	im.CooldownUntil[0] = time.Time{}
+	thanosVictim.HP = 260
+	eng.CastSkill(rsIM, im, 1, thanosVictim.X, thanosVictim.Y, t14)
+	if rsIM.Beams[len(rsIM.Beams)-1].Kind != "ironman_mega_unibeam" {
+		t.Fatalf("expected 100%% charged Q to fire ironman_mega_unibeam, got %s", rsIM.Beams[len(rsIM.Beams)-1].Kind)
+	}
+	if 260-thanosVictim.HP <= 260-hpAfterNormalQ || !t14.Before(thanosVictim.StunUntil) {
+		t.Fatalf("expected Mega Unibeam to deal more damage than normal Q and stun target, hp=%d stunUntil=%v", thanosVictim.HP, thanosVictim.StunUntil)
+	}
+
+	// 5c) Skill 2 (E): fires 6 ironman_missile projectiles toward target area
+	rsIM.Projectiles = nil
+	im.CooldownUntil[1] = time.Time{}
+	eng.CastSkill(rsIM, im, 2, thanosVictim.X, thanosVictim.Y, t14)
+	missileCount := 0
+	for _, pr := range rsIM.Projectiles {
+		if pr.Kind == "ironman_missile" {
+			missileCount++
+		}
+	}
+	if missileCount != 6 {
+		t.Fatalf("expected Iron Man Skill 2 to launch 6 ironman_missile projectiles, got %d", missileCount)
+	}
+
+	// 5d) Skill 3 (R): Flight Mode reduces MaxHP (225 -> 170) and increases movement speed (+55%)
+	im.CooldownUntil[2] = time.Time{}
+	im.InputDX = 1
+	xBeforeWalk := im.X
+	eng.StepPlayer(im, 0.1, cfg, t14)
+	normalStep := im.X - xBeforeWalk
+	eng.CastSkill(rsIM, im, 3, im.X+100, im.Y, t14)
+	if !im.IronManFlight || im.MaxHP != 170 || im.HP > 170 {
+		t.Fatalf("expected Flight Mode to set IronManFlight=true and reduce MaxHP to 170, got flight=%v hp=%d/%d", im.IronManFlight, im.HP, im.MaxHP)
+	}
+	xBeforeFly := im.X
+	eng.StepPlayer(im, 0.1, cfg, t14.Add(100*time.Millisecond))
+	flightStep := im.X - xBeforeFly
+	if flightStep <= normalStep*1.35 {
+		t.Fatalf("expected Flight Mode movement step (%.2f) to be significantly faster than normal step (%.2f)", flightStep, normalStep)
+	}
+
+	// 5e) Secret Skill "I AM IRON MAN": killing Thanos (noone) unlocks IronManSnapReady & 5 stones on E!
+	thanosVictim.HP = 10
+	thanosVictim.StunUntil = time.Time{}
+	im.CooldownUntil[0] = time.Time{}
+	eng.CastSkill(rsIM, im, 1, thanosVictim.X, thanosVictim.Y, t14.Add(200*time.Millisecond))
+	if thanosVictim.Alive || !im.IronManSnapReady || len(im.InfinityStones) != 5 {
+		t.Fatalf("expected killing Thanos to unlock IronManSnapReady and 5 InfinityStones, got alive=%v snapReady=%v stones=%v", thanosVictim.Alive, im.IronManSnapReady, im.InfinityStones)
+	}
+	thanosVictim.Alive = true
+	thanosVictim.HP = 260
+	hitsSnap, okSnap := eng.CastSkill(rsIM, im, 2, im.X, im.Y, t14.Add(300*time.Millisecond))
+	if !okSnap || len(hitsSnap) != 1 || thanosVictim.Alive || im.IronManSnapReady {
+		t.Fatalf("expected secret I AM IRON MAN skill on E to wipe enemies and consume snap state, ok=%v hits=%+v alive=%v", okSnap, hitsSnap, thanosVictim.Alive)
 	}
 }

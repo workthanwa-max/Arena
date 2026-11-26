@@ -1,5 +1,6 @@
 import { memo } from 'react'
 import { getHeroAimTheme } from '../game/heroAimThemes'
+import { ROSTER28_MAP } from '../game/roster28Meta'
 
 interface HeroAimWheelProps {
   characterId?: string
@@ -212,6 +213,37 @@ function renderCharacterWheelRing(charId: string, stroke: string, sub: string) {
           <circle cx="60" cy="60" r="34" fill="none" stroke="#EF4444" strokeWidth="3" strokeDasharray="8 6" />
         </g>
       )
+    case 'aizen':
+      // Aizen Hogyoku Diamond & Kyoka Suigetsu Prism Ring
+      return (
+        <g>
+          <polygon
+            points="60,8 112,60 60,112 8,60"
+            fill="rgba(30, 27, 75, 0.65)"
+            stroke="#C084FC"
+            strokeWidth="3"
+          />
+          <circle cx="60" cy="60" r="36" fill="none" stroke="#9333EA" strokeWidth="2.5" strokeDasharray="10 6" />
+        </g>
+      )
+    case 'toriko':
+      // Toriko Gourmet Cell Crimson Claw Ring
+      return (
+        <g>
+          <circle cx="60" cy="60" r="50" fill="rgba(69, 10, 10, 0.58)" stroke="#EF4444" strokeWidth="3.2" />
+          <line x1="28" y1="28" x2="92" y2="92" stroke="#F97316" strokeWidth="3.5" strokeLinecap="round" />
+          <line x1="92" y1="28" x2="28" y2="92" stroke="#FEF08A" strokeWidth="3" strokeLinecap="round" />
+        </g>
+      )
+    case 'frieren':
+      // Frieren Ancient Elf Dual-Triangle Mana Mandala
+      return (
+        <g>
+          <circle cx="60" cy="60" r="50" fill="rgba(7, 20, 48, 0.6)" stroke="#38BDF8" strokeWidth="2.4" />
+          <polygon points="60,14 100,84 20,84" fill="none" stroke="#BAE6FD" strokeWidth="2.2" />
+          <polygon points="60,106 100,36 20,36" fill="none" stroke="#60A5FA" strokeWidth="2.2" />
+        </g>
+      )
     default:
       return (
         <g>
@@ -275,7 +307,13 @@ export const HeroAimWheel = memo(function HeroAimWheel({
                               ? '◷'
                               : theme.id === 'luangphi_sorn'
                                 ? '👊'
-                                : '✦'}
+                                : theme.id === 'aizen'
+                                  ? '⟐'
+                                  : theme.id === 'toriko'
+                                    ? '⚔'
+                                    : theme.id === 'frieren'
+                                      ? '✶'
+                                      : ROSTER28_MAP[theme.id]?.corridorGlyph ?? '✦'}
         </span>
       </div>
     </div>

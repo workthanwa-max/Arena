@@ -132,6 +132,155 @@ export const EFFECT_KINDS: readonly string[] = [
   'diablo_eclipse_burst',   // 116
   'aegis_core_orb',         // 117
   'aegis_core_burst',       // 118
+  'aizen_basic_orb',        // 119
+  'aizen_black_coffin',     // 120
+  'aizen_black_coffin_burst', // 121
+  'aizen_kyoka_decoy',      // 122
+  'aizen_kyoka_beam',       // 123
+  'aizen_hogyoku_wave',     // 124
+  'aizen_hogyoku_aura',     // 125
+  'aizen_hogyoku_beam',     // 126
+  'aizen_hypnosis_mirage',  // 127
+  'toriko_basic_punch',     // 128
+  'toriko_fork_thrust',     // 129
+  'toriko_knife_barrage',   // 130
+  'toriko_leg_knife',       // 131
+  'toriko_leg_knife_arc',   // 132
+  'toriko_ultimate_routine', // 133
+  'toriko_ultimate_fist',   // 134
+  'toriko_gourmet_surge',   // 135
+  'frieren_basic_bolt',     // 136
+  'frieren_zoltraak',       // 137
+  'frieren_mana_barrier',   // 138
+  'frieren_supreme_circle', // 139
+  'frieren_supreme_beam',   // 140
+  'frieren_arcane_pulse',   // 141
+  'gray_basic_shard',       // 142
+  'gray_ice_lance',         // 143
+  'gray_ice_shield',        // 144
+  'gray_devil_rage',        // 145
+  'diavolo_basic_chop',     // 146
+  'diavolo_crimson_punch',  // 147
+  'diavolo_time_erase',     // 148
+  'diavolo_fate_decided',   // 149
+  'cid_basic_slime',        // 150
+  'cid_shadow_slash',       // 151
+  'cid_shadow_step',        // 152
+  'cid_atomic',             // 153
+  'pop_basic_fang',         // 154
+  'pop_ghost_claw',         // 155
+  'pop_possession',         // 156
+  'pop_endless_hunger',     // 157
+  'grandma_basic_dash',     // 158
+  'grandma_dash',           // 159
+  'grandma_phantom_trail',  // 160
+  'grandma_death_chase',    // 161
+  'krahang_basic_club',     // 162
+  'krahang_pestle_strike',  // 163
+  'krahang_wind_flight',    // 164
+  'krahang_storm',          // 165
+  'krasue_basic_wisp',      // 166
+  'krasue_crimson_beam',    // 167
+  'krasue_floating_curse',  // 168
+  'krasue_midnight_horror', // 169
+  'po_basic_palm',          // 170
+  'po_panda_punch',         // 171
+  'po_belly_bounce',        // 172
+  'po_wuxi_finger',         // 173
+  'tailung_basic_strike',   // 174
+  'tailung_nerve_strike',   // 175
+  'tailung_flying_leap',    // 176
+  'tailung_thousand_strikes', // 177
+  'kai_basic_blade',        // 178
+  'kai_jade_whip',          // 179
+  'kai_spirit_chains',      // 180
+  'kai_jade_army',          // 181
+  'gambit_basic_card',      // 182
+  'gambit_explosive_cards', // 183
+  'gambit_bo_staff',        // 184
+  'gambit_royal_flush',     // 185
+  'ironman_basic_bolt',     // 186
+  'ironman_repulsor_blast', // 187
+  'ironman_thruster_flight', // 188
+  'ironman_unibeam',        // 189
+  'law_basic_slash',        // 190
+  'law_amputate',           // 191
+  'law_shambles_room',      // 192
+  'law_puncture_wille',     // 193
+  'garp_basic_fist',        // 194
+  'garp_galaxy_impact',     // 195
+  'garp_iron_fist',         // 196
+  'garp_galaxy_divide',     // 197
+  'tansan_basic_fizz',      // 198
+  'tansan_bubble_shot',     // 199
+  'tansan_soda_boost',      // 200
+  'tansan_carbonation_boom', // 201
+  'wukong_basic_staff',     // 202
+  'wukong_golden_staff',    // 203
+  'wukong_cloud_dash',      // 204
+  'wukong_great_sage',      // 205
+  'nezha_basic_spear',      // 206
+  'nezha_fire_spear',       // 207
+  'nezha_wind_wheels',      // 208
+  'nezha_lotus_inferno',    // 209
+  'king_basic_pulse',       // 210
+  'king_legendary_glare',   // 211
+  'king_lucky_escape',      // 212
+  'king_s_reputation',      // 213
+  'gon_basic_fist',         // 214
+  'gon_jajanken_rock',      // 215
+  'gon_jajanken_scissors',  // 216
+  'gon_adult_gon',          // 217
+  'steve_basic_sword',      // 218
+  'steve_diamond_sword',    // 219
+  'steve_block_builder',    // 220
+  'steve_netherite_tnt',    // 221
+  'doraemon_basic_air',     // 222
+  'doraemon_anywhere_door', // 223
+  'doraemon_bamboo_copter', // 224
+  'doraemon_time_machine',  // 225
+  'yami_basic_blade',       // 226
+  'yami_dark_slash',        // 227
+  'yami_black_moon',        // 228
+  'yami_dimension_slash',   // 229
+  'escanor_basic_flare',    // 230
+  'escanor_cruel_sun',      // 231
+  'escanor_divine_sword',   // 232
+  'escanor_the_one',        // 233
+  'meliodas_basic_cut',     // 234
+  'meliodas_full_counter',  // 235
+  'meliodas_hellblaze',     // 236
+  'meliodas_assault_mode',  // 237
+  'adam_basic_knuckle',     // 238
+  'adam_divine_rep',        // 239
+  'adam_divine_dodge',      // 240
+  'adam_ultimate_father',   // 241
+  'beelz_basic_vib',        // 242
+  'beelz_chaos_wave',       // 243
+  'beelz_defensive_barrier', // 244
+  'beelz_chaos_unleashed',  // 245
+  'buddha_basic_staff',     // 246
+  'buddha_divine_staff',    // 247
+  'buddha_enlightened_step', // 248
+  'buddha_nirvana',         // 249
+  'cj_basic_bolt',          // 250
+  'cj_power_strike',        // 251
+  'cj_phantom_move',        // 252
+  'cj_final_awakening',     // 253
+  'jinwoo_dagger_flurry',   // 254
+  'igris_leap_slash',       // 255
+  'igris_slash_impact',     // 256
+  'igris_fireball',         // 257
+  'igris_fire_burst',       // 258
+  'igris_fire_slash',       // 259
+  'naruto_bijuudama',       // 260
+  'naruto_bijuudama_boom',  // 261
+  'naruto_bijuudama_beam',  // 262
+  'ironman_mega_unibeam',   // 263
+  'ironman_missile',        // 264
+  'ironman_missile_boom',   // 265
+  'ironman_snap_wave',      // 266
+  'enuma_elish',            // 267
 ]
 
 const textEncoder = new TextEncoder()
@@ -252,7 +401,11 @@ export function decodeBinaryState(
 
   const readKind = (): string => {
     const code = data[off++]
-    if (code !== 0xff) return EFFECT_KINDS[code] ?? 'atk_default_pulse'
+    if (code < 0xfe) return EFFECT_KINDS[code] ?? 'atk_default_pulse'
+    if (code === 0xfe) {
+      const ext = data[off++]
+      return EFFECT_KINDS[254 + ext] ?? 'atk_default_pulse'
+    }
     const len = data[off++]
     const s = textDecoder.decode(data.subarray(off, off + len))
     off += len
@@ -336,6 +489,8 @@ export function decodeBinaryState(
       invulnerable: (st & (1 << 5)) !== 0,
       seated: (st & (1 << 6)) !== 0,
       inVoid: (st & (1 << 7)) !== 0,
+      timeErased: (st & (1 << 14)) !== 0,
+      rasenganCharged: (st & (1 << 15)) !== 0,
       infinityStones,
       respawnInMs,
       cooldownsMs,

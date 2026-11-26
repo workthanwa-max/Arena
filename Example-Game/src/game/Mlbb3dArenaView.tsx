@@ -540,8 +540,12 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
     }
 
     let lastAimRaycastMs = 0
+    const lastPointerScreen = { sx: 0, sy: 0, active: false }
     const onPointerMove = (ev: PointerEvent) => {
       const { sx, sy } = toLocalXY(ev)
+      lastPointerScreen.sx = sx
+      lastPointerScreen.sy = sy
+      lastPointerScreen.active = true
       const now = performance.now()
       if (aimPreview.active || now - lastAimRaycastMs >= 16) {
         lastAimRaycastMs = now
@@ -556,7 +560,8 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           updateMinimapPeek(sx, sy)
         } else {
           const dist = Math.hypot(sx - dragPan.downX, sy - dragPan.downY)
-          if (dist >= (ev.pointerType === 'touch' ? 6 : 10)) {
+          // Use 28px threshold on mouse so normal left-click basic attacks while walking & moving cursor never get swallowed as camera drag
+          if (dist >= (ev.pointerType === 'touch' ? 8 : 28)) {
             if (!dragPan.moved) {
               dragPan.moved = true
               cameraPeek.active = true
@@ -591,7 +596,16 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
     }
 
     const onPointerLeave = () => {
+      lastPointerScreen.active = false
       gameEventBus.emitAimMove({ worldX: 0, worldY: 0, active: false })
+    }
+
+    const onWindowPointerMove = (ev: PointerEvent) => {
+      if (ev.pointerType !== 'mouse') return
+      const { sx, sy } = toLocalXY(ev)
+      lastPointerScreen.sx = sx
+      lastPointerScreen.sy = sy
+      lastPointerScreen.active = true
     }
 
     const canvasEl = renderer.domElement
@@ -600,6 +614,7 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
     canvasEl.addEventListener('pointerup', onPointerUp)
     canvasEl.addEventListener('pointercancel', onPointerUp)
     canvasEl.addEventListener('pointerleave', onPointerLeave)
+    window.addEventListener('pointermove', onWindowPointerMove, { passive: true })
 
     // Subscribe to Game Event Bus
     const unsubInit = gameEventBus.onInit((payload) => {
@@ -744,7 +759,8 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
       for (const entry of actors.values()) {
         const p = entry.state
         const rig = entry.rig
-        rig.root.visible = p.alive || !p.isDummy
+        const hiddenByTimeErase = Boolean(p.timeErased) && p.id !== myPlayerId
+        rig.root.visible = !hiddenByTimeErase && (p.alive || !p.isDummy)
 
         if (!p.alive) {
           rig.bodyPivot.visible = false
@@ -756,7 +772,14 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
 
         // Exact hero speed synced with server Engine.StepPlayer
         let spd = charSpeedMap.get(p.characterId) ?? mapCfg.moveSpeed
-        if (p.godspeed) spd *= 1.85
+        const isIronManFlight =
+          p.characterId === 'iron_man' && ((p.cooldownsMs?.[4] ?? 0) > 0 || Boolean(p.godspeed))
+        if (isIronManFlight) {
+          spd *= 1.55
+        } else if (p.godspeed) {
+          spd *= 1.85
+        }
+        if (p.characterId === 'diavolo' && p.timeErased) spd *= 1.24
         if (p.slowed) spd *= 0.55
         const inSisaketWater = mapCfg.id === 'sisaket_island' && !isOnSisaketDryLand(entry.renderX, entry.renderZ)
         if (inSisaketWater) spd *= 0.78
@@ -841,12 +864,13 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           const isMoving = speedMag > 0.05 || stepDist > 0.35
           const isSprinting = Boolean(p.godspeed) || stepDist > 8.5
 
-          // Spawn Ghost Afterimage Silhouettes on High-Speed Dashes / Godspeed
+          // Spawn Ghost Afterimage Silhouettes on High-Speed Dashes / Godspeed / Local Time Erasure
           rig.afterimageCooldown = Math.max(0, rig.afterimageCooldown - dt)
-          if ((stepDist > 26 || p.godspeed) && rig.afterimageCooldown <= 0) {
-            const ghostHex = Number.parseInt(p.color.replace('#', ''), 16) || 0x38bdf8
+          const localTimeEraseTrail = Boolean(p.timeErased) && p.id === myPlayerId && isMoving
+          if (!hiddenByTimeErase && (stepDist > 26 || p.godspeed || localTimeEraseTrail) && rig.afterimageCooldown <= 0) {
+            const ghostHex = localTimeEraseTrail ? 0xdc2626 : (Number.parseInt(p.color.replace('#', ''), 16) || 0x38bdf8)
             vfx.spawnDashGhost(prevX, prevZ, entry.facingYaw, ghostHex)
-            rig.afterimageCooldown = stepDist > 26 ? 0.03 : 0.075
+            rig.afterimageCooldown = stepDist > 26 ? 0.03 : localTimeEraseTrail ? 0.09 : 0.075
           }
 
           if (isMoving) {
@@ -869,8 +893,19 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           if (jumpLift > 0) {
             rig.bodyPivot.position.y += jumpLift
           }
+          if (isIronManFlight) {
+            const hoverY = 20 + Math.sin(nowMs * 0.0085) * 3.5
+            rig.bodyPivot.position.y = jumpLift + hoverY
+            rig.bodyPivot.rotation.x = isMoving ? 0.54 : 0.22
+            rig.leftArm.rotation.x = isMoving ? 0.68 : 0.24
+            rig.rightArm.rotation.x = isMoving ? 0.68 : 0.24
+            rig.leftLeg.rotation.x = isMoving ? 0.28 : 0.1
+            rig.rightLeg.rotation.x = isMoving ? 0.34 : 0.14
+          }
 
-          rig.shadowDisc.scale.setScalar(clamp(1 - jumpLift / 220, 0.55, 1))
+          rig.shadowDisc.scale.setScalar(
+            isIronManFlight ? 0.66 : clamp(1 - jumpLift / 220, 0.55, 1),
+          )
 
           if (rig.capePivot) {
             rig.capePivot.rotation.x = (isMoving ? (isSprinting ? 0.65 : 0.38) : 0.1) + Math.sin(nowMs * 0.012 + rig.walkPhase) * (isMoving ? 0.18 : 0.06)
@@ -884,11 +919,23 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
             } else if (p.characterId === 'frame') {
               // Hovering Ai-Ouan cosmic Stand Cat
               rig.companionGroup.position.y = 44 + Math.sin(nowMs * 0.0065) * 5.5
+            } else if (p.characterId === 'diavolo') {
+              // Menacing King Crimson Stand hovering behind Diavolo's shoulder
+              const boost = p.timeErased ? 6.5 : 0
+              rig.companionGroup.position.y = 44 + boost + Math.sin(nowMs * 0.0055) * 4.2
+              rig.companionGroup.rotation.y = Math.sin(nowMs * 0.003) * 0.14
             }
           }
 
           if (rig.fastFistsGroup) {
             rig.fastFistsGroup.visible = Boolean(p.fastAttack)
+            if (p.fastAttack && p.characterId === 'pa') {
+              const pulse = 1.0 + Math.sin(nowMs * 0.016) * 0.08
+              rig.fastFistsGroup.scale.setScalar(pulse)
+              for (let gIdx = 0; gIdx < rig.fastFistsGroup.children.length; gIdx++) {
+                rig.fastFistsGroup.children[gIdx].rotation.z = nowMs * (gIdx % 2 === 0 ? 0.0045 : -0.0045)
+              }
+            }
           }
 
           if (nowMs < rig.attackSwingUntil) {
@@ -912,9 +959,41 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           if (rig.throneGroup) {
             rig.throneGroup.visible = Boolean(p.seated)
           }
+          if (rig.rasenganOrbGroup) {
+            const holdingRasengan = Boolean(p.rasenganCharged) || p.characterId === 'naruto_clone'
+            rig.rasenganOrbGroup.visible = holdingRasengan
+            if (holdingRasengan) {
+              rig.rightArm.rotation.x = -1.18
+              rig.rightArm.rotation.z = -0.15
+              rig.rasenganOrbGroup.rotation.y = nowMs * 0.028
+              rig.rasenganOrbGroup.rotation.x = nowMs * 0.021
+              const pulseScale = 1 + Math.sin(nowMs * 0.018) * 0.14
+              rig.rasenganOrbGroup.scale.setScalar(pulseScale)
+            }
+          }
           if (rig.kuramaGroup) {
             const transformed = Boolean(p.godspeed)
             rig.kuramaGroup.visible = transformed
+            // Giant Glowing Kurama Transformation: scale up 1.38x and radiate golden-orange chakra across the entire 3D body!
+            const targetScale = transformed ? 1.38 : 1.0
+            const curScale = rig.modelPivot.scale.x
+            if (Math.abs(curScale - targetScale) > 0.005) {
+              rig.modelPivot.scale.setScalar(curScale + (targetScale - curScale) * Math.min(1, dt * 10))
+            } else if (curScale !== targetScale) {
+              rig.modelPivot.scale.setScalar(targetScale)
+            }
+            if (transformed && !rig.hitFlashActive) {
+              const glowPulse = 0.88 + Math.sin(nowMs * 0.012) * 0.24
+              for (const fm of rig.flashMaterials) {
+                fm.mat.emissive.setHex(0xf59e0b)
+                fm.mat.emissiveIntensity = glowPulse
+              }
+            } else if (!transformed && !rig.hitFlashActive && rig.flashMaterials.length > 0 && rig.flashMaterials[0].mat.emissive.getHex() === 0xf59e0b) {
+              for (const fm of rig.flashMaterials) {
+                fm.mat.emissive.setHex(fm.baseEmissive)
+                fm.mat.emissiveIntensity = fm.baseIntensity
+              }
+            }
             if (transformed) {
               for (const ch of rig.kuramaGroup.children) {
                 const idx = ch.userData.tailIdx as number | undefined
@@ -922,6 +1001,19 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
                   const fan = (idx - 4) * 0.25
                   ch.rotation.x = -0.55 - Math.abs(idx - 4) * 0.05 + Math.sin(nowMs * 0.008 + idx * 0.7) * 0.14
                   ch.rotation.y = fan * 0.65 + Math.cos(nowMs * 0.007 + idx * 0.6) * 0.1
+                }
+              }
+            }
+          }
+          if (rig.hogyokuGroup) {
+            const evolved = Boolean(p.godspeed)
+            rig.hogyokuGroup.visible = evolved
+            if (evolved) {
+              for (const ch of rig.hogyokuGroup.children) {
+                const side = ch.userData.wingSide as number | undefined
+                const tier = ch.userData.wingTier as number | undefined
+                if (side !== undefined && tier !== undefined) {
+                  ch.rotation.y = side * Math.sin(nowMs * 0.005 + tier * 0.6) * 0.18
                 }
               }
             }
@@ -959,19 +1051,41 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           seenEffects.add(b.id)
           soundEngine.playEffectSound(b.kind)
           const bCol = Number.parseInt(b.accentColor.replace('#', ''), 16) || 0xfacc15
-          if (b.kind === 'killua_leap_arc' && b.ownerId) {
+          if ((b.kind === 'killua_leap_arc' || b.kind === 'igris_leap_slash') && b.ownerId) {
             const ownerEntry = actors.get(b.ownerId)
-            if (ownerEntry) ownerEntry.rig.leapUntil = performance.now() + 560
+            if (ownerEntry) {
+              ownerEntry.rig.leapUntil = performance.now() + 520
+              ownerEntry.rig.attackSwingUntil = performance.now() + 280
+            }
+            if (b.kind === 'igris_leap_slash') {
+              vfx.spawnImpact(b.x2, b.y2, bCol, 14)
+              shakePower = Math.max(shakePower, 9.5)
+            }
+          } else if (b.kind === 'igris_fire_slash' && b.ownerId) {
+            const ownerEntry = actors.get(b.ownerId)
+            if (ownerEntry) {
+              ownerEntry.rig.attackSwingUntil = performance.now() + 250
+              ownerEntry.rig.attackSwingSide *= -1
+            }
+            vfx.spawnImpact(b.x2, b.y2, bCol, 8)
           } else if (
             b.kind === 'saitama_serious_punch' ||
             b.kind === 'hollow_purple_blast' ||
             b.kind === 'infinite_void_open' ||
             b.kind === 'kamehameha' ||
             b.kind === 'enuma_elish' ||
-            b.kind === 'simo_snipe_max'
+            b.kind === 'simo_snipe_max' ||
+            b.kind === 'frieren_supreme_beam' ||
+            b.kind === 'toriko_ultimate_fist' ||
+            b.kind === 'aizen_black_coffin_burst' ||
+            b.kind === 'naruto_bijuudama_beam' ||
+            b.kind === 'ironman_mega_unibeam'
           ) {
             vfx.spawnImpact(b.x2, b.y2, bCol, 18)
-            shakePower = Math.max(shakePower, b.kind === 'saitama_serious_punch' ? 22 : 12)
+            shakePower = Math.max(shakePower, b.kind === 'saitama_serious_punch' ? 22 : b.kind === 'enuma_elish' ? 20 : 12)
+            if (b.kind === 'enuma_elish' && b.ownerId && b.ownerId !== myPlayerId) {
+              soundEngine.speakSkillCallout('pa', 3, 'Enuma Elish!')
+            }
           } else if (
             b.kind === 'zenitsu_hekireki' ||
             b.kind === 'zenitsu_rokuren' ||
@@ -980,7 +1094,12 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
             b.kind === 'black_lightning_strike' ||
             b.kind === 'goku_dragon_rush' ||
             b.kind === 'aiouan_ora_rush' ||
-            b.kind === 'simo_backflip_shot'
+            b.kind === 'simo_backflip_shot' ||
+            b.kind === 'frieren_zoltraak' ||
+            b.kind === 'toriko_leg_knife' ||
+            b.kind === 'aizen_kyoka_beam' ||
+            b.kind === 'aizen_hogyoku_beam' ||
+            b.kind === 'diavolo_crimson_punch'
           ) {
             vfx.spawnImpact(b.x2, b.y2, bCol, 12)
             shakePower = Math.max(shakePower, 8.5)
@@ -1003,7 +1122,12 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           if (!isWind) {
             soundEngine.playEffectSound(z.kind)
             const zCol = Number.parseInt(z.accentColor.replace('#', ''), 16) || 0xfacc15
-            if (z.kind === 'hollow_purple' || z.kind === 'thanos_infinity_snap' || z.kind === 'saitama_crater') {
+            if (
+              z.kind === 'hollow_purple' ||
+              z.kind === 'thanos_infinity_snap' ||
+              z.kind === 'ironman_snap_wave' ||
+              z.kind === 'saitama_crater'
+            ) {
               vfx.spawnImpact(z.x, z.y, zCol, 22)
               vfx.spawnGroundDecal(z.x, z.y, z.radius * 0.92, zCol, 2.5)
               shakePower = Math.max(shakePower, 18)
@@ -1011,6 +1135,8 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
                 soundEngine.speakSkillCallout('sia_mon', 'purple', '虚式、茈！')
               } else if (z.kind === 'thanos_infinity_snap' && z.ownerId !== myPlayerId) {
                 soundEngine.speakSkillCallout('noone', 'snap', 'I am inevitable!')
+              } else if (z.kind === 'ironman_snap_wave') {
+                soundEngine.speakSkillCallout('iron_man', 'snap', 'And I... am... Iron Man!')
               }
             } else if (
               z.kind === 'sanzen_sekai' ||
@@ -1021,11 +1147,22 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
               z.kind === 'zenitsu_honoo_no_kami' ||
               z.kind === 'fuga_explosion' ||
               z.kind === 'jinwoo_arise' ||
+              z.kind === 'jinwoo_rulers_hand' ||
+              z.kind === 'igris_slash_impact' ||
+              z.kind === 'igris_fire_burst' ||
               z.kind === 'luffy_bajrang_smash' ||
               z.kind === 'diablo_eclipse_burst' ||
               z.kind === 'sanji_ifrit_burst' ||
               z.kind === 'naruto_shuriken_boom' ||
-              z.kind === 'ben10_heat_boom'
+              z.kind === 'naruto_bijuudama_boom' ||
+              z.kind === 'naruto_rasengan_burst' ||
+              z.kind === 'ironman_missile_boom' ||
+              z.kind === 'ben10_heat_boom' ||
+              z.kind === 'aizen_hogyoku_wave' ||
+              z.kind === 'aizen_black_coffin' ||
+              z.kind === 'toriko_ultimate_routine' ||
+              z.kind === 'frieren_supreme_circle' ||
+              z.kind === 'diavolo_fate_decided'
             ) {
               vfx.spawnImpact(z.x, z.y, zCol, 15)
               vfx.spawnGroundDecal(z.x, z.y, Math.min(180, z.radius * 0.85), zCol, 2.2)
@@ -1115,6 +1252,13 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
 
       camera.position.set(focusX + sxOff, curCamHeight, focusZ + curCamBackZ + szOff)
       camera.lookAt(focusX + sxOff, 18, focusZ + szOff)
+      if (lastPointerScreen.active && (isSimoSnipeZoom || aimPreview.active || curZoomBlend > 0.02)) {
+        camera.updateMatrixWorld()
+        const worldPt = screenToWorldXZ(lastPointerScreen.sx, lastPointerScreen.sy)
+        if (worldPt) {
+          gameEventBus.emitAimMove({ worldX: worldPt.wx, worldY: worldPt.wz, active: true })
+        }
+      }
 
       // Animate glowing Blue/Red Nexus Crystals gently in envGroup
       animateMapEnvironment3D(envGroup, nowMs, dt)
@@ -1162,7 +1306,7 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
         // Screen-Projected Overhead HP + Names for visible living actors
         for (const entry of actors.values()) {
           const p = entry.state
-          if (!p.alive) continue
+          if (!p.alive || (p.timeErased && p.id !== myPlayerId)) continue
           projVec.set(entry.renderX, p.isDummy ? 68 : 66, entry.renderZ).project(camera)
           if (projVec.z > 1) continue
           const sx = (projVec.x * 0.5 + 0.5) * width
@@ -1185,23 +1329,40 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
           ctx2d.fillStyle = 'rgba(15, 23, 42, 0.65)'
           ctx2d.fillRect(sx - 1, sy - 5, 1.5, 6)
 
-          // Active CC / Transformation Indicator Bar below HP bar
-          if (p.inVoid || p.stunned || p.godspeed) {
-            const ccCol = p.inVoid ? '#C084FC' : p.stunned ? '#FACC15' : p.characterId === 'naruto' ? '#F97316' : '#38BDF8'
+          // Active CC / Transformation / Iron Man 10s Arc Reactor Energy Gauge Bar below HP bar
+          if (p.characterId === 'iron_man') {
+            const arcRatio = clamp((p.cooldownsMs?.[3] ?? 0) / 100, 0, 1)
+            const isFull = arcRatio >= 1
+            ctx2d.fillStyle = 'rgba(9, 14, 28, 0.94)'
+            ctx2d.fillRect(sx - 28, sy + 2.5, 56, 4.5)
+            ctx2d.fillStyle = isFull ? '#FACC15' : '#38BDF8'
+            ctx2d.fillRect(sx - 27, sy + 3.1, 54 * arcRatio, 3.2)
+          } else if (p.timeErased || p.inVoid || p.stunned || p.godspeed) {
+            const ccCol = p.timeErased
+              ? '#DC2626'
+              : p.inVoid
+                ? '#C084FC'
+                : p.stunned
+                  ? '#FACC15'
+                  : p.characterId === 'naruto'
+                    ? '#F97316'
+                    : '#38BDF8'
             ctx2d.fillStyle = ccCol
             ctx2d.fillRect(sx - 27, sy + 3, 54, 2.5)
           }
 
           const isMe = p.id === myPlayerId
-          const label = p.invulnerable
-            ? `🛡️อมตะ ${p.name}`
-            : p.stunned
-              ? `⚡STUN ${p.name}`
-              : isMe
-                ? `${p.name} (คุณ)`
-                : p.isDummy
-                  ? p.name
-                  : `${p.name} • ${p.characterName}`
+          const label = p.timeErased
+            ? `⏳ลบเวลา ${p.name} (คุณ)`
+            : p.invulnerable
+              ? `🛡️อมตะ ${p.name}`
+              : p.stunned
+                ? `⚡STUN ${p.name}`
+                : isMe
+                  ? `${p.name} (คุณ)`
+                  : p.isDummy
+                    ? p.name
+                    : `${p.name} • ${p.characterName}`
           ctx2d.font = '700 11px Inter, "Noto Sans Thai", sans-serif'
           let tw = labelWidthCache.get(label)
           if (tw === undefined) {
@@ -1279,6 +1440,52 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
         const isKonoha = mapCfg.id === 'konoha'
         const isSisaket = mapCfg.id === 'sisaket_island'
         const isScp = mapCfg.id === 'scp_site'
+
+        // Diavolo Time-Erasure Dimension Overlay (visible ONLY to local Diavolo while erased from time)
+        if (meActor && meActor.state.alive && meActor.state.timeErased) {
+          const pulse = 0.78 + Math.sin(nowMs * 0.01) * 0.22
+          ctx2d.save()
+          const grad = ctx2d.createRadialGradient(
+            width * 0.5,
+            height * 0.5,
+            Math.min(width, height) * 0.22,
+            width * 0.5,
+            height * 0.5,
+            Math.max(width, height) * 0.72,
+          )
+          grad.addColorStop(0, 'rgba(69, 10, 10, 0.04)')
+          grad.addColorStop(0.65, 'rgba(127, 29, 29, 0.22)')
+          grad.addColorStop(1, 'rgba(24, 3, 18, 0.62)')
+          ctx2d.fillStyle = grad
+          ctx2d.fillRect(0, 0, width, height)
+
+          // Glowing Crimson-Magenta Dimension Frame Border
+          ctx2d.lineWidth = 4
+          ctx2d.strokeStyle = `rgba(220, 38, 38, ${(0.55 * pulse).toFixed(2)})`
+          ctx2d.strokeRect(2, 2, width - 4, height - 4)
+
+          // Top-center Time-Erasure Status Banner
+          const bw = compactPhone ? 268 : 376
+          const bh = compactPhone ? 30 : 36
+          const bx = (width - bw) * 0.5
+          const by = compactPhone ? 58 : 70
+          ctx2d.globalAlpha = 0.92 + Math.sin(nowMs * 0.012) * 0.08
+          ctx2d.fillStyle = 'rgba(42, 6, 18, 0.92)'
+          ctx2d.beginPath()
+          ctx2d.roundRect(bx, by, bw, bh, 12)
+          ctx2d.fill()
+          ctx2d.lineWidth = 2
+          ctx2d.strokeStyle = '#F472B6'
+          ctx2d.stroke()
+          ctx2d.font = compactPhone
+            ? '800 11px Inter, "Noto Sans Thai", sans-serif'
+            : '800 13.5px Inter, "Noto Sans Thai", sans-serif'
+          ctx2d.fillStyle = '#FECDD3'
+          ctx2d.textAlign = 'center'
+          ctx2d.textBaseline = 'middle'
+          ctx2d.fillText('⏳ มิติการลบเวลา • KING CRIMSON (หายตัว & อมตะ 5 วิ)', width * 0.5, by + bh * 0.5)
+          ctx2d.restore()
+        }
 
         // Urgent pulsing Water Hazard Banner when local hero falls into Huai Nam Kham reservoir
         if (
@@ -1471,7 +1678,7 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
         const myTeam = actors.get(myPlayerId)?.state.team
         for (const entry of actors.values()) {
           const p = entry.state
-          if (!p.alive) continue
+          if (!p.alive || (p.timeErased && p.id !== myPlayerId)) continue
           const isMe = p.id === myPlayerId
           const isAlly = isMe || (myTeam && myTeam !== 'ffa' && p.team === myTeam)
           const iconSize = compactPhone ? (isMe ? 18 : 15) : isMe ? 22 : 18
@@ -1531,6 +1738,7 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
       canvasEl.removeEventListener('pointerup', onPointerUp)
       canvasEl.removeEventListener('pointercancel', onPointerUp)
       canvasEl.removeEventListener('pointerleave', onPointerLeave)
+      window.removeEventListener('pointermove', onWindowPointerMove)
 
       for (const entry of actors.values()) {
         disposeHeroRig3D(entry.rig)

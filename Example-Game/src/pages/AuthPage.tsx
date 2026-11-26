@@ -1,15 +1,8 @@
 import { type FormEvent, useEffect, useRef, useState } from 'react'
-import { animateCardEnter, animateSpringPop } from '../animations/gsapPresets'
+import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
+import { IconFullscreen } from '../components/Icons'
 import { useGameStore } from '../store/useGameStore'
-
-const SPARK_DOTS = Array.from({ length: 14 }, (_, idx) => ({
-  id: idx,
-  leftPct: `${7 + ((idx * 19) % 86)}%`,
-  delaySec: `${(idx * 0.45) % 4.5}s`,
-  durSec: `${4.2 + (idx % 4) * 1.1}s`,
-  tone: idx % 2 === 0 ? 'cyan' : 'crimson',
-}))
 
 export function AuthPage() {
   const [tab, setTab] = useState<'login' | 'register'>('login')
@@ -26,11 +19,9 @@ export function AuthPage() {
   const registerAccount = useGameStore((s) => s.registerAccount)
 
   const cardRef = useRef<HTMLElement | null>(null)
-  const metaRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     animateCardEnter(cardRef.current)
-    animateSpringPop(metaRef.current)
     const syncFs = () => setIsFullscreen(Boolean(document.fullscreenElement))
     syncFs()
     document.addEventListener('fullscreenchange', syncFs)
@@ -62,79 +53,47 @@ export function AuthPage() {
 
   return (
     <div className="auth-mobile-stage">
-      {/* Full-Bleed Animated Gojo vs Sukuna Key-Art Wallpaper */}
       <img
         src="/fx/auth_gojo_sukuna_bg.jpg"
-        alt="Gojo vs Sukuna Shibuya Clash"
+        alt="Infinity Clash Backdrop"
         className="auth-wallpaper-img"
       />
       <div className="auth-wallpaper-scrim" aria-hidden="true" />
-      <div className="auth-ember-field" aria-hidden="true">
-        {SPARK_DOTS.map((sp) => (
-          <span
-            key={sp.id}
-            className={`auth-spark ${sp.tone}`}
-            style={{
-              left: sp.leftPct,
-              animationDelay: sp.delaySec,
-              animationDuration: sp.durSec,
-            }}
-          />
-        ))}
-      </div>
 
-      {/* Top Mobile Game Brand & Server Status Chrome */}
       <header className="auth-topbar">
         <div className="auth-topbar-left">
-          <div className="auth-brand-cluster">
-            <img src="/fx/logo_gojo_sukuna.jpg" alt="Infinity Clash" className="auth-brand-logo" />
-            <div className="auth-brand-copy">
-              <h1 className="auth-brand-title">INFINITY CLASH</h1>
-              <span className="auth-brand-sub">GOJO × SUKUNA MULTIVERSE MOBA</span>
+          <div className="clean-brand">
+            <img src="/fx/logo_gojo_sukuna.jpg" alt="Infinity Clash" className="clean-brand-logo" />
+            <div>
+              <div className="clean-brand-title">INFINITY CLASH</div>
+              <div className="clean-brand-user">Multiverse 3D Arena</div>
             </div>
           </div>
         </div>
 
-        <div className="auth-topbar-right">
-          <span className="auth-server-pill">
+        <div className="ui-topbar-group">
+          <span className="ui-pill">
             <span className="auth-server-dot" aria-hidden="true" />
             ONLINE • 60Hz
           </span>
           <button
             type="button"
-            className="auth-fs-btn"
+            className="ui-btn icon-only"
             onClick={() => void toggleFullscreen()}
             title={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
             aria-label={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
           >
-            {isFullscreen ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-              </svg>
-            )}
+            <IconFullscreen size={16} exit={isFullscreen} />
           </button>
         </div>
       </header>
 
-      {/* Main Mobile-Game Glass Auth Panel (Floats Cleanly Between Gojo & Sukuna) */}
       <main className="auth-center-stage">
         <section
           ref={cardRef}
           className="auth-mobile-card"
           aria-label="เข้าสู่ระบบและสมัครสมาชิก"
         >
-          <div className="auth-card-crest">
-            <span className="auth-crest-line cyan" />
-            <span className="auth-crest-text">
-              {tab === 'login' ? 'LOGIN TO BATTLEFIELD' : 'CREATE WARRIOR ID'}
-            </span>
-            <span className="auth-crest-line crimson" />
-          </div>
-
           <div className="auth-segmented-tabs" role="tablist">
             <button
               type="button"
@@ -146,7 +105,7 @@ export function AuthPage() {
                 setError('')
               }}
             >
-              🔑 เข้าสู่ระบบ
+              เข้าสู่ระบบ
             </button>
             <button
               type="button"
@@ -158,13 +117,13 @@ export function AuthPage() {
                 setError('')
               }}
             >
-              ✨ สมัครสมาชิก
+              สมัครสมาชิก
             </button>
           </div>
 
           {error && (
-            <div className="auth-alert-banner" role="alert">
-              <span>⚠️ {error}</span>
+            <div className="ui-alert" role="alert">
+              <span>{error}</span>
             </div>
           )}
 
@@ -172,7 +131,6 @@ export function AuthPage() {
             <label className="auth-field-group">
               <span className="auth-field-label">Username</span>
               <div className="auth-input-shell">
-                <span className="auth-input-icon" aria-hidden="true">👤</span>
                 <input
                   type="text"
                   className="auth-dark-input"
@@ -190,7 +148,6 @@ export function AuthPage() {
               <label className="auth-field-group">
                 <span className="auth-field-label">ชื่อในเกม</span>
                 <div className="auth-input-shell">
-                  <span className="auth-input-icon" aria-hidden="true">🎭</span>
                   <input
                     type="text"
                     className="auth-dark-input"
@@ -206,7 +163,6 @@ export function AuthPage() {
             <label className="auth-field-group">
               <span className="auth-field-label">Password</span>
               <div className="auth-input-shell">
-                <span className="auth-input-icon" aria-hidden="true">🔒</span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   className="auth-dark-input"
@@ -222,30 +178,27 @@ export function AuthPage() {
                   className="auth-eye-btn"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
-                  title={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
                 >
-                  {showPassword ? '🙈' : '👁️'}
+                  {showPassword ? 'ซ่อน' : 'แสดง'}
                 </button>
               </div>
             </label>
 
             <button type="submit" className="auth-play-cta" disabled={authLoading}>
-              <span className="auth-cta-glow" aria-hidden="true" />
               <span className="auth-cta-label">
                 {authLoading
-                  ? '⏳ กำลังเข้าสู่เกม...'
+                  ? 'กำลังเข้าสู่เกม...'
                   : tab === 'login'
-                    ? '⚔️ เริ่มเกม (PLAY)'
-                    : '🛡️ สมัครและเข้าเกม'}
+                    ? 'เข้าสู่สนามรบ'
+                    : 'สมัครและเข้าเล่น'}
               </span>
             </button>
           </form>
         </section>
       </main>
 
-      {/* Bottom-Right Clean Beta Version Badge */}
-      <aside ref={metaRef} className="auth-beta-badge" aria-label="ข้อมูลเวอร์ชัน Beta">
-        <span className="auth-beta-pill">BETA v1.0</span>
+      <aside className="auth-beta-badge" aria-label="เวอร์ชันเกม">
+        <span className="ui-pill">v1.0</span>
       </aside>
     </div>
   )

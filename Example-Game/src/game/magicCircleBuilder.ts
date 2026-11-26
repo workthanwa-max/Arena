@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { getHeroAimTheme } from './heroAimThemes'
+import { ROSTER28_SPECS } from './roster28Meta'
 
 interface SigilPalette {
   primary: string
@@ -28,6 +29,10 @@ const HERO_SIGIL_GLYPHS: Record<string, string[]> = {
   luffy: ['★', '☠', '✦', '◈', '★', '✶', '✧', '⊹'],
   ben10: ['⧖', '✦', '◈', '✧', '⧖', '✶', '⊹', '❖'],
   diablo: ['❖', '✕', '✦', '◈', '❖', '✶', '✧', '⊹'],
+  aizen: ['❖', '⟐', '◈', '✦', '❖', '✧', '⊹', '⟐'],
+  toriko: ['⚔', '✕', '★', '✦', '⚔', '✶', '✧', '◈'],
+  frieren: ['✶', '✦', '✧', '◈', '✶', '⊹', '❖', '✧'],
+  ...Object.fromEntries(ROSTER28_SPECS.map((s) => [s.id, [s.corridorGlyph, '✦', '◈', '✧', s.corridorGlyph, '✶', '⊹', '❖']])),
   default: ['✦', '◈', '✧', '❖', '✶', '⊹', '✦', '◈'],
 }
 
@@ -386,6 +391,35 @@ function bakeMagicCircleTexture(charId: string, cancel: boolean, isOuterRange: b
         g.arc(cx + Math.cos(a) * R * 0.64, cy + Math.sin(a) * R * 0.64, 11, 0, Math.PI * 2)
         g.fill()
       }
+    } else if (charId === 'aizen' && !cancel) {
+      // Aizen Hogyoku Rhombus & Mirror Hypnosis Shatter Rings
+      g.strokeStyle = '#C084FC'
+      g.lineWidth = 4.5
+      drawPolygon(g, cx, cy, R * 0.72, 4, Math.PI / 4)
+      g.strokeStyle = '#E9D5FF'
+      g.lineWidth = 3
+      drawPolygon(g, cx, cy, R * 0.48, 4, 0)
+    } else if (charId === 'toriko' && !cancel) {
+      // Toriko Crossed Gourmet Fork & Knife Emblem
+      g.strokeStyle = '#F97316'
+      g.lineWidth = 5
+      drawPolygon(g, cx, cy, R * 0.76, 5, -Math.PI / 2)
+      g.strokeStyle = '#FEF08A'
+      g.lineWidth = 5
+      g.beginPath()
+      g.moveTo(cx - R * 0.48, cy - R * 0.48)
+      g.lineTo(cx + R * 0.48, cy + R * 0.48)
+      g.moveTo(cx + R * 0.48, cy - R * 0.48)
+      g.lineTo(cx - R * 0.48, cy + R * 0.48)
+      g.stroke()
+    } else if (charId === 'frieren' && !cancel) {
+      // Frieren Ancient Double Hexagram Magic Circle
+      g.strokeStyle = '#38BDF8'
+      g.lineWidth = 3.8
+      drawPolygon(g, cx, cy, R * 0.84, 6, 0)
+      drawPolygon(g, cx, cy, R * 0.62, 3, -Math.PI / 2)
+      g.strokeStyle = '#BAE6FD'
+      drawPolygon(g, cx, cy, R * 0.62, 3, Math.PI / 2)
     } else {
       // Clean Aero Hexagram + Center Star
       g.strokeStyle = pal.primary
@@ -620,16 +654,42 @@ function bakeArcaneCorridorTexture(charId: string, cancel: boolean): THREE.Canva
       g.arc(w * 0.5, y, 24, 0, Math.PI * 2)
       g.stroke()
     }
-  } else if (style === 'punch') {
-    // Saitama: Serious Impact Warning Stripes + Sonic Cones
+  } else if (style === 'punch' || style === 'gourmet') {
+    // Saitama / Toriko: Serious Impact Warning Stripes + Gourmet Cones
     for (let y = 70; y < h - 30; y += 76) {
-      g.strokeStyle = '#FACC15'
+      g.strokeStyle = style === 'gourmet' ? '#F97316' : '#FACC15'
       g.lineWidth = 7
       g.beginPath()
       g.moveTo(w * 0.22, y - 20)
       g.lineTo(w * 0.5, y + 16)
       g.lineTo(w * 0.78, y - 20)
       g.stroke()
+    }
+  } else if (style === 'hypnosis') {
+    // Aizen: Shattering Purple Mirror Diamond Lane
+    for (let y = 66; y < h - 30; y += 72) {
+      g.strokeStyle = '#C084FC'
+      g.lineWidth = 4
+      g.beginPath()
+      g.moveTo(w * 0.5, y - 20)
+      g.lineTo(w * 0.72, y)
+      g.lineTo(w * 0.5, y + 20)
+      g.lineTo(w * 0.28, y)
+      g.closePath()
+      g.stroke()
+    }
+  } else if (style === 'ancient') {
+    // Frieren: Crisp Azure Zoltraak Runic Vector Track
+    g.strokeStyle = '#BAE6FD'
+    g.lineWidth = 3.5
+    g.beginPath()
+    g.moveTo(w * 0.5, 22)
+    g.lineTo(w * 0.5, h - 22)
+    g.stroke()
+    for (let y = 62; y < h - 30; y += 68) {
+      g.strokeStyle = '#38BDF8'
+      g.lineWidth = 3.5
+      drawPolygon(g, w * 0.5, y, 22, 6, 0)
     }
   } else {
     // Rimuru / Default: Flowing Chevrons + Center Spine

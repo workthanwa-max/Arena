@@ -35,22 +35,27 @@ export interface MobaSkillButtonProps {
 
 const AIM_THRESHOLD_PX = 14
 const MAX_AIM_PULL_PX = 52
-const CANCEL_HITBOX_PAD_PX = 20
+const CANCEL_HITBOX_PAD_PX = 2
+const MIN_CANCEL_DRAG_PX = 64
 
 function isPointInsideCancelZone(
   clientX: number,
   clientY: number,
+  originX: number,
+  originY: number,
   cancelEl: HTMLButtonElement | null,
 ): boolean {
   if (!cancelEl) return false
+  // Require deliberate drag away from the skill button so normal upward aiming never self-cancels
+  if (Math.hypot(clientX - originX, clientY - originY) < MIN_CANCEL_DRAG_PX) {
+    return false
+  }
   const r = cancelEl.getBoundingClientRect()
   if (r.width === 0 || r.height === 0) return false
-  return (
-    clientX >= r.left - CANCEL_HITBOX_PAD_PX &&
-    clientX <= r.right + CANCEL_HITBOX_PAD_PX &&
-    clientY >= r.top - CANCEL_HITBOX_PAD_PX &&
-    clientY <= r.bottom + CANCEL_HITBOX_PAD_PX
-  )
+  const cx = r.left + r.width * 0.5
+  const cy = r.top + r.height * 0.5
+  const radius = Math.max(r.width, r.height) * 0.5 + CANCEL_HITBOX_PAD_PX
+  return Math.hypot(clientX - cx, clientY - cy) <= radius
 }
 
 function computeRangeFactor(dist: number): number {
@@ -93,6 +98,8 @@ export const MobaSkillButton = memo(function MobaSkillButton({
   const originRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
   const chargeStartMsRef = useRef<number | null>(null)
   const chargeRafRef = useRef<number | null>(null)
+  const basicHoldTimerRef = useRef<number | null>(null)
+  const draggedAimRef = useRef(false)
   const aimVecRef = useRef<{ dirX: number; dirY: number; rangeFactor: number; cancel: boolean }>({
     dirX: 0,
     dirY: -1,
@@ -101,12 +108,17 @@ export const MobaSkillButton = memo(function MobaSkillButton({
   })
 
   const onCooldown = cooldownMs > 0
-  const isBlocked = disabled || onCooldown
+  // Never block Basic Attack taps while walking/attacking so rapid taps & hold-to-attack buffer cleanly
+  const isBlocked = disabled || (onCooldown && variant !== 'basic')
 
   function stopChargeLoop() {
     if (chargeRafRef.current !== null) {
       window.cancelAnimationFrame(chargeRafRef.current)
       chargeRafRef.current = null
+    }
+    if (basicHoldTimerRef.current !== null) {
+      window.clearInterval(basicHoldTimerRef.current)
+      basicHoldTimerRef.current = null
     }
     if (chargeDurationMs) {
       setSimoSnipeCharging(false)
@@ -120,6 +132,10 @@ export const MobaSkillButton = memo(function MobaSkillButton({
       if (chargeRafRef.current !== null) {
         window.cancelAnimationFrame(chargeRafRef.current)
         chargeRafRef.current = null
+      }
+      if (basicHoldTimerRef.current !== null) {
+        window.clearInterval(basicHoldTimerRef.current)
+        basicHoldTimerRef.current = null
       }
       if (chargeDurationMs) {
         setSimoSnipeCharging(false)
@@ -182,6 +198,7 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     e.currentTarget.setPointerCapture(e.pointerId)
     pointerIdRef.current = e.pointerId
     originRef.current = { x: e.clientX, y: e.clientY }
+    draggedAimRef.current = false
     const initDir = chargeDurationMs ? getSimoLiveAimDirection() : { dirX: 0, dirY: -1 }
     aimVecRef.current = {
       dirX: initDir.dirX,
@@ -190,7 +207,9 @@ export const MobaSkillButton = memo(function MobaSkillButton({
       cancel: false,
     }
     setDragState({ active: true, dx: 0, dy: 0, cancel: false })
-    onDragChange(true, false)
+    if (variant !== 'basic') {
+      onDragChange(true, false)
+    }
     gameEventBus.emitAimPreview({
       active: true,
       slot: slotId,
@@ -204,6 +223,26 @@ export const MobaSkillButton = memo(function MobaSkillButton({
       chargeRatio: chargeDurationMs ? 0 : undefined,
     })
 
+    // Fire Basic Attack immediately on press-down (and repeat while held) so walking + attacking never drops!
+    if (variant === 'basic') {
+      onTrigger()
+      if (basicHoldTimerRef.current !== null) {
+        window.clearInterval(basicHoldTimerRef.current)
+      }
+      basicHoldTimerRef.current = window.setInterval(() => {
+        if (pointerIdRef.current === null) return
+        if (draggedAimRef.current) {
+          onTrigger({
+            dirX: aimVecRef.current.dirX,
+            dirY: aimVecRef.current.dirY,
+            rangeFactor: aimVecRef.current.rangeFactor,
+          })
+        } else {
+          onTrigger()
+        }
+      }, 170)
+    }
+
     if (chargeDurationMs && chargeDurationMs > 0) {
       setSimoSnipeCharging(true)
       chargeStartMsRef.current = performance.now()
@@ -211,6 +250,11 @@ export const MobaSkillButton = memo(function MobaSkillButton({
         if (pointerIdRef.current === null || chargeStartMsRef.current === null) return
         const ratio = Math.min(1, (performance.now() - chargeStartMsRef.current) / chargeDurationMs)
         setChargePct(Math.round(ratio * 100))
+        if (!draggedAimRef.current) {
+          const liveDir = getSimoLiveAimDirection()
+          aimVecRef.current.dirX = liveDir.dirX
+          aimVecRef.current.dirY = liveDir.dirY
+        }
         gameEventBus.emitAimPreview({
           active: true,
           slot: slotId,
@@ -235,7 +279,15 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     const rawX = e.clientX - originRef.current.x
     const rawY = e.clientY - originRef.current.y
     const dist = Math.hypot(rawX, rawY)
-    const cancel = isPointInsideCancelZone(e.clientX, e.clientY, cancelZoneRef.current)
+    const cancel =
+      variant !== 'basic' &&
+      isPointInsideCancelZone(
+        e.clientX,
+        e.clientY,
+        originRef.current.x,
+        originRef.current.y,
+        cancelZoneRef.current,
+      )
 
     const clampedDist = Math.min(dist, MAX_AIM_PULL_PX)
     const nx = dist > 0.01 ? rawX / dist : 1
@@ -247,14 +299,34 @@ export const MobaSkillButton = memo(function MobaSkillButton({
       dy: ny * clampedDist,
       cancel,
     })
-    onDragChange(true, cancel)
+    if (variant !== 'basic') {
+      onDragChange(true, cancel)
+    }
 
     const liveCharge =
       chargeDurationMs && chargeStartMsRef.current !== null
         ? Math.min(1, (performance.now() - chargeStartMsRef.current) / chargeDurationMs)
         : undefined
 
-    if (dist >= AIM_THRESHOLD_PX) {
+    // On PC mouse during Simo Skill 2 zoom: if cursor moves onto the battlefield (> 72px from button), aim directly at 3D cursor!
+    if (chargeDurationMs && e.pointerType === 'mouse' && dist > MAX_AIM_PULL_PX * 1.38) {
+      draggedAimRef.current = false
+      const liveDir = getSimoLiveAimDirection()
+      aimVecRef.current = { dirX: liveDir.dirX, dirY: liveDir.dirY, rangeFactor: 1, cancel }
+      gameEventBus.emitAimPreview({
+        active: true,
+        slot: slotId,
+        dirX: liveDir.dirX,
+        dirY: liveDir.dirY,
+        rangeFactor: 1,
+        castRange,
+        aoeRadius,
+        aimType,
+        cancel,
+        chargeRatio: liveCharge,
+      })
+    } else if (dist >= AIM_THRESHOLD_PX) {
+      draggedAimRef.current = true
       const rf = computeRangeFactor(dist)
       aimVecRef.current = { dirX: nx, dirY: ny, rangeFactor: rf, cancel }
       gameEventBus.emitAimPreview({
@@ -294,7 +366,15 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     const rawX = e.clientX - originRef.current.x
     const rawY = e.clientY - originRef.current.y
     const dist = Math.hypot(rawX, rawY)
-    const cancel = isPointInsideCancelZone(e.clientX, e.clientY, cancelZoneRef.current)
+    const cancel =
+      variant !== 'basic' &&
+      isPointInsideCancelZone(
+        e.clientX,
+        e.clientY,
+        originRef.current.x,
+        originRef.current.y,
+        cancelZoneRef.current,
+      )
 
     gameEventBus.emitAimPreview({
       active: false,
@@ -313,18 +393,37 @@ export const MobaSkillButton = memo(function MobaSkillButton({
     if (cancel) {
       return
     }
+    if (variant === 'basic') {
+      // Already fired on pointerDown; if user dragged to aim a directional basic attack, fire along drag vector too
+      if (dist >= AIM_THRESHOLD_PX) {
+        onTrigger({
+          dirX: rawX / dist,
+          dirY: rawY / dist,
+          rangeFactor: computeRangeFactor(dist),
+        })
+      }
+      return
+    }
     const chargeTag = finalChargePct !== undefined ? `charge:${finalChargePct}` : undefined
-    if (dist >= AIM_THRESHOLD_PX) {
+    if (chargeTag) {
+      // Always fire along the exact direction vector rendered by the 3D sniper laser sight on release
+      const finalDir = draggedAimRef.current
+        ? { dirX: aimVecRef.current.dirX, dirY: aimVecRef.current.dirY }
+        : getSimoLiveAimDirection()
+      onTrigger({
+        dirX: finalDir.dirX,
+        dirY: finalDir.dirY,
+        rangeFactor: 1,
+        targetId: chargeTag,
+      })
+    } else if (dist >= AIM_THRESHOLD_PX) {
       onTrigger({
         dirX: rawX / dist,
         dirY: rawY / dist,
         rangeFactor: computeRangeFactor(dist),
-        targetId: chargeTag,
       })
     } else if (aimType === 'ground') {
-      onTrigger({ dirX: 1, dirY: 0, rangeFactor: 0, targetId: chargeTag })
-    } else if (chargeTag) {
-      onTrigger({ rangeFactor: 1, targetId: chargeTag })
+      onTrigger({ dirX: 1, dirY: 0, rangeFactor: 0 })
     } else {
       onTrigger()
     }

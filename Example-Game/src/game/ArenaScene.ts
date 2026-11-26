@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { soundEngine } from '../audio/soundEngine'
+import { ROSTER28_SPECS } from './roster28Meta'
 import type {
   BeamEffect,
   MapConfig,
@@ -27,6 +28,16 @@ const MINIMAP_PORTRAIT_URLS: Record<string, string> = {
   ko: '/characters/ko.png',
   noone: '/characters/noone.png?v=mcu1',
   simo: '/characters/simo.png',
+  jinwoo: '/characters/jinwoo.png',
+  naruto: '/characters/naruto.png',
+  sanji: '/characters/sanji.png',
+  luffy: '/characters/luffy.png',
+  ben10: '/characters/ben10.png',
+  diablo: '/characters/diablo.png',
+  aizen: '/characters/aizen.png',
+  toriko: '/characters/toriko.png',
+  frieren: '/characters/frieren.png',
+  ...Object.fromEntries(ROSTER28_SPECS.map((s) => [s.id, s.portrait])),
 }
 
 interface ActorView {
@@ -1432,14 +1443,33 @@ export class ArenaScene extends Phaser.Scene {
       g.fillRect(-20, -10 + bob, 40, 10)
     }
     if (p.characterId === 'pa') {
-      // Gilgamesh: Golden Gate of Babylon portals + sword hilts behind shoulders
+      // Gilgamesh: Golden Gate of Babylon portals behind shoulders (blazes bright & expands during E Overdrive!)
       const pulse = Math.sin(time * 0.008) * 2
-      g.fillStyle(0xfacc15, 0.85)
-      g.fillEllipse(-21, -30 + bob + pulse, 10, 18)
-      g.fillEllipse(21, -30 + bob - pulse, 10, 18)
-      g.lineStyle(2, 0xfef08a, 1)
-      g.lineBetween(-21, -30 + bob + pulse, -30, -35 + bob)
-      g.lineBetween(21, -30 + bob - pulse, 30, -35 + bob)
+      if (p.fastAttack) {
+        const beamPulse = 0.78 + Math.sin(time * 0.02) * 0.22
+        const coords: Array<[number, number, number]> = [
+          [-26, -24 + bob + pulse, 16],
+          [26, -24 + bob - pulse, 16],
+          [-18, -42 + bob - pulse, 19],
+          [18, -42 + bob + pulse, 19],
+          [0, -49 + bob + pulse * 0.6, 21],
+        ]
+        for (const [gx, gy, gr] of coords) {
+          g.fillStyle(0xf59e0b, 0.38 * beamPulse)
+          g.fillCircle(gx, gy, gr * 1.45)
+          g.fillStyle(0xfacc15, 0.92 * beamPulse)
+          g.fillEllipse(gx, gy, gr * 0.85, gr * 1.35)
+          g.lineStyle(2.5, 0xffffff, 0.95 * beamPulse)
+          g.strokeEllipse(gx, gy, gr * 0.85, gr * 1.35)
+        }
+      } else {
+        g.fillStyle(0xfacc15, 0.85)
+        g.fillEllipse(-21, -30 + bob + pulse, 10, 18)
+        g.fillEllipse(21, -30 + bob - pulse, 10, 18)
+        g.lineStyle(2, 0xfef08a, 1)
+        g.lineBetween(-21, -30 + bob + pulse, -30, -35 + bob)
+        g.lineBetween(21, -30 + bob - pulse, 30, -35 + bob)
+      }
     } else if (p.characterId === 'thanwa') {
       // Zoro (ธันวา): King-of-Hell Emerald & Enma Purple Haki Aura + 3 Iconic Gleaming Katanas
       const spin = time * 0.0036
@@ -2737,8 +2767,11 @@ export class ArenaScene extends Phaser.Scene {
         this.seenEffects.add(b.id)
         soundEngine.playEffectSound(b.kind)
         if (b.kind === 'kamehameha' || b.kind === 'enuma_elish') {
-          this.spawnImpactParticles(b.x1, y1, col, 12)
-          this.cameras.main.shake(150, 0.0045)
+          this.spawnImpactParticles(b.x1, y1, col, b.kind === 'enuma_elish' ? 24 : 12)
+          this.cameras.main.shake(b.kind === 'enuma_elish' ? 420 : 150, b.kind === 'enuma_elish' ? 0.008 : 0.0045)
+          if (b.kind === 'enuma_elish' && b.ownerId && b.ownerId !== this.myPlayerId) {
+            soundEngine.speakSkillCallout('pa', 3, 'Enuma Elish!')
+          }
         } else if (b.kind === 'gilga_sky_sword') {
           this.spawnImpactParticles(b.x2, y2, 0xfacc15, 10)
         } else if (b.kind === 'goku_dragon_rush' || b.kind === 'godspeed_collide' || b.kind === 'killua_solo_flash') {
@@ -3190,7 +3223,24 @@ export class ArenaScene extends Phaser.Scene {
         }
         g.lineStyle(b.width * 0.5, col, alpha * 0.45)
         g.lineBetween(b.x1, y1, b.x2, y2)
-      } else if (b.kind === 'kamehameha' || b.kind === 'enuma_elish') {
+      } else if (b.kind === 'enuma_elish') {
+        const eaAlpha = b.life > 0.45 ? 1 : clamp(b.life / 0.45, 0, 1)
+        g.lineStyle(b.width * 1.42, 0x450a0a, eaAlpha * 0.56)
+        g.lineBetween(b.x1, y1, b.x2, y2)
+        g.lineStyle(b.width * 0.98, 0xdc2626, eaAlpha * 0.85)
+        g.lineBetween(b.x1, y1, b.x2, y2)
+        g.lineStyle(b.width * 0.48, 0xfacc15, eaAlpha * 0.95)
+        g.lineBetween(b.x1, y1, b.x2, y2)
+        g.lineStyle(b.width * 0.2, 0xffffff, eaAlpha)
+        g.lineBetween(b.x1, y1, b.x2, y2)
+        for (let k = 0; k < 10; k++) {
+          const t = ((k + 0.3 + ((this.animTime * 0.0018) % 1)) % 1)
+          const rx = b.x1 + (b.x2 - b.x1) * t
+          const ry = y1 + (y2 - y1) * t
+          g.lineStyle(3.2, k % 2 === 0 ? 0xfacc15 : 0xef4444, eaAlpha * 0.88)
+          g.strokeEllipse(rx, ry, b.width * 0.55, b.width * 1.15)
+        }
+      } else if (b.kind === 'kamehameha') {
         g.lineStyle(b.width * 1.15, col, alpha * 0.45)
         g.lineBetween(b.x1, y1, b.x2, y2)
         g.lineStyle(b.width * 0.72, col, alpha * 0.85)

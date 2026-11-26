@@ -1,4 +1,5 @@
 import { getBasicAttackRange, isTeamMatchMode, setSimoSnipeCharging, useGameStore } from '../store/useGameStore'
+import { ROSTER28_MAP } from './roster28Meta'
 import type { MapConfig, PlayerState, Projectile, ZoneEffect } from '../types/game'
 import { gameEventBus } from './core/eventBus'
 import { isOnSisaketDryLand, SCP_CENTER_X, SCP_CENTER_Z, SCP_RADIUS } from './map3dBuilder'
@@ -227,7 +228,7 @@ class AdminAutoAiController {
   private getEnemyList(me: PlayerState, isTeam: boolean): PlayerState[] {
     const out: PlayerState[] = []
     for (const p of this.world.players) {
-      if (p.id === me.id || !p.alive) continue
+      if (p.id === me.id || !p.alive || p.timeErased) continue
       if (isTeam && me.team && p.team === me.team) continue
       out.push(p)
     }
@@ -829,14 +830,13 @@ class AdminAutoAiController {
       }
 
       case 'pa': {
-        // Gilgamesh: Enkidu AoE Slow (E) -> Sword Rain (R) on slowed target -> Gate of Babylon (Q)
-        if (cd(2) && dist <= 490) {
-          const pred = this.predictTarget(me, target, 800, 490)
-          st.castSkill(2, { worldX: pred.x, worldY: pred.y })
+        // Gilgamesh: Gate Treasury Overdrive (E) -> Enuma Elish full-map EA beam (R) -> Gate of Babylon (Q)
+        if (cd(2) && !me.fastAttack && dist <= 600) {
+          st.castSkill(2, { worldX: me.x, worldY: me.y })
           return true
         }
-        if (cd(3) && dist <= 520) {
-          const pred = this.predictTarget(me, target, 720, 520)
+        if (cd(3) && dist <= 1800) {
+          const pred = this.predictTarget(me, target, 1200, 1800)
           st.castSkill(3, { worldX: pred.x, worldY: pred.y })
           return true
         }
@@ -994,8 +994,90 @@ class AdminAutoAiController {
         return false
       }
 
-      default:
+      case 'aizen': {
+        // Aizen: Hogyoku Evolution (R) when clustered -> Black Coffin pull+stun (Q) -> Kyoka Suigetsu (E) evade & decoy
+        if (cd(3) && dist <= 265) {
+          st.castSkill(3, { worldX: target.x, worldY: target.y })
+          return true
+        }
+        if (cd(1) && dist <= 480) {
+          const pred = this.predictTarget(me, target, 850, 480)
+          st.castSkill(1, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        if (cd(2) && dist <= 325) {
+          const pred = this.predictTarget(me, target, 1100, 325)
+          if (isSafeCoord(pred.x, pred.y, cfg)) {
+            st.castSkill(2, { worldX: pred.x, worldY: pred.y })
+            return true
+          }
+        }
         return false
+      }
+
+      case 'toriko': {
+        // Toriko: Leg Knife gap-close stun (E) -> Ultimate Routine giant fist (R) -> Knife & Fork (Q)
+        if (cd(2) && dist <= 325) {
+          const pred = this.predictTarget(me, target, 1250, 325)
+          if (isSafeCoord(pred.x, pred.y, cfg)) {
+            st.castSkill(2, { worldX: pred.x, worldY: pred.y })
+            return true
+          }
+        }
+        if (cd(3) && dist <= 425) {
+          const pred = this.predictTarget(me, target, 820, 425)
+          st.castSkill(3, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        if (cd(1) && dist <= 235) {
+          st.castSkill(1, { worldX: target.x, worldY: target.y })
+          return true
+        }
+        return false
+      }
+
+      case 'frieren': {
+        // Frieren: Mana Barrier self-peel (E) when dived -> Supreme Spell (R) burst -> Zoltraak pierce (Q)
+        if (cd(2) && dist <= 165) {
+          st.castSkill(2, { worldX: target.x, worldY: target.y })
+          return true
+        }
+        if (cd(3) && dist <= 540) {
+          const pred = this.predictTarget(me, target, 800, 540)
+          st.castSkill(3, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        if (cd(1) && dist <= 700) {
+          const pred = this.predictTarget(me, target, 1600, 700)
+          st.castSkill(1, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        return false
+      }
+
+      default: {
+        const rSpec = ROSTER28_MAP[me.characterId]
+        if (!rSpec) return false
+        const [s1, s2, s3] = rSpec.skills
+        if (cd(3) && dist <= (s3.aimType === 'self' ? Math.max(180, s3.aoeRadius * 0.9) : s3.castRange - 20)) {
+          const pred = this.predictTarget(me, target, 900, s3.castRange)
+          st.castSkill(3, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        if (cd(2) && dist <= (s2.aimType === 'self' ? Math.max(150, s2.aoeRadius * 0.9) : s2.castRange - 20)) {
+          const pred = this.predictTarget(me, target, 950, s2.castRange)
+          if (s2.aimType !== 'line' || isSafeCoord(pred.x, pred.y, cfg)) {
+            st.castSkill(2, { worldX: pred.x, worldY: pred.y })
+            return true
+          }
+        }
+        if (cd(1) && dist <= s1.castRange - 15) {
+          const pred = this.predictTarget(me, target, 950, s1.castRange)
+          st.castSkill(1, { worldX: pred.x, worldY: pred.y })
+          return true
+        }
+        return false
+      }
     }
   }
 }

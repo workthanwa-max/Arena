@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
-import { Hero3dPreview } from '../components/Hero3dPreview'
+import { HeroPickerPanel } from '../components/HeroPickerPanel'
+import { IconArrowLeft, IconClose, IconSwords } from '../components/Icons'
 import { getMapDisplayLabel } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
 import type { GameMode, MapId } from '../types/game'
@@ -24,6 +25,7 @@ export function BattleSetupPage() {
     selectedMode && selectedMode !== 'ffa' ? selectedMode : 'duel_1v1',
   )
   const [mapId, setMapId] = useState<MapId>(selectedMapId || 'shibuya')
+  const [heroPickerOpen, setHeroPickerOpen] = useState(false)
 
   const shellRef = useRef<HTMLDivElement | null>(null)
   useEffect(() => {
@@ -46,209 +48,238 @@ export function BattleSetupPage() {
   const activeFfaHero = characters.find((c) => c.id === selectedCharId) ?? characters[0]
   const modeLabel =
     mode === 'iconic'
-      ? '⚡ ICONIC 1v1'
+      ? 'ICONIC 1v1'
       : mode === 'duel_1v1'
-        ? '⚔️ 1 vs 1 (5 Kills)'
+        ? '1 vs 1 (5 Kills)'
         : mode === 'tdm_3v3'
-          ? '🛡️ 3 vs 3 (50 Kills)'
+          ? '3 vs 3 (50 Kills)'
           : mode === 'practice'
-            ? '🎯 ฝึกซ้อม Dummy'
-            : '🔥 FFA 5 คน'
+            ? 'ฝึกซ้อม Dummy'
+            : 'FFA 5 คน'
 
   return (
-    <div className="mlbb-dark-page battle-setup-backdrop">
-      <div ref={shellRef} className="mlbb-page-shell create-room-modal">
-        <header className="mlbb-sub-topbar battle-setup-header">
-          <div className="mlbb-sub-left">
+    <div className="ui-page battle-setup-backdrop">
+      <div ref={shellRef} className="ui-shell create-room-modal">
+        <header className="ui-topbar battle-setup-header">
+          <div className="ui-topbar-group">
             <button
               type="button"
-              className="mlbb-glass-btn compact page-back-btn"
+              className="ui-btn page-back-btn"
               onClick={goBack}
               aria-label="ย้อนกลับ"
             >
-              ← ย้อนกลับ
+              <IconArrowLeft size={15} />
+              <span>ย้อนกลับ</span>
             </button>
-            <h1 className="mlbb-sub-title brand-title">⚔️ เลือกโหมด &amp; สนามประลอง</h1>
+            <h1 className="ui-page-title">ตั้งค่าห้องประลอง</h1>
           </div>
 
-          <div className="mlbb-sub-right telemetry-pills">
-            <span className="mlbb-meta-pill accent">{modeLabel}</span>
-            <span className="mlbb-meta-pill">{getMapDisplayLabel(mapId, mode === 'iconic')}</span>
+          <div className="ui-topbar-group">
+            <span className="ui-pill accent">{modeLabel}</span>
+            <span className="ui-pill">{getMapDisplayLabel(mapId, mode === 'iconic')}</span>
           </div>
         </header>
 
         {error && (
-          <div className="mlbb-alert-toast inline" role="alert">
-            <span>⚠️ {error}</span>
-            <button type="button" className="mlbb-glass-btn compact" onClick={() => setError('')}>
+          <div className="ui-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" className="ui-btn" style={{ height: 28 }} onClick={() => setError('')}>
               ปิด
             </button>
           </div>
         )}
 
-        <main className="mlbb-setup-grid">
-          {/* Left: Clean MOBA Mode Selector */}
-          <section className="mlbb-glass-card" aria-label="เลือกโหมดการเล่น">
-            <h2 className="mlbb-card-title">1. เลือกโหมดการต่อสู้</h2>
+        <main className="clean-two-col">
+          {/* Left: Clean Mode Selector */}
+          <section className="ui-card" aria-label="เลือกโหมดการเล่น">
+            <h2 className="ui-card-title">1. เลือกโหมดการเล่น</h2>
 
             <button
               type="button"
-              className={`mlbb-mode-card choice-card iconic-featured-card ${mode === 'iconic' ? 'selected' : ''}`}
+              className={`clean-choice-card choice-card ${mode === 'iconic' ? 'selected' : ''}`}
               onClick={() => selectMode('iconic')}
             >
-              <div className="mlbb-mode-card-top">
-                <span className="mlbb-mode-tag gold">⚡ 3D SPECIAL</span>
-                <span className="mlbb-mode-meta">2 คน • สุ่มตัว • 5 Kills</span>
+              <div className="clean-choice-top">
+                <span className="clean-choice-name">ICONIC 1v1: Gojo vs Sukuna</span>
+                <span className="clean-choice-meta">2 คน • 5 Kills</span>
               </div>
-              <div className="mlbb-mode-name">ICONIC 1v1: Gojo vs Sukuna</div>
-              <div className="mlbb-mode-desc">มุมมอง 3D ด้านหลังตัวละคร • ปะทะอาณาเขต • สกิลฟื้นเลือด RCT</div>
+              <div className="clean-choice-desc">
+                มุมมอง 3D ด้านหลังตัวละคร • ปะทะอาณาเขต • สกิลฟื้นเลือด RCT
+              </div>
             </button>
 
-            <div className="mlbb-mode-two-cols">
+            <div className="clean-mode-grid">
               <button
                 type="button"
-                className={`mlbb-mode-card choice-card ${mode === 'duel_1v1' ? 'selected' : ''}`}
+                className={`clean-choice-card choice-card ${mode === 'duel_1v1' ? 'selected' : ''}`}
                 onClick={() => selectMode('duel_1v1')}
               >
-                <div className="mlbb-mode-card-top">
-                  <span className="mlbb-mode-ico">⚔️</span>
-                  <span className="mlbb-mode-meta">2 คน • 5 Kills</span>
+                <div className="clean-choice-top">
+                  <span className="clean-choice-name">1 vs 1 ดวลเดือด</span>
+                  <span className="clean-choice-meta">5 Kills</span>
                 </div>
-                <div className="mlbb-mode-name">1 vs 1 ดวลเดือด</div>
+                <div className="clean-choice-desc">ดวล 2 คนในห้องรอ</div>
               </button>
 
               <button
                 type="button"
-                className={`mlbb-mode-card choice-card ${mode === 'tdm_3v3' ? 'selected' : ''}`}
+                className={`clean-choice-card choice-card ${mode === 'tdm_3v3' ? 'selected' : ''}`}
                 onClick={() => selectMode('tdm_3v3')}
               >
-                <div className="mlbb-mode-card-top">
-                  <span className="mlbb-mode-ico">🛡️</span>
-                  <span className="mlbb-mode-meta">6 คน • 50 Kills</span>
+                <div className="clean-choice-top">
+                  <span className="clean-choice-name">ทีม 3 vs 3</span>
+                  <span className="clean-choice-meta">50 Kills</span>
                 </div>
-                <div className="mlbb-mode-name">ทีม 3 vs 3</div>
+                <div className="clean-choice-desc">แบ่งทีม 6 คน Blue vs Red</div>
               </button>
 
               <button
                 type="button"
-                className={`mlbb-mode-card choice-card ${mode === 'practice' ? 'selected' : ''}`}
+                className={`clean-choice-card choice-card ${mode === 'practice' ? 'selected' : ''}`}
                 onClick={() => selectMode('practice')}
               >
-                <div className="mlbb-mode-card-top">
-                  <span className="mlbb-mode-ico">🎯</span>
-                  <span className="mlbb-mode-meta">1 คน • ซ้อมสกิล</span>
+                <div className="clean-choice-top">
+                  <span className="clean-choice-name">ฝึกซ้อม Dummy</span>
+                  <span className="clean-choice-meta">1 คน</span>
                 </div>
-                <div className="mlbb-mode-name">ฝึกซ้อม Dummy</div>
+                <div className="clean-choice-desc">ทดสอบสกิลและคอมโบ</div>
               </button>
 
               <button
                 type="button"
-                className={`mlbb-mode-card choice-card ${mode === 'ffa' ? 'selected' : ''}`}
+                className={`clean-choice-card choice-card ${mode === 'ffa' ? 'selected' : ''}`}
                 onClick={() => selectMode('ffa')}
               >
-                <div className="mlbb-mode-card-top">
-                  <span className="mlbb-mode-ico">🔥</span>
-                  <span className="mlbb-mode-meta hot">5 คน • เข้าทันที</span>
+                <div className="clean-choice-top">
+                  <span className="clean-choice-name">ตะลุมบอน FFA</span>
+                  <span className="clean-choice-meta">สูงสุด 5 คน</span>
                 </div>
-                <div className="mlbb-mode-name">ตะลุมบอน FFA</div>
+                <div className="clean-choice-desc">เข้าสมรภูมิทันที ไม่ต้องรอห้อง</div>
               </button>
             </div>
           </section>
 
-          {/* Right: Map Selector + Optional FFA 3D Hero Picker + Golden CTA */}
-          <section className="mlbb-glass-card" aria-label="เลือกแผนที่และยืนยัน">
-            <h2 className="mlbb-card-title">2. เลือกแผนที่สมรภูมิ</h2>
+          {/* Right: Clean 2x2 Map Selector + Summary CTA */}
+          <section className="ui-card" aria-label="เลือกแผนที่และยืนยัน">
+            <h2 className="ui-card-title">2. เลือกแผนที่</h2>
 
-            <div className="mlbb-map-four-grid">
+            <div className="clean-map-grid">
               <button
                 type="button"
-                className={`mlbb-map-card choice-card ${mapId === 'shibuya' ? 'selected' : ''}`}
+                className={`clean-choice-card choice-card ${mapId === 'shibuya' ? 'selected' : ''}`}
                 onClick={() => setMapId('shibuya')}
               >
-                <img src="/maps/shibuya_bg.webp" alt="Shibuya" className="mlbb-map-thumb" />
-                <div className="mlbb-map-name">🏙️ ชิบูย่า (Shibuya)</div>
+                <img src="/maps/shibuya_bg.webp" alt="Shibuya" className="clean-map-thumb" />
+                <div className="clean-choice-name">ชิบูย่า (Shibuya)</div>
+                <div className="clean-choice-meta">สมรภูมิใจกลางเมือง</div>
               </button>
 
               <button
                 type="button"
                 disabled={mode === 'iconic'}
-                className={`mlbb-map-card choice-card ${mapId === 'konoha' ? 'selected' : ''} ${mode === 'iconic' ? 'disabled' : ''}`}
+                className={`clean-choice-card choice-card ${mapId === 'konoha' ? 'selected' : ''}`}
                 onClick={() => setMapId('konoha')}
               >
-                <img src="/maps/konoha_bg.webp" alt="Konoha" className="mlbb-map-thumb" />
-                <div className="mlbb-map-name">🍃 หมู่บ้านโคโนฮะ</div>
+                <img src="/maps/konoha_bg.webp" alt="Konoha" className="clean-map-thumb" />
+                <div className="clean-choice-name">หมู่บ้านโคโนฮะ</div>
+                <div className="clean-choice-meta">ลานประลองซากุระสมมาตร</div>
               </button>
 
               <button
                 type="button"
                 disabled={mode === 'iconic'}
-                className={`mlbb-map-card choice-card sisaket-map-card ${mapId === 'sisaket_island' ? 'selected' : ''} ${mode === 'iconic' ? 'disabled' : ''}`}
+                className={`clean-choice-card choice-card ${mapId === 'sisaket_island' ? 'selected' : ''}`}
                 onClick={() => setMapId('sisaket_island')}
               >
-                <img src="/maps/sisaket_bg.webp" alt="เกาะกลางน้ำ ห้วยน้ำคำ ศรีสะเกษ" className="mlbb-map-thumb" />
-                <span className="mlbb-map-hazard-pill">🌊 ตกน้ำ -5 HP</span>
-                <div className="mlbb-map-name">🏝️ เกาะกลางน้ำ ศรีสะเกษ</div>
+                <img src="/maps/sisaket_bg.webp" alt="เกาะกลางน้ำ ศรีสะเกษ" className="clean-map-thumb" />
+                <div className="clean-choice-name">เกาะกลางน้ำ ศรีสะเกษ</div>
+                <div className="clean-choice-meta">ระวังตกน้ำ (-5 HP)</div>
               </button>
 
               <button
                 type="button"
                 disabled={mode === 'iconic'}
-                className={`mlbb-map-card choice-card scp-map-card ${mapId === 'scp_site' ? 'selected' : ''} ${mode === 'iconic' ? 'disabled' : ''}`}
+                className={`clean-choice-card choice-card ${mapId === 'scp_site' ? 'selected' : ''}`}
                 onClick={() => setMapId('scp_site')}
               >
-                <img src="/maps/scp_bg.webp" alt="สถานีวิจัย SCP (วงกลม)" className="mlbb-map-thumb" />
-                <span className="mlbb-map-heal-pill">💚 วงกลม • เก็บเลือด +45</span>
-                <div className="mlbb-map-name">🧪 สถานีวิจัย SCP</div>
+                <img src="/maps/scp_bg.webp" alt="สถานีวิจัย SCP" className="clean-map-thumb" />
+                <div className="clean-choice-name">สถานีวิจัย SCP</div>
+                <div className="clean-choice-meta">ลานวงกลม • จุดฟื้นเลือด +45</div>
               </button>
             </div>
 
             {mode === 'ffa' && activeFfaHero && (
-              <div className="mlbb-ffa-pick-panel">
-                <div className="mlbb-ffa-pick-head">
-                  <span>เลือกฮีโร่ลงสนาม FFA (เข้าทันที)</span>
-                  <strong>{activeFfaHero.displayName}</strong>
-                </div>
-                <div className="mlbb-ffa-pick-body">
-                  <Hero3dPreview character={activeFfaHero} size="sm" />
-                  <div className="mlbb-hero-pick-grid compact">
-                    {characters.map((ch) => (
-                      <button
-                        key={ch.id}
-                        type="button"
-                        className={`mlbb-hero-pick-tile inline-hero-chip ${selectedCharId === ch.id ? 'active' : ''}`}
-                        style={{ '--hero-accent': ch.color } as React.CSSProperties}
-                        onClick={() => setSelectedCharId(ch.id)}
-                      >
-                        <div className="mlbb-pick-thumb-wrap">
-                          <img src={ch.imageUrl} alt={ch.displayName} className="mlbb-pick-thumb" />
-                          {ch.adminOnly && <span className="moba-crown-tag">👑</span>}
-                        </div>
-                        <span className="mlbb-pick-name">{ch.displayName}</span>
-                      </button>
-                    ))}
+              <div className="clean-ffa-hero-bar">
+                <div className="clean-ffa-hero-info">
+                  <img src={activeFfaHero.imageUrl} alt={activeFfaHero.displayName} />
+                  <div>
+                    <div className="clean-choice-meta">ฮีโร่ที่เลือกสำหรับ FFA</div>
+                    <div className="clean-choice-name">{activeFfaHero.displayName}</div>
                   </div>
                 </div>
+                <button
+                  type="button"
+                  className="ui-btn"
+                  onClick={() => setHeroPickerOpen(true)}
+                >
+                  เปลี่ยนฮีโร่
+                </button>
               </div>
             )}
 
-            <div className="mlbb-setup-footer modal-actions">
-              <div className="mlbb-setup-summary">
-                <strong>{modeLabel}</strong>
-                <span>{getMapDisplayLabel(mapId, mode === 'iconic')}</span>
+            <div className="clean-setup-footer modal-actions">
+              <div>
+                <div className="clean-choice-name">{modeLabel}</div>
+                <div className="clean-choice-meta">{getMapDisplayLabel(mapId, mode === 'iconic')}</div>
               </div>
 
               <button
                 type="button"
-                className="mlbb-gold-cta compact setup-confirm-btn"
+                className="ui-btn cta-gold setup-confirm-btn"
                 disabled={joining}
                 onClick={() => void handleConfirm()}
               >
-                {joining ? 'กำลังสร้างห้อง...' : '🚀 สร้างห้องประลอง →'}
+                <IconSwords size={16} />
+                <span>{joining ? 'กำลังสร้างห้อง...' : 'สร้างห้องประลอง'}</span>
               </button>
             </div>
           </section>
         </main>
       </div>
+
+      {heroPickerOpen && (
+        <div
+          className="clean-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="เลือกฮีโร่ลงสนาม FFA"
+          onClick={() => setHeroPickerOpen(false)}
+        >
+          <div className="clean-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
+              <h2 className="ui-page-title">เลือกฮีโร่ลงสนาม FFA</h2>
+              <button
+                type="button"
+                className="ui-btn icon-only"
+                onClick={() => setHeroPickerOpen(false)}
+                aria-label="ปิด"
+              >
+                <IconClose size={15} />
+              </button>
+            </div>
+            <HeroPickerPanel
+              characters={characters}
+              selectedId={selectedCharId}
+              compactTabs
+              maxHeight={340}
+              onSelect={(charId) => {
+                setSelectedCharId(charId)
+                setHeroPickerOpen(false)
+              }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

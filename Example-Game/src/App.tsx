@@ -17,6 +17,7 @@ import { preloadMatchAssets } from './services/assetPreloader'
 import { getSimoLiveAimDirection, setSimoSnipeCharging, useGameStore } from './store/useGameStore'
 import './styles/arena.css'
 import './styles/mlbb-theme.css'
+import './styles/clean-ui.css'
 
 export function App() {
   const [soundMuted, setSoundMuted] = useState(() => soundEngine.isMuted())
@@ -244,6 +245,12 @@ export function App() {
     }
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'KeyJ' || e.code === 'Space') {
+        e.preventDefault()
+        soundEngine.unlock()
+        castBasicAttack()
+        return
+      }
       if (e.repeat) return
       soundEngine.unlock()
       if (e.code === 'F9' && authUser?.role === 'admin') {
@@ -327,11 +334,6 @@ export function App() {
         castDash()
         return
       }
-      if (e.code === 'KeyJ' || e.code === 'Space') {
-        e.preventDefault()
-        castBasicAttack()
-        return
-      }
       if (
         e.code === 'KeyW' ||
         e.code === 'KeyA' ||
@@ -357,18 +359,26 @@ export function App() {
           performance.now()
         delete (keysRef.current as Record<string, unknown>).__simoSnipeStartMs
         const pct = Math.min(100, Math.round(((performance.now() - startMs) / 1150) * 100))
+        const liveDir = getSimoLiveAimDirection()
         gameEventBus.emitAimPreview({
           active: false,
           slot: 2,
-          dirX: 1,
-          dirY: 0,
+          dirX: liveDir.dirX,
+          dirY: liveDir.dirY,
           rangeFactor: 1,
           castRange: 2800,
           aoeRadius: 44,
           aimType: 'line',
           cancel: false,
         })
-        castSkill(2, { worldX: 0, worldY: 0, targetId: `charge:${pct}` })
+        castSkill(2, {
+          worldX: 0,
+          worldY: 0,
+          dirX: liveDir.dirX,
+          dirY: liveDir.dirY,
+          rangeFactor: 1,
+          targetId: `charge:${pct}`,
+        })
         syncKeyMovement()
         return
       }
@@ -384,16 +394,10 @@ export function App() {
       sendMovementVector(0, 0, true)
     }
 
-    const unsubCast = gameEventBus.onCastClick(({ worldX, worldY }) => {
-      soundEngine.unlock()
-      castBasicAttack({ worldX, worldY })
-    })
-
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
     window.addEventListener('blur', onBlur)
     return () => {
-      unsubCast()
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)

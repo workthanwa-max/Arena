@@ -1,3 +1,5 @@
+import { ROSTER28_SPECS } from './roster28Meta'
+
 export interface HeroAimTheme {
   id: string
   primary: string
@@ -17,6 +19,9 @@ export interface HeroAimTheme {
     | 'predator'
     | 'clockwork'
     | 'punch'
+    | 'hypnosis'
+    | 'gourmet'
+    | 'ancient'
     | 'pulse'
   cursorSvgInner: string
 }
@@ -193,6 +198,34 @@ export const HERO_AIM_THEMES: Record<string, HeroAimTheme> = {
     cursorSvgInner:
       '<polygon points="16,2 29,11 24,28 8,28 3,11" fill="rgba(9,9,11,0.82)" stroke="#DC2626" stroke-width="2"/><circle cx="16" cy="16" r="4.5" fill="none" stroke="#FACC15" stroke-width="1.8"/><circle cx="16" cy="16" r="2" fill="#EF4444"/>',
   },
+  aizen: {
+    id: 'aizen',
+    primary: '#9333EA',
+    secondary: '#E9D5FF',
+    glow: 'rgba(147, 51, 234, 0.52)',
+    corridorStyle: 'hypnosis',
+    cursorSvgInner:
+      '<polygon points="16,3 25,16 16,29 7,16" fill="rgba(30,27,75,0.82)" stroke="#A855F7" stroke-width="2"/><circle cx="16" cy="16" r="5" fill="none" stroke="#E9D5FF" stroke-width="1.5"/><circle cx="16" cy="16" r="2.2" fill="#C084FC"/>',
+  },
+  toriko: {
+    id: 'toriko',
+    primary: '#EF4444',
+    secondary: '#F97316',
+    glow: 'rgba(239, 68, 68, 0.52)',
+    corridorStyle: 'gourmet',
+    cursorSvgInner:
+      '<circle cx="16" cy="16" r="11" fill="rgba(69,10,10,0.45)" stroke="#EF4444" stroke-width="2.4"/><path d="M10 9 L22 23 M22 9 L10 23" stroke="#FEF08A" stroke-width="2.2" stroke-linecap="round"/><circle cx="16" cy="16" r="2.6" fill="#F97316"/>',
+  },
+  frieren: {
+    id: 'frieren',
+    primary: '#38BDF8',
+    secondary: '#BAE6FD',
+    glow: 'rgba(56, 189, 248, 0.52)',
+    corridorStyle: 'ancient',
+    cursorSvgInner:
+      '<circle cx="16" cy="16" r="11.5" fill="rgba(3,7,18,0.65)" stroke="#38BDF8" stroke-width="1.8"/><polygon points="16,4 26.4,22 5.6,22" fill="none" stroke="#BAE6FD" stroke-width="1.4"/><polygon points="16,28 26.4,10 5.6,10" fill="none" stroke="#60A5FA" stroke-width="1.4"/><circle cx="16" cy="16" r="2.2" fill="#FFFFFF"/>',
+  },
+  ...Object.fromEntries(ROSTER28_SPECS.map((s) => [s.id, s.aimTheme])),
   default: {
     id: 'default',
     primary: '#38BDF8',

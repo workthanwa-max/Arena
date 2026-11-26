@@ -29,9 +29,11 @@ export function BattleResultModal() {
 
   return (
     <div className="death-overlay" role="dialog" aria-modal="true" aria-label="สรุปผลคะแนนการแข่งขัน">
-      <div className={`surface-card battle-result-modal ${isVictory ? 'victory' : 'defeat'}`}>
-        <div className="result-crown">{isVictory ? '🏆 VICTORY' : '💀 DEFEAT'}</div>
-        <h2 className="result-sub">{winnerLabel}</h2>
+      <div className="clean-modal-card sm battle-result-modal">
+        <div className="result-crown" style={{ color: isVictory ? '#fbbf24' : '#f87171', fontSize: 22, fontWeight: 800 }}>
+          {isVictory ? 'VICTORY' : 'DEFEAT'}
+        </div>
+        <h2 className="ui-card-sub" style={{ fontSize: 13.5, color: 'var(--text-primary)' }}>{winnerLabel}</h2>
 
         <div className="result-score-pill">
           <span className="score-blue">{blueKills}</span>
@@ -40,18 +42,17 @@ export function BattleResultModal() {
         </div>
 
         {topKiller && (
-          <div className="result-mvp">
-            🌟 Top Kills: <strong>{topKiller.name}</strong> ({topKiller.characterName}) —{' '}
-            {topKiller.kills} Kills
+          <div className="ui-pill">
+            MVP: <strong style={{ color: 'var(--text-primary)' }}>{topKiller.name}</strong> ({topKiller.characterName}) · {topKiller.kills} Kills
           </div>
         )}
 
-        <div className="result-actions">
-          <button type="button" className="btn-pill primary" onClick={returnToWaitingLobby}>
-            🔄 กลับห้องรอ (เล่นตาใหม่)
+        <div className="clean-home-actions" style={{ width: '100%' }}>
+          <button type="button" className="ui-btn primary" style={{ height: 40 }} onClick={returnToWaitingLobby}>
+            กลับห้องรอ
           </button>
-          <button type="button" className="btn-pill secondary" onClick={() => leaveRoom()}>
-            🏠 กลับหน้าแรก
+          <button type="button" className="ui-btn" style={{ height: 40 }} onClick={() => leaveRoom()}>
+            กลับหน้าแรก
           </button>
         </div>
       </div>

@@ -2521,9 +2521,10 @@
 }
 
 .moba-cancel-zone {
-  position: absolute;
-  bottom: calc(10px + var(--btn-basic) * 0.5 + var(--arc-r) + var(--btn-ult) * 0.5 + 16px);
-  right: 12px;
+  position: fixed;
+  top: clamp(66px, 14dvh, 108px);
+  right: max(22px, env(safe-area-inset-right));
+  bottom: auto;
   width: var(--cancel-size);
   height: var(--cancel-size);
   padding: 0;
@@ -2604,8 +2605,9 @@
 }
 
 .moba-skill-dock.is-thanos-dock .moba-cancel-zone {
-  bottom: calc(36px + var(--btn-basic) + var(--btn-skill) + var(--btn-ult));
-  right: 12px;
+  top: clamp(66px, 14dvh, 108px);
+  right: max(22px, env(safe-area-inset-right));
+  bottom: auto;
 }
 
 .moba-skill-dock.is-thanos-dock .slot-basic {

@@ -1,6 +1,18 @@
 import { memo, useCallback, useRef, useState } from 'react'
 import { getBasicAttackRange, isTeamMatchMode, useGameStore } from '../store/useGameStore'
 import type { PlayerState } from '../types/game'
+import {
+  IconBot,
+  IconCopy,
+  IconFullscreen,
+  IconHeadphones,
+  IconLogOut,
+  IconMic,
+  IconMusic,
+  IconSettings,
+  IconSparkles,
+  IconVolume,
+} from './Icons'
 import { MobaSkillButton } from './MobaSkillButton'
 
 function formatClock(totalSec: number): string {
@@ -12,6 +24,7 @@ function formatClock(totalSec: number): string {
 function getHeroThumb(charId: string): string {
   if (charId === 'default') return '/app-icon.png?v=20261120v2'
   if (charId === 'noone') return '/characters/noone.png?v=mcu1'
+  if (charId === 'naruto_clone') return '/characters/naruto.png?v=nrt2'
   return `/characters/${charId}.png`
 }
 
@@ -120,6 +133,7 @@ export const ArenaTopBar = memo(function ArenaTopBar({
   onLeave,
 }: ArenaTopBarProps) {
   const [practiceMenuOpen, setPracticeMenuOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [roomCopied, setRoomCopied] = useState(false)
 
   const roomMode = useGameStore((s) => s.roomMode)
@@ -206,7 +220,7 @@ export const ArenaTopBar = memo(function ArenaTopBar({
       onPointerDown={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
     >
-      {/* Top-Left: Spacer aligned under Phaser's Top-Left Minimap + Clickable 6-Digit Room ID & Net Telemetry */}
+      {/* Top-Left: Compact Room ID + Telemetry Pill cleanly beside the Minimap */}
       <div className="rov-left-anchor">
         <div className="rov-minimap-net-pill">
           <TouchTapButton
@@ -214,18 +228,19 @@ export const ArenaTopBar = memo(function ArenaTopBar({
             onTap={copyRoomCode}
             title={`คลิกคัดลอกรหัสห้อง ${activeRoomId}`}
           >
-            🔑 ห้อง {activeRoomId} {roomCopied ? '✓' : '📋'}
+            <span>#{activeRoomId}</span>
+            <IconCopy size={11} copied={roomCopied} />
           </TouchTapButton>
           <span className={`rov-ping ${pingMs !== null && pingMs < 90 ? 'good' : ''}`}>
-            ● {pingMs !== null ? `${pingMs}ms` : '...'}
+            {pingMs !== null ? `${pingMs}ms` : '...'}
           </span>
           <span className="rov-fps hide-xs">
-            {fps}fps · {transportMode === 'webtransport' ? 'H3/UDP' : transportMode === 'ws-binary' ? 'BIN' : 'JSON'}
+            {fps}fps · {transportMode === 'webtransport' ? 'H3' : transportMode === 'ws-binary' ? 'BIN' : 'JSON'}
           </span>
         </div>
       </div>
 
-      {/* Top-Center: Dark Metallic RoV / MLBB VS Scoreboard */}
+      {/* Top-Center: Slim Dark Slate VS / FFA / Practice Scoreboard */}
       {isTeamMatchMode(roomMode) ? (
         <div className="rov-scoreboard" aria-label={`คะแนนการต่อสู้ ${roomMode === 'duel_1v1' ? '1v1' : '3v3'}`}>
           <div className="rov-team-side blue">
@@ -239,9 +254,9 @@ export const ArenaTopBar = memo(function ArenaTopBar({
             <span className="rov-clock-time">{formatClock(matchElapsedSec)}</span>
             <span className="rov-clock-goal">
               {roomMode === 'iconic'
-                ? 'ICONIC • '
+                ? 'ICONIC · '
                 : roomMode === 'duel_1v1'
-                  ? '1v1 • '
+                  ? '1v1 · '
                   : ''}
               เป้า {targetKills}
             </span>
@@ -258,34 +273,27 @@ export const ArenaTopBar = memo(function ArenaTopBar({
         <div className="rov-scoreboard practice" aria-label="แผงทดสอบตัวละคร">
           <div className="rov-ffa-label">TRAINING</div>
           <div className="practice-dmg-readout">
-            <span>💥 ล่าสุด: <strong>{lastDummyDamage}</strong></span>
-            <span>∑ รวม: <strong>{totalDummyDamage}</strong></span>
+            <span>ล่าสุด: <strong>{lastDummyDamage}</strong></span>
+            <span>รวม: <strong>{totalDummyDamage}</strong></span>
           </div>
           <TouchTapButton
             className="rov-icon-btn practice-act-btn"
             onTap={resetPractice}
             title="รีเซ็ตคูลดาวน์และเลือดหุ่น Dummy"
           >
-            ⚡ รีเซ็ต
+            รีเซ็ต
           </TouchTapButton>
           <TouchTapButton
             className="rov-icon-btn practice-act-btn"
             onTap={() => setPracticeMenuOpen((v) => !v)}
             title="เปลี่ยนฮีโร่ทดลอง"
           >
-            🔄 ตัวละคร
+            ตัวละคร
           </TouchTapButton>
         </div>
       ) : (
         <div className="rov-scoreboard ffa" aria-label="อันดับผู้เล่น FFA">
-          <div className="rov-ffa-label">FFA 5 คน</div>
-          <TouchTapButton
-            className="rov-ffa-room-pill"
-            onTap={copyRoomCode}
-            title={`คัดลอกรหัสห้อง 6 หลัก: ${activeRoomId}`}
-          >
-            ID: #{activeRoomId} {roomCopied ? '✓' : '📋'}
-          </TouchTapButton>
+          <div className="rov-ffa-label">FFA</div>
           <div className="rov-portraits-row">{roster.map((p) => renderPortraitPip(p, 'ffa'))}</div>
           <div className="rov-clock-core compact">
             <span className="rov-clock-time">{roster.length}/5</span>
@@ -315,94 +323,124 @@ export const ArenaTopBar = memo(function ArenaTopBar({
         </div>
       )}
 
-      {/* Top-Right: Compact Personal Combat K/D + Action Icon Buttons */}
+      {/* Top-Right: Compact K/D + Voice Mic/Speaker + Single Settings Gear Popover + Leave */}
       <div
         className="rov-right-cluster"
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
       >
         <div className="rov-kda-chip">
-          <span>⚔️ {myKills}</span>
-          {isTeamMatchMode(roomMode) && <span className="hide-xs">💀 {myDeaths}</span>}
+          <span>K {myKills}</span>
+          {isTeamMatchMode(roomMode) && <span className="hide-xs">D {myDeaths}</span>}
           <div className="rov-self-hp">
             <div className="rov-self-hp-fill" style={{ width: `${hpPct}%` }} />
           </div>
         </div>
 
         <div className="rov-utility-strip">
-          {isAdmin && (
-            <TouchTapButton
-              className={`rov-icon-btn rov-admin-ai-btn ${adminAiEnabled ? 'active' : ''}`}
-              onTap={() => toggleAdminAi()}
-              title={adminAiEnabled ? 'AI โหมดโหดกำลังเล่นอัตโนมัติ (คลิกหรือกด F9 เพื่อปิด)' : 'เปิด AI เล่นอัตโนมัติระดับ Grandmaster (เฉพาะแอดมิน • คีย์ลัด F9)'}
-              ariaLabel="เปิด/ปิด AI เล่นอัตโนมัติเฉพาะแอดมิน"
-            >
-              {adminAiEnabled ? '🤖 AI: ON' : '🤖 AI'}
-            </TouchTapButton>
-          )}
           <TouchTapButton
-            className="rov-icon-btn"
-            onTap={onToggleSound}
-            title="เปิด/ปิดเสียงเอฟเฟกต์เกม"
-            ariaLabel="เปิด/ปิดเสียง"
-          >
-            {soundMuted ? '🔇' : '🔊'}
-          </TouchTapButton>
-          <TouchTapButton
-            className="rov-icon-btn"
-            onTap={onToggleBgm}
-            title="เปิด/ปิดเพลง"
-            ariaLabel="เปิด/ปิดเพลง"
-          >
-            {bgmMuted ? '🎵✕' : '🎵'}
-          </TouchTapButton>
-          <TouchTapButton
-            className={`rov-icon-btn rov-voice-btn ${voiceMicEnabled ? 'mic-on' : 'mic-off'} ${voiceSpeaking ? 'speaking' : ''}`}
+            className={`rov-icon-btn ${voiceMicEnabled ? 'active-emerald' : ''}`}
             onTap={() => void toggleVoiceMic()}
-            title={voiceMicEnabled ? 'ไมค์เปิดอยู่ (แตะเพื่อปิดไมค์)' : 'ไมค์ปิดอยู่ (แตะเพื่อเปิดไมค์คุยในห้อง)'}
+            title={voiceMicEnabled ? 'ปิดไมค์' : 'เปิดไมค์'}
             ariaLabel="เปิด/ปิดไมค์"
           >
-            {voiceMicEnabled ? '🎙️' : '🎙️✕'}
+            <IconMic size={15} off={!voiceMicEnabled} />
           </TouchTapButton>
           <TouchTapButton
-            className={`rov-icon-btn rov-voice-btn ${voiceSpeakerEnabled ? 'spk-on' : 'spk-off'}`}
+            className={`rov-icon-btn ${voiceSpeakerEnabled ? 'active-sky' : ''}`}
             onTap={toggleVoiceSpeaker}
-            title={voiceSpeakerEnabled ? 'ลำโพงเสียงคุยเปิดอยู่ (แตะเพื่อปิดเสียงคุยเพื่อน)' : 'ลำโพงเสียงคุยปิดอยู่ (แตะเพื่อเปิดฟังเพื่อนในห้อง)'}
+            title={voiceSpeakerEnabled ? 'ปิดเสียงพูดเพื่อน' : 'เปิดฟังเสียงพูดเพื่อน'}
             ariaLabel="เปิด/ปิดลำโพงเสียงคุย"
           >
-            {voiceSpeakerEnabled ? '🎧' : '🎧✕'}
+            <IconHeadphones size={15} off={!voiceSpeakerEnabled} />
           </TouchTapButton>
-          <TouchTapButton
-            className="rov-icon-btn hide-xs"
-            onTap={onEmote}
-            title="ส่งสติ๊กเกอร์ทักทาย"
-            ariaLabel="ทักทาย"
-          >
-            ⚡
-          </TouchTapButton>
-          <TouchTapButton
-            className="rov-icon-btn"
-            onTap={onToggleFullscreen}
-            title={isFullscreen ? 'ออกจากโหมดเต็มจอ' : 'เล่นแบบเต็มจอ (ซ่อนแถบ URL)'}
-            ariaLabel={isFullscreen ? 'ออกจากเต็มจอ' : 'เต็มจอ'}
-          >
-            {isFullscreen ? (
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-              </svg>
+
+          <div className="arena-settings-wrap">
+            <TouchTapButton
+              className={`rov-icon-btn ${settingsOpen ? 'active-sky' : ''}`}
+              onTap={() => setSettingsOpen((v) => !v)}
+              title="ตั้งค่าเพิ่มเติม (เสียง, เพลง, เต็มจอ, อีโมต)"
+              ariaLabel="เปิดเมนูตั้งค่า"
+            >
+              <IconSettings size={15} />
+            </TouchTapButton>
+
+            {settingsOpen && (
+              <div className="arena-settings-drawer" role="dialog" aria-label="ตั้งค่าในสนาม">
+                <TouchTapButton
+                  className={`arena-drawer-item ${!soundMuted ? 'active' : ''}`}
+                  onTap={onToggleSound}
+                >
+                  <span className="arena-drawer-item-left">
+                    <IconVolume size={15} muted={soundMuted} />
+                    <span>เสียงเอฟเฟกต์</span>
+                  </span>
+                  <span className="arena-drawer-state">{soundMuted ? 'ปิด' : 'เปิด'}</span>
+                </TouchTapButton>
+
+                <TouchTapButton
+                  className={`arena-drawer-item ${!bgmMuted ? 'active' : ''}`}
+                  onTap={onToggleBgm}
+                >
+                  <span className="arena-drawer-item-left">
+                    <IconMusic size={15} muted={bgmMuted} />
+                    <span>เพลงประกอบ</span>
+                  </span>
+                  <span className="arena-drawer-state">{bgmMuted ? 'ปิด' : 'เปิด'}</span>
+                </TouchTapButton>
+
+                <TouchTapButton
+                  className="arena-drawer-item"
+                  onTap={() => {
+                    onEmote()
+                    setSettingsOpen(false)
+                  }}
+                >
+                  <span className="arena-drawer-item-left">
+                    <IconSparkles size={15} />
+                    <span>ส่งอีโมตทักทาย</span>
+                  </span>
+                  <span className="arena-drawer-state">ส่ง</span>
+                </TouchTapButton>
+
+                <TouchTapButton
+                  className={`arena-drawer-item ${isFullscreen ? 'active' : ''}`}
+                  onTap={() => {
+                    onToggleFullscreen()
+                    setSettingsOpen(false)
+                  }}
+                >
+                  <span className="arena-drawer-item-left">
+                    <IconFullscreen size={15} exit={isFullscreen} />
+                    <span>{isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}</span>
+                  </span>
+                  <span className="arena-drawer-state">{isFullscreen ? 'ON' : 'OFF'}</span>
+                </TouchTapButton>
+
+                {isAdmin && (
+                  <TouchTapButton
+                    className={`arena-drawer-item ${adminAiEnabled ? 'active' : ''}`}
+                    onTap={() => toggleAdminAi()}
+                  >
+                    <span className="arena-drawer-item-left">
+                      <IconBot size={15} />
+                      <span>Admin Auto-AI (F9)</span>
+                    </span>
+                    <span className="arena-drawer-state">{adminAiEnabled ? 'ON' : 'OFF'}</span>
+                  </TouchTapButton>
+                )}
+              </div>
             )}
-          </TouchTapButton>
+          </div>
+
           <TouchTapButton
             className="rov-icon-btn danger page-back-btn"
             onTap={onLeave}
-            title="ย้อนกลับ / ออกจากห้อง"
-            ariaLabel="ย้อนกลับ"
+            title="ออกจากห้อง"
+            ariaLabel="ออกจากห้อง"
           >
-            ← ออก
+            <IconLogOut size={14} />
+            <span className="hide-xs">ออก</span>
           </TouchTapButton>
         </div>
       </div>
@@ -453,7 +491,11 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
   const basicRange = getBasicAttackRange(myCharacterDef?.id)
   const isSaitama = myCharacterDef?.id === 'luangphi_sorn'
   const isThanos = myCharacterDef?.id === 'noone'
+  const isIronMan = myCharacterDef?.id === 'iron_man'
   const snapReady = isThanos && myInfinityStones.length >= 5
+  const ironArcPct = isIronMan ? Math.min(100, Math.max(0, myCooldowns[3] ?? 0)) : 0
+  const ironInFlight = isIronMan && (myCooldowns[4] ?? 0) > 0
+  const ironSnapReady = isIronMan && myInfinityStones.length >= 5
   const livingEnemies = isSaitama
     ? roster.filter(
         (p) =>
@@ -493,10 +535,60 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
               )
             })}
           </span>
+        <span className="thanos-stones-text">
+          {snapReady
+            ? '5/5 พร้อมดีดนิ้ว'
+            : `${myInfinityStones.length}/5 มณี`}
+        </span>
+        </div>
+      )}
+      {isIronMan && myAlive && (
+        <div
+          className={`thanos-stones-pill ${ironArcPct >= 100 || ironSnapReady ? 'ready' : ''}`}
+          aria-label={`พลังงาน Arc Reactor ${ironArcPct}%`}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            borderColor: ironSnapReady
+              ? '#FACC15'
+              : ironArcPct >= 100
+                ? '#38BDF8'
+                : 'rgba(56, 189, 248, 0.45)',
+          }}
+        >
+          <span
+            style={{
+              width: '58px',
+              height: '7px',
+              borderRadius: '999px',
+              background: 'rgba(15, 23, 42, 0.85)',
+              border: '1px solid rgba(56, 189, 248, 0.55)',
+              overflow: 'hidden',
+              display: 'inline-block',
+            }}
+          >
+            <span
+              style={{
+                display: 'block',
+                width: `${ironArcPct}%`,
+                height: '100%',
+                background:
+                  ironArcPct >= 100
+                    ? 'linear-gradient(90deg, #38BDF8, #FACC15)'
+                    : '#38BDF8',
+                boxShadow: ironArcPct >= 100 ? '0 0 8px #FACC15' : '0 0 6px #38BDF8',
+                transition: 'width 0.15s linear',
+              }}
+            />
+          </span>
           <span className="thanos-stones-text">
-            {snapReady
-              ? '🫰 5/5 พร้อมดีดนิ้ว!'
-              : `💎 ${myInfinityStones.length}/5 • ตายมณีหาย`}
+            {ironSnapReady
+              ? 'E: I AM IRON MAN!'
+              : ironArcPct >= 100
+                ? '100% MEGA BEAM'
+                : `Arc ${ironArcPct}%`}
+            {ironInFlight ? ' · บิน' : ''}
           </span>
         </div>
       )}
@@ -557,8 +649,52 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
         myCharacterDef.skills.map((sk) => {
           const isIconicVoid =
             roomMode === 'iconic' && myCharacterDef.id === 'sia_mon' && sk.slot === 3
-          const effectiveCastRange = isIconicVoid ? 320 : (sk.castRange ?? 360)
-          const effectiveAoeRadius = isIconicVoid ? 320 : (sk.aoeRadius ?? 72)
+          const myPlayerState = roster.find((p) => p.id === myPlayerId)
+          const isNarutoUlt = myCharacterDef.id === 'naruto' && sk.slot === 3
+          const isNarutoKurama = isNarutoUlt && Boolean(myPlayerState?.godspeed)
+          const isIronMegaBeam = isIronMan && sk.slot === 1 && ironArcPct >= 100
+          const isIronSecretSnap = isIronMan && sk.slot === 2 && ironSnapReady
+          const isIronFlightSlot = isIronMan && sk.slot === 3
+          const effectiveCastRange = isIconicVoid
+            ? 320
+            : isNarutoUlt && !isNarutoKurama
+              ? 170
+              : isIronMegaBeam
+                ? 760
+                : isIronSecretSnap
+                  ? 480
+                  : (sk.castRange ?? 360)
+          const effectiveAoeRadius = isIconicVoid
+            ? 320
+            : isNarutoUlt && !isNarutoKurama
+              ? 170
+              : isIronMegaBeam
+                ? 118
+                : isIronSecretSnap
+                  ? 480
+                  : (sk.aoeRadius ?? 72)
+          const effectiveAimType =
+            (isNarutoUlt && !isNarutoKurama) || isIronSecretSnap
+              ? 'self'
+              : (sk.aimType ?? 'line')
+          const effectiveLabel = isNarutoKurama
+            ? 'กระสุนสัตว์หาง'
+            : isNarutoUlt
+              ? 'แปลงร่างคุรามะ'
+              : isIronSecretSnap
+                ? 'I AM IRON MAN'
+                : isIronMegaBeam
+                  ? 'Mega Beam'
+                  : isIronFlightSlot
+                    ? ironInFlight
+                      ? 'ลงจอด (บิน)'
+                      : 'โหมดบิน'
+                    : sk.name.split(' ')[0]
+          const effectiveIconUrl = isNarutoKurama
+            ? '/skills/naruto_3_bijuudama.png?v=nrt2'
+            : isIronSecretSnap
+              ? '/skills/iron_man_snap.png?v=im2'
+              : (sk.iconUrl || `/skills/${myCharacterDef.id}_${sk.slot}.png`)
           const isStoneLocked = isThanos && !myInfinityStones.includes(sk.slot)
           return (
             <MobaSkillButton
@@ -566,17 +702,25 @@ export const ArenaSkillDock = memo(function ArenaSkillDock() {
               characterId={myCharacterDef.id}
               slotId={sk.slot}
               keyHint={sk.keyHint}
-              label={sk.name.split(' ')[0]}
-              iconUrl={sk.iconUrl || `/skills/${myCharacterDef.id}_${sk.slot}.png`}
+              label={effectiveLabel}
+              iconUrl={effectiveIconUrl}
               cooldownMs={myCooldowns[sk.slot - 1] ?? 0}
               disabled={!myAlive || isStoneLocked}
               locked={isStoneLocked}
               lockBadge="🔒"
-              accentColor={sk.accentColor}
+              accentColor={
+                isNarutoKurama
+                  ? '#A855F7'
+                  : isIronSecretSnap
+                    ? '#FACC15'
+                    : isIronMegaBeam
+                      ? '#38BDF8'
+                      : sk.accentColor
+              }
               slotClass={`slot-${sk.slot}`}
               castRange={effectiveCastRange}
               aoeRadius={effectiveAoeRadius}
-              aimType={sk.aimType ?? 'line'}
+              aimType={effectiveAimType}
               chargeDurationMs={myCharacterDef.id === 'simo' && sk.slot === 2 ? 1150 : undefined}
               variant={!isThanos && sk.slot === 3 ? 'ultimate' : 'skill'}
               cancelZoneRef={cancelZoneRef}

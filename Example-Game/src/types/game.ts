@@ -102,6 +102,8 @@ export interface PlayerState {
   invulnerable?: boolean
   seated?: boolean
   inVoid?: boolean
+  timeErased?: boolean
+  rasenganCharged?: boolean
   respawnInMs?: number
   cooldownsMs: number[]
   infinityStones?: number[]

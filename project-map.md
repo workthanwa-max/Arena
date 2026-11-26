@@ -31,9 +31,11 @@ Game/
 │   │   │   ├── room/room.go               # Room Actor Loop (6-Digit Codes, NetID Assign, 3v3 Lobby, Practice Dummies, 7s Respawn)
 │   │   │   ├── player/player.go           # Player Manager (UUID, 6-Digit Room Code Gen, Input clamp)
 │   │   │   ├── session/session.go         # Session Manager (RealtimeConn, Coalesced Datagram Queue + Reliable Pump)
-│   │   │   ├── engine/engine.go           # Game Engine (Team No-FF, Lock-On, Saitama 1-Punch Target-Pick, Gojo Red+Blue->Hollow Purple & Infinite Void)
+│   │   │   ├── engine/engine.go           # Core Game Engine, Shared Helpers, and Original 23 Hero Skills
+│   │   │   ├── engine/roster28.go         # Data-Driven Combat, Skills & 28 Passives (Epitaph, Room, Full Counter, Eyes of Lord, etc.)
 │   │   │   ├── state/
-│   │   │   │   ├── characters.go          # 20 Characters (19 Public incl. Jinwoo, Naruto, Sanji, Luffy, Ben10, Diablo + 1 Admin Saitama), 5 Archetypes
+│   │   │   │   ├── characters.go          # Core 23 Characters + Hook to Roster28 (51 Total: 50 Public + 1 Admin Saitama), 5 Archetypes
+│   │   │   │   ├── characters_roster28.go # 28 Extended Characters (Fairy Tail, JoJo, Shadow Garden, Thai Ghosts, Kung Fu, Marvel, One Piece, Tansan, Wukong, Nezha, OPM, HxH, Minecraft, Doraemon, Black Clover, SDS, RoR, CJ Palony)
 │   │   │   │   └── state.go               # Shibuya, Konoha, Sisaket Island & Circular SCP Site-19 MapConfig, RoomState, Medkit Respawn Timers
 │   │   │   ├── sync/
 │   │   │   │   ├── sync.go                # sync.Pool Marshaling + Dual-Channel Binary/Reliable Synchronizer
@@ -92,7 +94,7 @@ Game/
         ├── components/
         │   ├── ArenaHudPanels.tsx         # RoV/MLBB Dark-Metallic Top Scoreboard HUD & Proportional Skill Dock (incl. 5-Stone Snap Dock + Mic/Speaker)
         │   ├── Hero3dPreview.tsx          # Interactive Three.js 3D Hero Preview Turntable (360° Drag-to-Spin + Live Idle/Companion Animations)
-        │   ├── HeroAimWheel.tsx           # Per-Hero Custom SVG Drag-to-Aim Wheel & Unique Crosshair Pip Overlay (14 Heroes)
+        │   ├── HeroAimWheel.tsx           # Per-Hero Custom SVG Drag-to-Aim Wheel & Unique Crosshair Pip Overlay (51 Heroes)
         │   ├── IconicBgmPlayer.tsx        # Official YouTube IFrame Player (44pt8w67S8I) for ICONIC Mode + Offline Synth Fallback
         │   ├── MobaSkillButton.tsx        # Memoized MOBA Drag/Hover Aim Skill Wheel Button (incl. Stone Lock Badge & Custom Wheel)
         │   ├── CreateRoomModal.tsx        # Mode (ICONIC, 1v1, 3v3, Practice, FFA) & Map (Shibuya vs Konoha) Selector Modal
@@ -100,12 +102,13 @@ Game/
         ├── constants/
         │   └── heroClasses.ts             # 5-Archetype Filter Metadata & Map Display Labels (Shibuya, Konoha, Sisaket Island, SCP Site)
         ├── game/
-        │   ├── adminAutoAi.ts             # Admin-Only Grandmaster Autonomous Combat AI (Dodge, Water-Avoid, SCP Medkit Seek, 20-Hero Combos)
+        │   ├── adminAutoAi.ts             # Admin-Only Grandmaster Autonomous Combat AI (Dodge, Water-Avoid, SCP Medkit Seek, 51-Hero Combos)
         │   ├── core/eventBus.ts           # Typed React <-> 3D Scene EventBus (Init/Sync/Died/DomainClash/InfinitySnap)
-        │   ├── heroAimThemes.ts           # Per-Hero Unique 32x32 Custom Cursor & Corridors/Palettes Table (20 Heroes)
+        │   ├── heroAimThemes.ts           # Per-Hero Unique 32x32 Custom Cursor & Corridors/Palettes Table (51 Heroes)
+│   │   │   ├── roster28Meta.ts            # Shared Data-Driven Table for 28 Extended Heroes (Portraits, Voices, Skills, Aim, 3D Traits, AI)
         │   ├── map3dBuilder.ts            # Three.js 3D Maps (Shibuya, Konoha, Sisaket Ko Klang Nam, Circular SCP Site-19 + Cryo Pillars)
-        │   ├── hero3dBuilder.ts           # Three.js Articulated 3D Hero Rigs (20 Heroes incl. Naruto Kurama 9-Tail Transformation Rig + Dummy)
-        │   ├── magicCircleBuilder.ts      # Procedural 512px Arcane Magic Circle & Rune Corridor Generator (20 Per-Hero Aim Sigils + Cancel)
+        │   ├── hero3dBuilder.ts           # Three.js Articulated 3D Hero Rigs (51 Heroes incl. Naruto Kurama, Aizen Hogyoku, Steve, Doraemon + Dummy)
+        │   ├── magicCircleBuilder.ts      # Procedural 512px Arcane Magic Circle & Rune Corridor Generator (51 Per-Hero Aim Sigils + Cancel)
         │   ├── pixelShaderPass.ts         # Single-Pass Client GPU 3D Pixel Art Shader (NearestFilter Target + Depth Outlines + Bayer 4x4 Dither)
         │   ├── vfx3dManager.ts            # Three.js Pooled 3D Slashes, Lightning, Afterimages, Smooth Projectiles, Material Pool & Magic Circle Aim
         │   ├── Mlbb3dArenaView.tsx        # Three.js MLBB Isometric 3D Arena + Client Pixel/HD Switch + RTT Prediction + Cached Minimap

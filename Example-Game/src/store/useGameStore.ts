@@ -34,6 +34,7 @@ import {
   encodeBinarySkill,
 } from '../services/realtimeProtocol'
 import { prefetchTransportInfo, RealtimeTransport, type TransportKind } from '../services/realtimeTransport'
+import { ROSTER28_MAP, ROSTER28_SPECS } from '../game/roster28Meta'
 import type {
   BeamEffect,
   CharacterDef,
@@ -329,6 +330,8 @@ let uiSyncTimer: number | null = null
 let saitamaTimer: number | null = null
 let domainClashTimer: number | null = null
 let snapOverlayTimer: number | null = null
+let basicAttackBufferTimer: number | null = null
+let lastBasicSentAtMs = 0
 let lastHudSig = ''
 let lastSyncAtMs = 0
 let lastDummyHPMap = new Map<string, number>()
@@ -363,8 +366,11 @@ export function hasWaitingLobby(mode: GameMode): boolean {
 }
 
 export function getBasicAttackRange(characterId?: string): number {
+  if (characterId && ROSTER28_MAP[characterId]) return ROSTER28_MAP[characterId].basicRange
   if (characterId === 'simo') return 480
+  if (characterId === 'frieren') return 325
   if (characterId === 'ben10') return 320
+  if (characterId === 'aizen') return 310
   if (characterId === 'pa' || characterId === 'ole' || characterId === 'default') return 300
   if (characterId === 'kaem') return 316
   if (characterId === 'diablo') return 265
@@ -372,7 +378,7 @@ export function getBasicAttackRange(characterId?: string): number {
   if (characterId === 'luffy') return 225
   if (characterId === 'ko' || characterId === 'jinwoo') return 195
   if (characterId === 'noone') return 190
-  if (characterId === 'naruto' || characterId === 'sanji') return 185
+  if (characterId === 'naruto' || characterId === 'sanji' || characterId === 'toriko') return 185
   return 175
 }
 
@@ -444,12 +450,16 @@ const LOCAL_PORTRAITS: Record<string, { anilistId: number; imageUrl: string }> =
   ko: { anilistId: 129131, imageUrl: '/characters/ko.png' },
   noone: { anilistId: 0, imageUrl: '/characters/noone.png?v=mcu1' },
   simo: { anilistId: 146028, imageUrl: '/characters/simo.png' },
-  jinwoo: { anilistId: 129928, imageUrl: '/characters/jinwoo.png' },
-  naruto: { anilistId: 17, imageUrl: '/characters/naruto.png' },
+  jinwoo: { anilistId: 129928, imageUrl: '/characters/jinwoo.png?v=sjw2' },
+  naruto: { anilistId: 17, imageUrl: '/characters/naruto.png?v=nrt2' },
   sanji: { anilistId: 305, imageUrl: '/characters/sanji.png' },
   luffy: { anilistId: 40, imageUrl: '/characters/luffy.png' },
   ben10: { anilistId: 0, imageUrl: '/characters/ben10.png' },
   diablo: { anilistId: 132541, imageUrl: '/characters/diablo.png' },
+  aizen: { anilistId: 1086, imageUrl: '/characters/aizen.png' },
+  toriko: { anilistId: 14677, imageUrl: '/characters/toriko.png' },
+  frieren: { anilistId: 176754, imageUrl: '/characters/frieren.png' },
+  ...Object.fromEntries(ROSTER28_SPECS.map((s) => [s.id, { anilistId: s.anilistId, imageUrl: s.portrait }])),
 }
 
 const DEFAULT_SKILL_META: Record<
@@ -520,14 +530,14 @@ const DEFAULT_SKILL_META: Record<
     { castRange: 560, aoeRadius: 68, aimType: 'line' },
   ],
   jinwoo: [
-    { castRange: 380, aoeRadius: 65, aimType: 'line' },
-    { castRange: 440, aoeRadius: 150, aimType: 'ground' },
-    { castRange: 260, aoeRadius: 260, aimType: 'self' },
+    { castRange: 250, aoeRadius: 72, aimType: 'line' },
+    { castRange: 460, aoeRadius: 150, aimType: 'ground' },
+    { castRange: 420, aoeRadius: 165, aimType: 'ground' },
   ],
   naruto: [
-    { castRange: 360, aoeRadius: 72, aimType: 'line' },
-    { castRange: 560, aoeRadius: 118, aimType: 'line' },
-    { castRange: 210, aoeRadius: 210, aimType: 'self' },
+    { castRange: 300, aoeRadius: 110, aimType: 'line' },
+    { castRange: 480, aoeRadius: 115, aimType: 'ground' },
+    { castRange: 680, aoeRadius: 235, aimType: 'line' },
   ],
   sanji: [
     { castRange: 360, aoeRadius: 78, aimType: 'line' },
@@ -549,6 +559,22 @@ const DEFAULT_SKILL_META: Record<
     { castRange: 450, aoeRadius: 155, aimType: 'ground' },
     { castRange: 480, aoeRadius: 180, aimType: 'ground' },
   ],
+  aizen: [
+    { castRange: 500, aoeRadius: 150, aimType: 'ground' },
+    { castRange: 340, aoeRadius: 135, aimType: 'line' },
+    { castRange: 300, aoeRadius: 270, aimType: 'self' },
+  ],
+  toriko: [
+    { castRange: 250, aoeRadius: 145, aimType: 'cone' },
+    { castRange: 340, aoeRadius: 125, aimType: 'line' },
+    { castRange: 440, aoeRadius: 225, aimType: 'ground' },
+  ],
+  frieren: [
+    { castRange: 720, aoeRadius: 68, aimType: 'line' },
+    { castRange: 220, aoeRadius: 150, aimType: 'self' },
+    { castRange: 560, aoeRadius: 230, aimType: 'ground' },
+  ],
+  ...Object.fromEntries(ROSTER28_SPECS.map((s) => [s.id, s.skills.map((sk) => ({ castRange: sk.castRange, aoeRadius: sk.aoeRadius, aimType: sk.aimType }))])),
 }
 
 function applyPortraitDefaults(chars: CharacterDef[]): CharacterDef[] {
@@ -594,7 +620,7 @@ function resolveAimCoords(
     const dist = Math.max(0, Math.min(1, target.rangeFactor ?? 1)) * castRange
     return { tx: me.x + target.dirX * dist, ty: me.y + target.dirY * dist }
   }
-  if (target) {
+  if (target && (target.worldX !== 0 || target.worldY !== 0)) {
     const dx = target.worldX - me.x
     const dy = target.worldY - me.y
     const d = Math.hypot(dx, dy)
@@ -615,11 +641,14 @@ function resolveAimCoords(
     }
     return { tx: mouseWorld.x, ty: mouseWorld.y }
   }
-  let tx = me.x + (me.aimDx || 1) * Math.min(castRange, 280)
-  let ty = me.y + (me.aimDy || 0) * Math.min(castRange, 280)
+  const moveMag = Math.hypot(lastInputVec.dx, lastInputVec.dy)
+  const fallbackDirX = moveMag > 0.05 ? lastInputVec.dx / moveMag : me.aimDx || 1
+  const fallbackDirY = moveMag > 0.05 ? lastInputVec.dy / moveMag : me.aimDy || 0
+  let tx = me.x + fallbackDirX * Math.min(castRange, 280)
+  let ty = me.y + fallbackDirY * Math.min(castRange, 280)
   let bestDist = Math.max(castRange + 40, 260)
   for (const other of latestPlayers.values()) {
-    if (other.id === myPlayerId || !other.alive) continue
+    if (other.id === myPlayerId || !other.alive || other.timeErased) continue
     if (isTeamMode && me.team && other.team === me.team) continue
     const d = Math.hypot(other.x - me.x, other.y - me.y)
     if (d < bestDist) {
@@ -1927,6 +1956,32 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const { myPlayerId, myAlive, matchPhase, roomMode } = get()
     const me = latestPlayers.get(myPlayerId)
     if (!me || !myAlive || matchPhase !== 'playing') return
+    if (me.stunned || me.seated || me.inVoid) return
+
+    // Basic Attack Input Buffer Queue: if tapped while walking/attacking on cooldown, queue & auto-fire immediately on ready!
+    const isGilgaGateOverdrive = me.characterId === 'pa' && Boolean(me.fastAttack)
+    const now = performance.now()
+    const elapsedSinceLast = now - lastBasicSentAtMs
+    if (!isGilgaGateOverdrive && elapsedSinceLast < 35) return
+    const minIntervalMs = isGilgaGateOverdrive ? 0 : me.fastAttack ? 185 : 395
+    const localRemMs = isGilgaGateOverdrive ? 0 : Math.max(0, minIntervalMs - elapsedSinceLast)
+    const serverRemMs = isGilgaGateOverdrive ? 0 : (me.basicCooldownMs ?? 0)
+    const remCdMs = Math.max(localRemMs, serverRemMs)
+    if (remCdMs > 25) {
+      if (basicAttackBufferTimer === null && remCdMs <= 360) {
+        basicAttackBufferTimer = window.setTimeout(() => {
+          basicAttackBufferTimer = null
+          useGameStore.getState().castBasicAttack(target)
+        }, remCdMs + 8)
+      }
+      return
+    }
+    if (basicAttackBufferTimer !== null) {
+      window.clearTimeout(basicAttackBufferTimer)
+      basicAttackBufferTimer = null
+    }
+    lastBasicSentAtMs = now
+
     const basicRange = getBasicAttackRange(me.characterId)
     const rotatedTarget =
       roomMode === 'iconic' && target?.dirX !== undefined && target?.dirY !== undefined

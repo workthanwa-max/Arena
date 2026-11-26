@@ -224,16 +224,16 @@ func (m *Manager) CreateRoom(ctx context.Context, opts CreateRoomOptions) (*Room
 		sessions:        make(map[string]*session.Session, maxPlayers),
 		iconicFirstGojo: m.engine.RandomBit(),
 		engine:          m.engine,
-		players:    m.players,
-		sessMgr:    m.sessMgr,
-		syncer:     m.syncer,
-		persist:    m.persist,
-		log:        m.log,
-		joinCh:     make(chan joinRequest, 12),
-		leaveCh:    make(chan string, 16),
-		inputCh:    make(chan inputCommand, 128),
-		stopCh:     make(chan struct{}),
-		onEmpty:    m.removeRoom,
+		players:         m.players,
+		sessMgr:         m.sessMgr,
+		syncer:          m.syncer,
+		persist:         m.persist,
+		log:             m.log,
+		joinCh:          make(chan joinRequest, 12),
+		leaveCh:         make(chan string, 16),
+		inputCh:         make(chan inputCommand, 128),
+		stopCh:          make(chan struct{}),
+		onEmpty:         m.removeRoom,
 	}
 
 	m.mu.Lock()
@@ -475,6 +475,9 @@ func (r *Room) run() {
 			if r.state.Phase == state.PhasePlaying {
 				dummyBefore := r.captureDummyHP()
 				for _, p := range r.state.Players {
+					if p.IsSummon {
+						continue
+					}
 					if p.IsDummy {
 						if !p.Alive && !p.RespawnAt.IsZero() && !now.Before(p.RespawnAt) {
 							resetPracticeDummy(p, r.state.MapID)
@@ -499,20 +502,26 @@ func (r *Room) run() {
 					}
 				}
 
+				summonChanged, summonRosterChanged, summonHits := r.engine.StepSummons(r.state, dt, now)
 				projMoved, projHits := r.engine.StepProjectiles(r.state, dt, now)
 				zoneChanged, zoneHits := r.engine.StepZones(r.state, dt, now)
-				beamChanged := r.engine.StepBeams(r.state, dt)
+				beamChanged, beamHits := r.engine.StepBeams(r.state, dt, now)
 				waterChanged, waterHits := r.engine.StepWaterHazard(r.state, now)
 				pickupChanged := r.engine.StepMapPickups(r.state, now)
 				r.touchDamagedDummies(dummyBefore, now)
 
-				if projMoved || zoneChanged || beamChanged || waterChanged || pickupChanged || len(projHits) > 0 || len(zoneHits) > 0 || len(waterHits) > 0 {
+				if summonChanged || projMoved || zoneChanged || beamChanged || waterChanged || pickupChanged || len(summonHits) > 0 || len(projHits) > 0 || len(zoneHits) > 0 || len(beamHits) > 0 || len(waterHits) > 0 {
 					changed = true
 				}
 
 				allHits := append(projHits, zoneHits...)
+				allHits = append(allHits, beamHits...)
 				allHits = append(allHits, waterHits...)
+				allHits = append(allHits, summonHits...)
 				r.emitHits(allHits, now)
+				if summonRosterChanged && len(r.sessions) > 0 {
+					r.syncer.BroadcastReliableState(r.receivers(), r.state, now)
+				}
 
 				// Ensure final 0ms expiration frame ALWAYS broadcasts even if no players move (fixes 0.1s stall).
 				activeTimers := r.hasActiveStatusTimers(now)
@@ -545,7 +554,11 @@ func (r *Room) hasActiveStatusTimers(now time.Time) bool {
 		if now.Before(p.StunUntil) || now.Before(p.SlowUntil) || now.Before(p.BuffUntil) ||
 			now.Before(p.RapidAttackUntil) || now.Before(p.InvulnUntil) || now.Before(p.ThroneUntil) ||
 			now.Before(p.VoidUntil) || now.Before(p.AttackUntil) || now.Before(p.DashUntil) ||
-			now.Before(p.RctUntil) || now.Before(p.SnapUntil) || (!p.Alive && !p.RespawnAt.IsZero()) {
+			now.Before(p.RctUntil) || now.Before(p.SnapUntil) || now.Before(p.HypnosisUntil) ||
+			now.Before(p.GourmetUntil) || now.Before(p.ArcaneUntil) || now.Before(p.PassiveUntil) ||
+			now.Before(p.CounterUntil) || now.Before(p.TimeEraseUntil) || now.Before(p.RasenganChargeUntil) ||
+			(p.Alive && p.CharacterID == "iron_man" && (p.IronManFlight || p.ArcChargeStartAt.IsZero() || now.Before(p.ArcChargeStartAt.Add(11*time.Second)))) ||
+			(!p.Alive && !p.RespawnAt.IsZero()) {
 			return true
 		}
 		for i := 0; i < len(p.CooldownUntil); i++ {
@@ -656,6 +669,7 @@ func (r *Room) respawnPlayer(p *state.PlayerState, now time.Time) {
 	p.InvulnUntil = time.Time{}
 	p.ThroneUntil = time.Time{}
 	p.VoidUntil = time.Time{}
+	p.TimeEraseUntil = time.Time{}
 	p.RespawnAt = time.Time{}
 	p.CooldownUntil = [5]time.Time{}
 	p.AttackUntil = time.Time{}
@@ -882,10 +896,15 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		p.StunUntil = time.Time{}
 		p.SlowUntil = time.Time{}
 		p.VoidUntil = time.Time{}
+		p.TimeEraseUntil = time.Time{}
 		p.CooldownUntil = [5]time.Time{}
 		p.AttackUntil = time.Time{}
 		p.DashUntil = time.Time{}
 		p.InfinityStones = nil
+		p.RasenganChargeUntil = time.Time{}
+		delete(r.state.Players, "igris_"+p.ID)
+		delete(r.state.Players, "nclone1_"+p.ID)
+		delete(r.state.Players, "nclone2_"+p.ID)
 		r.engine.InitHeroState(p)
 		if len(r.sessions) > 0 {
 			r.syncer.BroadcastReliableState(r.receivers(), r.state, now)
@@ -904,22 +923,27 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		p.InvulnUntil = time.Time{}
 		p.ThroneUntil = time.Time{}
 		p.VoidUntil = time.Time{}
+		p.TimeEraseUntil = time.Time{}
 		p.CooldownUntil = [5]time.Time{}
 		p.SnapUntil = time.Time{}
 		p.AttackUntil = time.Time{}
 		p.DashUntil = time.Time{}
 		p.WaterTickUntil = time.Time{}
-		for _, member := range r.state.Players {
-			if member.IsDummy {
+		r.engine.InitHeroState(p)
+		for id, member := range r.state.Players {
+			if member.IsSummon {
+				delete(r.state.Players, id)
+			} else if member.IsDummy {
 				resetPracticeDummy(member, r.state.MapID)
 			}
 		}
 		if len(r.sessions) > 0 {
-			r.syncer.BroadcastState(r.receivers(), r.state, now)
+			r.syncer.BroadcastReliableState(r.receivers(), r.state, now)
 		}
 
 	case "skill":
 		dummyBefore := r.captureDummyHP()
+		wasIronManSnap := p.CharacterID == "iron_man" && cmd.msg.Slot == 2 && p.IronManSnapReady
 		out := r.engine.CastSkillFull(r.state, p, cmd.msg.Slot, cmd.msg.TX, cmd.msg.TY, cmd.msg.TargetID, now)
 		if !out.OK {
 			return
@@ -947,8 +971,29 @@ func (r *Room) handleCommand(cmd inputCommand) {
 			}
 		}
 		r.emitHits(out.Hits, now)
+		if wasIronManSnap {
+			if len(r.sessions) > 0 {
+				r.syncer.BroadcastInfinitySnap(r.receivers(), gamesync.InfinitySnapMessage{
+					AttackerID:   p.ID,
+					AttackerName: p.Name + " (I AM IRON MAN)",
+					Mode:         r.state.Mode,
+					InstantWin:   true,
+					KilledCount:  len(out.Hits),
+				})
+			}
+			if r.state.Phase == state.PhasePlaying {
+				winTeam := p.Team
+				if winTeam == "" || winTeam == state.TeamFFA {
+					winTeam = state.TeamBlue
+				}
+				r.finishMatch(winTeam, now)
+			}
+		}
 		if len(r.sessions) > 0 {
 			r.state.Tick++
+			if (p.CharacterID == "jinwoo" && cmd.msg.Slot == 3) || (p.CharacterID == "naruto" && cmd.msg.Slot == 2) {
+				r.syncer.BroadcastReliableState(r.receivers(), r.state, now)
+			}
 			r.syncer.BroadcastState(r.receivers(), r.state, now)
 		}
 
@@ -1311,7 +1356,7 @@ func (r *Room) captureDummyHP() map[string]int {
 	}
 	m := make(map[string]int, 2)
 	for id, p := range r.state.Players {
-		if p.IsDummy {
+		if p.IsDummy && !p.IsSummon {
 			m[id] = p.HP
 		}
 	}
@@ -1399,6 +1444,7 @@ func resetPracticeDummy(p *state.PlayerState, mapID string) {
 	p.InvulnUntil = time.Time{}
 	p.ThroneUntil = time.Time{}
 	p.VoidUntil = time.Time{}
+	p.TimeEraseUntil = time.Time{}
 	p.RespawnAt = time.Time{}
 	p.LastHitAt = time.Time{}
 }

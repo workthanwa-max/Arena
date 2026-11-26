@@ -1,14 +1,79 @@
 import { useEffect, useRef, useState } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
+import { Hero3dPreview } from '../components/Hero3dPreview'
+import { HeroPickerPanel } from '../components/HeroPickerPanel'
+import {
+  IconClose,
+  IconFullscreen,
+  IconKey,
+  IconLogOut,
+  IconPlay,
+  IconSettings,
+  IconTarget,
+  IconUsers,
+  IconVolume,
+} from '../components/Icons'
+import { getMapDisplayLabel } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
-import type { GraphicsQuality } from '../types/game'
+import type { GameMode, GraphicsQuality, MapId } from '../types/game'
 
 const GRAPHICS_TIERS: Array<{ id: GraphicsQuality; label: string; hint: string }> = [
-  { id: 'pixel', label: '👾 Pixel 3D', hint: 'เรโทรพิกเซลคลาสสิก • ลื่นสุด ประหยัด GPU' },
-  { id: 'fine_pixel', label: '🧩 Pixel ละเอียด', hint: 'พิกเซล Hi-Bit คมละเอียด 2x • คงสไตล์เรโทรชัด' },
-  { id: 'hd', label: '✨ 3D HD', hint: '3D คมเนียนมาตรฐาน • สมดุลทุกอุปกรณ์' },
-  { id: 'ultra', label: '👑 ULTRA MAX', hint: 'Retina Max + เงา 3D จริง + Bloom Glow (GPU ผู้ใช้)' },
+  { id: 'pixel', label: 'Pixel 3D', hint: 'เรโทรพิกเซล • ลื่นสุด' },
+  { id: 'fine_pixel', label: 'Pixel ละเอียด', hint: 'พิกเซล Hi-Bit คม 2x' },
+  { id: 'hd', label: '3D HD', hint: 'คมชัดมาตรฐาน สมดุล' },
+  { id: 'ultra', label: 'ULTRA MAX', hint: 'Retina + เงา 3D + Bloom' },
+]
+
+const DIAMOND_MODES: Array<{
+  id: GameMode
+  posClass: string
+  title: string
+  sub: string
+  thumb: string
+}> = [
+  {
+    id: 'tdm_3v3',
+    posClass: 'pos-3v3',
+    title: 'TEAM 3v3',
+    sub: '6 คน • 50 Kills',
+    thumb: '/maps/konoha_bg.webp',
+  },
+  {
+    id: 'duel_1v1',
+    posClass: 'pos-1v1',
+    title: '1 vs 1',
+    sub: '2 คน • 5 Kills',
+    thumb: '/maps/shibuya_bg.webp',
+  },
+  {
+    id: 'ffa',
+    posClass: 'pos-ffa',
+    title: 'FFA 5 คน',
+    sub: 'เข้าทันที',
+    thumb: '/maps/sisaket_bg.webp',
+  },
+  {
+    id: 'iconic',
+    posClass: 'pos-iconic',
+    title: 'ICONIC',
+    sub: 'Gojo × Sukuna',
+    thumb: '/fx/logo_gojo_sukuna.jpg',
+  },
+  {
+    id: 'practice',
+    posClass: 'pos-practice',
+    title: 'TRAINING',
+    sub: 'ฝึกซ้อม',
+    thumb: '/maps/scp_bg.webp',
+  },
+]
+
+const MAP_CHIPS: Array<{ id: MapId; label: string }> = [
+  { id: 'shibuya', label: 'ชิบูย่า' },
+  { id: 'konoha', label: 'โคโนฮะ' },
+  { id: 'sisaket_island', label: 'เกาะศรีสะเกษ' },
+  { id: 'scp_site', label: 'สถานี SCP' },
 ]
 
 interface HomePageProps {
@@ -18,151 +83,17 @@ interface HomePageProps {
   onToggleFullscreen: () => void
 }
 
-/**
- * Lightweight 2D ambient cursed-energy particle canvas for a living Home Lobby:
- * Drifts Gojo Cyan (#38BDF8) orbs on the left, Sukuna Crimson (#EF4444) embers on the right,
- * and Golden Sanctuary sparks rising gently across the center (~42 particles, pauses when hidden).
- */
-function HomeAmbientCanvas() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
-
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    let w = window.innerWidth
-    let h = window.innerHeight
-    const resize = () => {
-      w = Math.max(320, window.innerWidth)
-      h = Math.max(240, window.innerHeight)
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
-      canvas.width = Math.round(w * dpr)
-      canvas.height = Math.round(h * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-    }
-    resize()
-    window.addEventListener('resize', resize)
-
-    interface Spark {
-      x: number
-      y: number
-      vx: number
-      vy: number
-      r: number
-      alpha: number
-      phase: number
-      kind: 'cyan' | 'red' | 'gold'
-    }
-
-    const sparks: Spark[] = Array.from({ length: 42 }, (_, i) => {
-      const kind: Spark['kind'] = i % 3 === 0 ? 'cyan' : i % 3 === 1 ? 'red' : 'gold'
-      const baseX =
-        kind === 'cyan'
-          ? Math.random() * w * 0.48
-          : kind === 'red'
-            ? w * 0.52 + Math.random() * w * 0.48
-            : Math.random() * w
-      return {
-        x: baseX,
-        y: Math.random() * h,
-        vx: (Math.random() - 0.5) * 18,
-        vy: -(14 + Math.random() * 28),
-        r: kind === 'gold' ? 1.5 + Math.random() * 2.2 : 2 + Math.random() * 3.4,
-        alpha: 0.25 + Math.random() * 0.55,
-        phase: Math.random() * Math.PI * 2,
-        kind,
-      }
-    })
-
-    let rafId = 0
-    let lastTs = performance.now()
-    const tick = (now: number) => {
-      rafId = window.requestAnimationFrame(tick)
-      if (document.hidden) {
-        lastTs = now
-        return
-      }
-      const dt = Math.min(0.05, Math.max(0.004, (now - lastTs) / 1000))
-      lastTs = now
-
-      ctx.clearRect(0, 0, w, h)
-
-      // Soft pulsing Gojo Cyan (left) & Sukuna Crimson (right) atmospheric energy blooms
-      const pulse = 0.5 + 0.5 * Math.sin(now * 0.0014)
-      const leftGlow = ctx.createRadialGradient(w * 0.24, h * 0.46, 12, w * 0.24, h * 0.46, w * 0.34)
-      leftGlow.addColorStop(0, `rgba(56, 189, 248, ${0.11 + pulse * 0.06})`)
-      leftGlow.addColorStop(1, 'rgba(56, 189, 248, 0)')
-      ctx.fillStyle = leftGlow
-      ctx.fillRect(0, 0, w * 0.65, h)
-
-      const rightGlow = ctx.createRadialGradient(w * 0.76, h * 0.46, 12, w * 0.76, h * 0.46, w * 0.34)
-      rightGlow.addColorStop(0, `rgba(239, 68, 68, ${0.1 + (1 - pulse) * 0.06})`)
-      rightGlow.addColorStop(1, 'rgba(239, 68, 68, 0)')
-      ctx.fillStyle = rightGlow
-      ctx.fillRect(w * 0.35, 0, w * 0.65, h)
-
-      // Floating glowing sparks & cursed-energy motes
-      for (const s of sparks) {
-        s.phase += dt * 2.2
-        s.x += (s.vx + Math.sin(s.phase) * 10) * dt
-        s.y += s.vy * dt
-        if (s.y < -20) {
-          s.y = h + 15
-          s.x =
-            s.kind === 'cyan'
-              ? Math.random() * w * 0.5
-              : s.kind === 'red'
-                ? w * 0.5 + Math.random() * w * 0.5
-                : Math.random() * w
-        }
-        if (s.x < -20) s.x = w + 10
-        if (s.x > w + 20) s.x = -10
-
-        const twinkle = 0.45 + 0.55 * Math.sin(s.phase * 1.4)
-        const a = s.alpha * twinkle
-        const col =
-          s.kind === 'cyan'
-            ? `rgba(56, 189, 248, ${a})`
-            : s.kind === 'red'
-              ? `rgba(248, 113, 113, ${a})`
-              : `rgba(253, 224, 71, ${a})`
-
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r * 2.4, 0, Math.PI * 2)
-        ctx.fillStyle =
-          s.kind === 'cyan'
-            ? `rgba(56, 189, 248, ${a * 0.22})`
-            : s.kind === 'red'
-              ? `rgba(239, 68, 68, ${a * 0.22})`
-              : `rgba(250, 204, 21, ${a * 0.25})`
-        ctx.fill()
-
-        ctx.beginPath()
-        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2)
-        ctx.fillStyle = col
-        ctx.fill()
-      }
-    }
-    rafId = window.requestAnimationFrame(tick)
-
-    return () => {
-      window.cancelAnimationFrame(rafId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  return <canvas ref={canvasRef} className="mlbb-home-fx-canvas" aria-hidden="true" />
-}
-
 export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFullscreen }: HomePageProps) {
-  const [gfxDrawerOpen, setGfxDrawerOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [heroSwapOpen, setHeroSwapOpen] = useState(false)
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false)
 
   const authUser = useGameStore((s) => s.authUser)
   const rawCharacters = useGameStore((s) => s.characters)
   const characters = rawCharacters.filter((c) => !c.adminOnly || authUser?.role === 'admin')
+  const selectedCharId = useGameStore((s) => s.selectedCharId)
+  const selectedMode = useGameStore((s) => s.selectedMode)
+  const selectedMapId = useGameStore((s) => s.selectedMapId)
   const roomInput = useGameStore((s) => s.roomInput)
   const recentRooms = useGameStore((s) => s.recentRooms)
   const joining = useGameStore((s) => s.joining)
@@ -170,12 +101,17 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
   const graphicsQuality = useGameStore((s) => s.graphicsQuality)
   const error = useGameStore((s) => s.error)
 
-  const setView = useGameStore((s) => s.setView)
+  const [mode, setMode] = useState<GameMode>(selectedMode || 'tdm_3v3')
+  const [mapId, setMapId] = useState<MapId>(selectedMapId || 'shibuya')
+
   const inspectCharacter = useGameStore((s) => s.inspectCharacter)
+  const setSelectedCharId = useGameStore((s) => s.setSelectedCharId)
   const setRoomInput = useGameStore((s) => s.setRoomInput)
   const setGraphicsQuality = useGameStore((s) => s.setGraphicsQuality)
   const setError = useGameStore((s) => s.setError)
   const prepareJoinRoom = useGameStore((s) => s.prepareJoinRoom)
+  const createAndJoinRoom = useGameStore((s) => s.createAndJoinRoom)
+  const startPracticeMode = useGameStore((s) => s.startPracticeMode)
   const logoutAccount = useGameStore((s) => s.logoutAccount)
 
   const stageRef = useRef<HTMLDivElement | null>(null)
@@ -184,167 +120,66 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
   }, [])
 
   const activeTier = GRAPHICS_TIERS.find((t) => t.id === graphicsQuality) ?? GRAPHICS_TIERS[0]
+  const activeHero = characters.find((c) => c.id === selectedCharId) ?? characters[0]
+  const validRecentRooms = recentRooms.filter((r) => /^\d{6}$/.test(r.roomId)).slice(0, 3)
+
+  function handleSelectMode(nextMode: GameMode) {
+    soundEngine.unlock()
+    setMode(nextMode)
+    if (nextMode === 'iconic') {
+      setMapId('shibuya')
+    }
+  }
+
+  async function handleLaunchMatch() {
+    soundEngine.unlock()
+    if (mode === 'practice') {
+      await startPracticeMode(activeHero?.id, mapId)
+      return
+    }
+    await createAndJoinRoom(mode, mode === 'iconic' ? 'shibuya' : mapId)
+  }
 
   return (
-    <div className="mlbb-home-stage">
-      {/* Full-Bleed Animated Celestial Sanctuary Gojo vs Sukuna Wallpaper + Ambient Cursed Energy Canvas */}
+    <div className="tw-home-stage">
       <img
         src="/fx/home_lobby_gojo_sukuna_bg.jpg"
-        alt="Infinity Clash — Gojo vs Sukuna Sanctuary"
-        className="mlbb-home-bg-img"
+        alt="Infinity Clash Backdrop"
+        className="tw-home-bg"
       />
-      <HomeAmbientCanvas />
-      <div className="mlbb-home-vignette" aria-hidden="true" />
+      <div className="tw-home-atmosphere" aria-hidden="true" />
 
-      <div ref={stageRef} className="mlbb-home-chrome">
-        {/* TOP HUD BAR: Profile & Gojo-Sukuna Emblem (Left — no back button!) | Single Graphics & System Controls (Right) */}
-        <header className="mlbb-topbar home-top-nav">
-          <div className="mlbb-topbar-left">
-            <div className="mlbb-emblem-cluster">
-              <div className="mlbb-emblem-frame">
-                <img
-                  src="/fx/logo_gojo_sukuna.jpg"
-                  alt="Infinity Clash — Gojo vs Sukuna"
-                  className="mlbb-emblem-img"
-                />
-              </div>
-              <div className="mlbb-brand-stack">
-                <div className="mlbb-wordmark">
-                  <span className="mlbb-word-cyan">INFINITY</span>
-                  <span className="mlbb-word-gold">CLASH</span>
-                </div>
-                <div className="mlbb-player-tag">
-                  {authUser?.role === 'admin' ? '👑 ' : '⚔️ '}
-                  <strong>{authUser?.displayName}</strong>
-                  <span>@{authUser?.username}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mlbb-topbar-right">
-            <button
-              type="button"
-              className={`mlbb-glass-btn gfx-trigger ${gfxDrawerOpen ? 'active' : ''}`}
-              onClick={() => {
-                soundEngine.unlock()
-                setGfxDrawerOpen((v) => !v)
-              }}
-              title="ปรับระดับกราฟิกสนาม 3D (Client GPU)"
-            >
-              🎨 {activeTier.label} ▾
-            </button>
-
-            <button
-              type="button"
-              className="mlbb-glass-btn icon-only sound-toggle"
-              onClick={onToggleSound}
-              title={soundMuted ? 'เปิดเสียง' : 'ปิดเสียง'}
-              aria-label="เปิด/ปิดเสียง"
-            >
-              {soundMuted ? '🔇' : '🔊'}
-            </button>
-
-            <button
-              type="button"
-              className="mlbb-glass-btn icon-only home-fs-btn"
-              onClick={onToggleFullscreen}
-              title={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
-              aria-label={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
-            >
-              {isFullscreen ? (
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-                </svg>
-              )}
-            </button>
-
-            <button
-              type="button"
-              className="mlbb-glass-btn danger compact home-logout-btn"
-              onClick={() => {
-                soundEngine.unlock()
-                setLogoutConfirmOpen(true)
-              }}
-            >
-              ออกระบบ
-            </button>
-          </div>
-        </header>
-
-        {/* Compact Top-Right Graphics Quality Popover (Always mounted in DOM or collapsible for crisp layout) */}
-        <section
-          className={`mlbb-gfx-panel home-graphics-bar ${gfxDrawerOpen ? 'open' : ''}`}
-          aria-label="ตั้งค่าความละเอียดภาพ (GPU)"
-        >
-          <div className="mlbb-gfx-head">
-            <span className="mlbb-gfx-title">🎨 ระดับภาพสนาม 3D (Client GPU)</span>
-            <span className="mlbb-gfx-hint">{activeTier.hint}</span>
-          </div>
-          <div className="home-gfx-pills" role="radiogroup" aria-label="เลือกระดับความละเอียดภาพ">
-            {GRAPHICS_TIERS.map((tier) => (
-              <button
-                key={tier.id}
-                type="button"
-                role="radio"
-                aria-checked={graphicsQuality === tier.id}
-                className={`home-gfx-pill ${tier.id} ${graphicsQuality === tier.id ? 'active' : ''}`}
-                onClick={() => {
-                  soundEngine.unlock()
-                  setGraphicsQuality(tier.id)
-                }}
-              >
-                {tier.label}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {error && (
-          <div className="mlbb-alert-toast" role="alert">
-            <span>⚠️ {error}</span>
-            <button type="button" className="mlbb-glass-btn compact" onClick={() => setError('')}>
-              ปิด
-            </button>
-          </div>
-        )}
-
-        {/* MIDDLE STAGE: Open Heroic Center for Gojo & Sukuna + Sleek Right Join-Room Glass Panel */}
-        <main className="mlbb-home-mid">
-          {/* Left Floating Game Crest Pill */}
-          <div className="mlbb-home-left-crest">
-            <div className="mlbb-crest-badge">
+      <div ref={stageRef} className="tw-home-chrome">
+        {/* TOP BAR: Profile Pill (Left) | Quick Join 6-Digit + Settings + FS + Logout (Right) */}
+        <header className="tw-topbar">
+          <div className="tw-profile-pill">
+            {activeHero && (
               <img
-                src="/fx/logo_gojo_sukuna.jpg"
-                alt="Gojo vs Sukuna Emblem"
-                className="mlbb-crest-icon"
+                src={activeHero.imageUrl}
+                alt={activeHero.displayName}
+                className="tw-profile-avatar"
               />
-              <div className="mlbb-crest-copy">
-                <span className="mlbb-crest-eyebrow">SEASON 1 • MULTIVERSE ARENA</span>
-                <strong className="mlbb-crest-name">GOJO × SUKUNA</strong>
+            )}
+            <div>
+              <div className="tw-profile-name">
+                {authUser?.displayName}
+              </div>
+              <div className="tw-profile-sub">
+                @{authUser?.username} · {characters.length} ฮีโร่
               </div>
             </div>
           </div>
 
-          {/* Right Translucent Panel (Inspired by MLBB Right Dock — 100% Real Feature: Join 6-Digit Room!) */}
-          <aside className="mlbb-join-dock" aria-label="เข้าร่วมห้องด้วยรหัส 6 หลัก">
-            <div className="mlbb-join-dock-head">
-              <span className="mlbb-dock-title">🔑 เข้าร่วมห้องเพื่อน</span>
-              <span className="mlbb-dock-tag">รหัส 6 หลัก</span>
-            </div>
-
-            <div className="mlbb-join-input-row">
+          <div className="ui-topbar-group">
+            <div className="tw-quick-join" aria-label="เข้าร่วมห้องเพื่อน">
+              <IconKey size={14} style={{ color: 'var(--accent-blue)' }} />
               <input
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 maxLength={6}
-                className="mlbb-code-input home-code-input"
-                placeholder="กรอกรหัส 6 หลัก"
+                className="tw-quick-join-input home-code-input"
+                placeholder="รหัสห้อง 6 หลัก"
                 value={roomInput}
                 onChange={(e) => setRoomInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 onKeyDown={(e) => {
@@ -355,7 +190,8 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
               />
               <button
                 type="button"
-                className="mlbb-join-submit home-join-btn"
+                className="ui-btn primary home-join-btn"
+                style={{ height: 30, padding: '0 12px', fontSize: 12.5, borderRadius: 8 }}
                 disabled={joining || checkingJoinRoom || !/^\d{6}$/.test(roomInput.trim())}
                 onClick={() => void prepareJoinRoom()}
               >
@@ -363,119 +199,338 @@ export function HomePage({ soundMuted, isFullscreen, onToggleSound, onToggleFull
               </button>
             </div>
 
-            {recentRooms.filter((r) => /^\d{6}$/.test(r.roomId)).length > 0 && (
-              <div className="mlbb-recent-row">
-                <span className="mlbb-recent-label">ล่าสุด:</span>
-                {recentRooms
-                  .filter((r) => /^\d{6}$/.test(r.roomId))
-                  .slice(0, 3)
-                  .map((r) => (
-                    <button
-                      key={r.roomId}
-                      type="button"
-                      className="mlbb-recent-chip"
-                      onClick={() => setRoomInput(r.roomId)}
-                    >
-                      #{r.roomId}
-                    </button>
-                  ))}
-              </div>
-            )}
-          </aside>
-        </main>
+            <div className="clean-settings-anchor">
+              <button
+                type="button"
+                className={`ui-btn ${settingsOpen ? 'active' : ''}`}
+                onClick={() => {
+                  soundEngine.unlock()
+                  setSettingsOpen((v) => !v)
+                }}
+                aria-expanded={settingsOpen}
+                title="ตั้งค่าภาพ 3D และเสียง"
+              >
+                <IconSettings size={15} />
+                <span className="hide-xs">{activeTier.label}</span>
+              </button>
 
-        {/* BOTTOM MLBB-STYLE NAVIGATION BAR + GOLDEN BEVELED CTA */}
-        <footer className="mlbb-bottom-bar">
-          <nav className="mlbb-bottom-nav" aria-label="เมนูหลัก">
+              {settingsOpen && (
+                <div className="clean-popover home-graphics-bar" role="dialog" aria-label="ตั้งค่าภาพและเสียง">
+                  <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
+                    <span className="clean-popover-label">ความละเอียด 3D</span>
+                    <button
+                      type="button"
+                      className="ui-btn icon-only"
+                      style={{ height: 26, width: 26 }}
+                      onClick={() => setSettingsOpen(false)}
+                      aria-label="ปิดตั้งค่า"
+                    >
+                      <IconClose size={13} />
+                    </button>
+                  </div>
+                  <div className="clean-gfx-grid" role="radiogroup" aria-label="เลือกระดับความละเอียดภาพ">
+                    {GRAPHICS_TIERS.map((tier) => (
+                      <button
+                        key={tier.id}
+                        type="button"
+                        role="radio"
+                        aria-checked={graphicsQuality === tier.id}
+                        className={`clean-gfx-chip home-gfx-pill ${tier.id} ${graphicsQuality === tier.id ? 'active' : ''}`}
+                        onClick={() => {
+                          soundEngine.unlock()
+                          setGraphicsQuality(tier.id)
+                        }}
+                      >
+                        <div>{tier.label}</div>
+                        <div style={{ fontSize: 10.5, opacity: 0.72, fontWeight: 500 }}>{tier.hint}</div>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className={`ui-btn sound-toggle ${!soundMuted ? 'active' : ''}`}
+                    onClick={onToggleSound}
+                    style={{ width: '100%', justifyContent: 'space-between' }}
+                  >
+                    <span className="ui-topbar-group" style={{ gap: 7 }}>
+                      <IconVolume size={15} muted={soundMuted} />
+                      <span>เสียงเอฟเฟกต์</span>
+                    </span>
+                    <span style={{ fontSize: 11.5 }}>{soundMuted ? 'ปิด' : 'เปิด'}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
-              className="mlbb-nav-tab home-heroes-nav-btn"
-              onClick={() => {
-                soundEngine.unlock()
-                inspectCharacter(characters[0]?.id)
-              }}
+              className="ui-btn icon-only home-fs-btn"
+              onClick={onToggleFullscreen}
+              title={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
+              aria-label={isFullscreen ? 'ออกจากเต็มจอ' : 'เล่นแบบเต็มจอ'}
             >
-              <span className="mlbb-nav-ico">🦸</span>
-              <span className="mlbb-nav-label">ฮีโร่ของฉัน</span>
-              <span className="mlbb-nav-count">{characters.length}</span>
+              <IconFullscreen size={16} exit={isFullscreen} />
             </button>
 
             <button
               type="button"
-              className="mlbb-nav-tab home-practice-btn"
+              className="ui-btn icon-only danger home-logout-btn"
+              onClick={() => {
+                soundEngine.unlock()
+                setLogoutConfirmOpen(true)
+              }}
+              title="ออกจากระบบ"
+              aria-label="ออกจากระบบ"
+            >
+              <IconLogOut size={16} />
+            </button>
+          </div>
+        </header>
+
+        {error && (
+          <div className="ui-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" className="ui-btn" style={{ height: 28 }} onClick={() => setError('')}>
+              ปิด
+            </button>
+          </div>
+        )}
+
+        {/* MAIN SPLIT: Left Open 3D Hero Showcase | Right Diagonal Diamond Mode Cluster */}
+        <main className="tw-main-split">
+          <section className="tw-hero-stage" aria-label="ตัวละคร 3D ของฉัน">
+            {activeHero && (
+              <>
+                <Hero3dPreview character={activeHero} size="hero" frameless />
+                <div className="tw-hero-caption">
+                  <div className="tw-hero-name-row">
+                    <span className="tw-hero-title">{activeHero.displayName}</span>
+                    {activeHero.className && (
+                      <span className="ui-pill accent" style={{ height: 22, fontSize: 11 }}>
+                        {activeHero.classIcon} {activeHero.className}
+                      </span>
+                    )}
+                  </div>
+                  <div className="tw-hero-actions">
+                    <button
+                      type="button"
+                      className="ui-btn"
+                      style={{ height: 32, fontSize: 12.5 }}
+                      onClick={() => setHeroSwapOpen(true)}
+                    >
+                      <IconUsers size={14} />
+                      <span>เปลี่ยนฮีโร่</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="ui-btn icon-only"
+                      style={{ height: 32, width: 32 }}
+                      title="ทดลองเสียงพากย์"
+                      aria-label="ทดลองเสียงพากย์"
+                      onClick={() => {
+                        soundEngine.unlock()
+                        soundEngine.speakCharacterQuote(activeHero.id, activeHero.voiceLine)
+                      }}
+                    >
+                      <IconVolume size={14} />
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="tw-modes-panel" aria-label="เลือกโหมดและแผนที่">
+            <div className="tw-diamond-cluster" role="radiogroup" aria-label="โหมดการเล่น">
+              {DIAMOND_MODES.map((m) => {
+                const isSelected = mode === m.id
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={isSelected}
+                    className={`tw-diamond-card ${m.posClass} ${isSelected ? 'selected' : ''}`}
+                    onClick={() => handleSelectMode(m.id)}
+                  >
+                    <div className="tw-diamond-inner">
+                      <img src={m.thumb} alt={m.title} className="tw-diamond-art" />
+                      <div className="tw-diamond-scrim" />
+                      <div className="tw-diamond-copy">
+                        <div className="tw-diamond-title">{m.title}</div>
+                        <div className="tw-diamond-sub">{m.sub}</div>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="tw-launch-bar">
+              <div className="tw-map-row" role="radiogroup" aria-label="เลือกแผนที่">
+                {MAP_CHIPS.map((mp) => {
+                  const lockedByIconic = mode === 'iconic' && mp.id !== 'shibuya'
+                  const isActive = (mode === 'iconic' ? 'shibuya' : mapId) === mp.id
+                  return (
+                    <button
+                      key={mp.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isActive}
+                      disabled={lockedByIconic}
+                      className={`tw-map-chip ${isActive ? 'active' : ''}`}
+                      onClick={() => setMapId(mp.id)}
+                    >
+                      {mp.label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="tw-launch-cta-row">
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--text-primary)' }}>
+                    {DIAMOND_MODES.find((d) => d.id === mode)?.title}
+                  </div>
+                  <div style={{ fontSize: 11.5, color: 'var(--text-secondary)' }}>
+                    {getMapDisplayLabel(mode === 'iconic' ? 'shibuya' : mapId, mode === 'iconic')}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  className="ui-btn cta-gold home-play-btn"
+                  disabled={joining}
+                  onClick={() => void handleLaunchMatch()}
+                >
+                  <IconPlay size={15} />
+                  <span>
+                    {joining
+                      ? 'กำลังเข้า...'
+                      : mode === 'ffa'
+                        ? 'เข้าสมรภูมิทันที'
+                        : mode === 'practice'
+                          ? 'เริ่มฝึกซ้อม'
+                          : 'สร้างห้องประลอง'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </section>
+        </main>
+
+        {/* BOTTOM NAVIGATION RAIL (Real Features Only) */}
+        <footer className="tw-bottom-rail">
+          <nav className="ui-topbar-group" aria-label="เมนูหลัก">
+            <button
+              type="button"
+              className="tw-rail-btn home-heroes-nav-btn"
+              onClick={() => {
+                soundEngine.unlock()
+                inspectCharacter(activeHero?.id)
+              }}
+            >
+              <IconUsers size={15} />
+              <span>คลังฮีโร่ ({characters.length})</span>
+            </button>
+
+            <button
+              type="button"
+              className="tw-rail-btn home-practice-btn"
               disabled={joining}
               onClick={() => {
                 soundEngine.unlock()
-                void useGameStore.getState().startPracticeMode()
+                void startPracticeMode(activeHero?.id, mapId)
               }}
             >
-              <span className="mlbb-nav-ico">🎯</span>
-              <span className="mlbb-nav-label">ฝึกซ้อม</span>
+              <IconTarget size={15} />
+              <span>ซ้อมด่วน</span>
             </button>
           </nav>
 
-          {/* Bottom-Right Iconic Golden Metallic Play CTA + Mode Diamond */}
-          <div className="mlbb-cta-cluster">
-            <button
-              type="button"
-              className="mlbb-mode-diamond"
-              disabled={joining}
-              onClick={() => {
-                soundEngine.unlock()
-                setView('battle_setup')
-              }}
-              title="เลือกโหมดการเล่น (ICONIC, 1v1, 3v3, FFA)"
-            >
-              <span className="mlbb-diamond-icon">⚡</span>
-              <span className="mlbb-diamond-label">โหมด</span>
-            </button>
-
-            <button
-              type="button"
-              className="mlbb-gold-cta home-play-btn"
-              disabled={joining}
-              onClick={() => {
-                soundEngine.unlock()
-                setView('battle_setup')
-              }}
-            >
-              <span className="mlbb-gold-cta-main">⚔️ สร้างห้องประลอง</span>
-              <span className="mlbb-gold-cta-sub">ICONIC • 1v1 • 3v3 • FFA</span>
-            </button>
-          </div>
+          {validRecentRooms.length > 0 && (
+            <div className="ui-topbar-group" style={{ gap: 6 }}>
+              <span style={{ fontSize: 11.5, color: 'var(--text-muted)' }}>ห้องล่าสุด:</span>
+              {validRecentRooms.map((r) => (
+                <button
+                  key={r.roomId}
+                  type="button"
+                  className="clean-recent-btn"
+                  onClick={() => setRoomInput(r.roomId)}
+                >
+                  #{r.roomId}
+                </button>
+              ))}
+            </div>
+          )}
         </footer>
       </div>
+
+      {/* Quick Hero Switch Modal */}
+      {heroSwapOpen && (
+        <div
+          className="clean-modal-backdrop"
+          role="dialog"
+          aria-modal="true"
+          aria-label="เลือกฮีโร่โชว์หน้าหลัก"
+          onClick={() => setHeroSwapOpen(false)}
+        >
+          <div className="clean-modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
+              <h2 className="ui-page-title">เลือกฮีโร่ ({characters.length})</h2>
+              <button
+                type="button"
+                className="ui-btn icon-only"
+                onClick={() => setHeroSwapOpen(false)}
+                aria-label="ปิด"
+              >
+                <IconClose size={15} />
+              </button>
+            </div>
+            <HeroPickerPanel
+              characters={characters}
+              selectedId={activeHero?.id ?? ''}
+              compactTabs
+              maxHeight={340}
+              onSelect={(charId) => {
+                soundEngine.unlock()
+                setSelectedCharId(charId)
+                const ch = characters.find((c) => c.id === charId)
+                soundEngine.speakCharacterQuote(charId, ch?.voiceLine)
+                setHeroSwapOpen(false)
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
       {logoutConfirmOpen && (
         <div
-          className="mlbb-logout-backdrop"
+          className="clean-modal-backdrop"
           role="dialog"
           aria-modal="true"
           aria-labelledby="logout-confirm-title"
           onClick={() => setLogoutConfirmOpen(false)}
         >
-          <div className="mlbb-logout-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="mlbb-logout-icon" aria-hidden="true">
-              🚪
-            </div>
-            <h2 id="logout-confirm-title" className="mlbb-logout-title">
+          <div className="clean-modal-card sm" onClick={(e) => e.stopPropagation()}>
+            <h2 id="logout-confirm-title" className="ui-page-title">
               ยืนยันออกจากระบบ?
             </h2>
-            <p className="mlbb-logout-desc">
-              คุณต้องการออกจากระบบบัญชี <strong>@{authUser?.username}</strong> ใช่หรือไม่?
-              <br />
-              <span>(หากไม่ออก ระบบจะจดจำการเข้าสู่ระบบให้อัตโนมัตินาน 1 ปี)</span>
+            <p className="ui-card-sub">
+              บัญชี <strong style={{ color: 'var(--text-primary)' }}>@{authUser?.username}</strong> จะถูกออกจากระบบบนอุปกรณ์นี้
             </p>
-            <div className="mlbb-logout-actions">
+            <div className="clean-home-actions" style={{ width: '100%' }}>
               <button
                 type="button"
-                className="mlbb-glass-btn compact mlbb-logout-cancel"
+                className="ui-btn mlbb-logout-cancel"
                 onClick={() => setLogoutConfirmOpen(false)}
               >
                 ยกเลิก
               </button>
               <button
                 type="button"
-                className="mlbb-glass-btn danger compact mlbb-logout-confirm"
+                className="ui-btn danger mlbb-logout-confirm"
                 onClick={() => {
                   setLogoutConfirmOpen(false)
                   void logoutAccount()

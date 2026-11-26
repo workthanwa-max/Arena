@@ -2,13 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import { animateCardEnter } from '../animations/gsapPresets'
 import { soundEngine } from '../audio/soundEngine'
 import { Hero3dPreview } from '../components/Hero3dPreview'
-import { getMapDisplayLabel, HERO_CLASS_FILTERS, type HeroClassFilter } from '../constants/heroClasses'
+import { HeroPickerPanel } from '../components/HeroPickerPanel'
+import {
+  IconArrowLeft,
+  IconCopy,
+  IconHeadphones,
+  IconMic,
+  IconPlay,
+  IconVolume,
+} from '../components/Icons'
+import { getMapDisplayLabel } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
 import type { PlayerState, TeamSide } from '../types/game'
 
 export function RoomLobbyPage() {
   const [copied, setCopied] = useState(false)
-  const [classFilter, setClassFilter] = useState<HeroClassFilter>('all')
 
   const activeRoomId = useGameStore((s) => s.activeRoomId)
   const roomMode = useGameStore((s) => s.roomMode)
@@ -31,7 +39,6 @@ export function RoomLobbyPage() {
   const toggleReady = useGameStore((s) => s.toggleReady)
   const startMatch = useGameStore((s) => s.startMatch)
   const leaveRoom = useGameStore((s) => s.leaveRoom)
-  const goBack = useGameStore((s) => s.goBack)
   const setError = useGameStore((s) => s.setError)
   const toggleVoiceMic = useGameStore((s) => s.toggleVoiceMic)
   const toggleVoiceSpeaker = useGameStore((s) => s.toggleVoiceSpeaker)
@@ -74,17 +81,16 @@ export function RoomLobbyPage() {
   function renderBannerSlot(p: PlayerState | undefined, team: TeamSide, idx: number, canJoinSide: boolean) {
     if (!p) {
       return (
-        <div key={`${team}-empty-${idx}`} className={`mlbb-banner-card empty ${team}`}>
-          <div className="mlbb-banner-ping">-- ms</div>
-          <div className="mlbb-banner-avatar-ring empty">
+        <div key={`${team}-empty-${idx}`} className="clean-player-card empty">
+          <div className="mlbb-banner-avatar-ring empty" style={{ width: 46, height: 46, fontSize: 16 }}>
             <span>?</span>
           </div>
           <div className="mlbb-banner-name">รอผู้เล่น</div>
-          <div className="mlbb-banner-sub">#{activeRoomId}</div>
           {canJoinSide && (
             <button
               type="button"
-              className="mlbb-swap-btn"
+              className="ui-btn"
+              style={{ height: 26, fontSize: 11, padding: '0 10px' }}
               onClick={() => selectTeam(team as 'blue' | 'red')}
             >
               สลับฝั่ง
@@ -104,18 +110,21 @@ export function RoomLobbyPage() {
     return (
       <div
         key={p.id}
-        className={`mlbb-banner-card filled team-slot-card ${team} ${isMe ? 'me' : ''} ${isSpeaking ? 'voice-speaking' : ''}`}
+        className={`clean-player-card team-slot-card ${isMe ? 'me' : ''} ${isSpeaking ? 'voice-speaking' : ''}`}
       >
         <div className="mlbb-banner-top-row">
-          <span className="mlbb-banner-ping">
+          <span className="mlbb-banner-ping" style={{ fontSize: 10 }}>
             {p.isDummy ? 'DUMMY' : isMe && pingMs !== null ? `${pingMs}ms` : 'ONLINE'}
           </span>
           <span className={`mlbb-ready-dot ${p.isHost || p.ready || p.isDummy ? 'ready' : ''}`}>
-            {p.isHost ? '👑' : p.ready || p.isDummy ? '✓' : '…'}
+            {p.isHost ? 'H' : p.ready || p.isDummy ? '✓' : '…'}
           </span>
         </div>
 
-        <div className="mlbb-banner-avatar-ring" style={{ borderColor: ch?.color || (team === 'blue' ? '#38bdf8' : '#ef4444') }}>
+        <div
+          className="mlbb-banner-avatar-ring"
+          style={{ width: 48, height: 48, borderColor: ch?.color || (team === 'blue' ? '#38bdf8' : '#f87171') }}
+        >
           <img
             src={
               p.isDummy
@@ -131,19 +140,9 @@ export function RoomLobbyPage() {
           {p.name}
           {isMe ? ' (คุณ)' : ''}
         </div>
-        <div className="mlbb-banner-hero slot-hero-name">
+        <div className="mlbb-banner-hero slot-hero-name" style={{ color: 'var(--text-secondary)' }}>
           {p.isDummy ? `HP ${p.maxHp}` : p.characterName}
         </div>
-
-        {!p.isDummy && vState && (
-          <span
-            className={`slot-voice-tag ${vState.micOn ? 'on' : 'off'} ${isSpeaking ? 'speaking' : ''}`}
-            title={isSpeaking ? 'กำลังพูดอยู่' : vState.micOn ? 'เปิดไมค์อยู่' : 'ปิดไมค์'}
-          >
-            {vState.micOn ? (isSpeaking ? '🎙️ พูดอยู่' : '🎙️ ไมค์เปิด') : '🎙️✕'}
-            {!vState.speakerOn ? ' 🎧✕' : ''}
-          </span>
-        )}
       </div>
     )
   }
@@ -154,86 +153,69 @@ export function RoomLobbyPage() {
   const rightList = isPractice ? dummyRoster : redPlayers
 
   return (
-    <div className="mlbb-dark-page waiting-room-backdrop">
-      <div ref={shellRef} className="mlbb-lobby-shell waiting-room-shell">
-        {/* TOP BAR */}
-        <header className="mlbb-sub-topbar waiting-room-header">
-          <div className="mlbb-sub-left">
+    <div className="ui-page waiting-room-backdrop">
+      <div ref={shellRef} className="ui-shell waiting-room-shell">
+        {/* Top Bar: Clean 4-item Room Header */}
+        <header className="ui-topbar waiting-room-header">
+          <div className="ui-topbar-group">
             <button
               type="button"
-              className="mlbb-glass-btn compact page-back-btn"
-              onClick={goBack}
-              aria-label="ย้อนกลับ"
+              className="ui-btn page-back-btn"
+              onClick={() => leaveRoom()}
+              aria-label="ออกจากห้อง"
             >
-              ← ย้อนกลับ
+              <IconArrowLeft size={15} />
+              <span>ออกจากห้อง</span>
             </button>
+
             <button
               type="button"
-              className="mlbb-room-pill room-code-banner clickable-code"
+              className="ui-pill gold room-code-banner clickable-code"
               onClick={copyCode}
               title="คลิกเพื่อคัดลอกรหัสห้อง"
             >
-              รหัสห้อง: {activeRoomId} {copied ? '✓' : '📋'}
+              <span>#{activeRoomId}</span>
+              <IconCopy size={13} copied={copied} />
             </button>
-            <h1 className="mlbb-sub-title brand-title">
+
+            <h1 className="ui-page-title">
               {isPractice
-                ? '🎯 ห้องฝึกซ้อม'
+                ? 'ห้องฝึกซ้อม'
                 : isIconic
-                  ? `⚡ ICONIC 1 vs 1 : GOJO vs SUKUNA (เป้า ${goalKills} Kills ชนะ)`
+                  ? `ICONIC 1v1 (${goalKills} Kills)`
                   : is1v1Side
-                    ? `ห้องดวล 1 vs 1 (เป้า ${goalKills} Kills ชนะ)`
-                    : `ห้อง 3 vs 3 (เป้า ${goalKills} Kills ชนะ)`}
+                    ? `1v1 Duel (${goalKills} Kills)`
+                    : `ทีม 3v3 (${goalKills} Kills)`}
             </h1>
           </div>
 
-          <div className="mlbb-sub-right telemetry-pills">
-            <button
-              type="button"
-              className={`mlbb-glass-btn compact lobby-voice-pill ${voiceMicEnabled ? 'mic-on' : 'mic-off'} ${voiceSpeaking ? 'speaking' : ''}`}
-              onClick={() => void toggleVoiceMic()}
-              title={voiceMicEnabled ? 'ไมค์เปิดอยู่ (คลิกเพื่อปิดไมค์)' : 'ไมค์ปิดอยู่ (คลิกเพื่อเปิดไมค์คุยกับเพื่อนในห้อง)'}
-              aria-label="เปิด/ปิดไมค์ในห้อง"
-            >
-              {voiceMicEnabled ? '🎙️ ไมค์: เปิด' : '🎙️✕ ไมค์: ปิด'}
-            </button>
-            <button
-              type="button"
-              className={`mlbb-glass-btn compact lobby-voice-pill ${voiceSpeakerEnabled ? 'spk-on' : 'spk-off'}`}
-              onClick={toggleVoiceSpeaker}
-              title={voiceSpeakerEnabled ? 'ลำโพงคุยเปิดอยู่ (คลิกเพื่อปิดเสียงพูดในห้อง)' : 'ลำโพงคุยปิดอยู่ (คลิกเพื่อเปิดฟังเพื่อนในห้อง)'}
-              aria-label="เปิด/ปิดลำโพงในห้อง"
-            >
-              {voiceSpeakerEnabled ? '🎧 ลำโพง: เปิด' : '🎧✕ ลำโพง: ปิด'}
-            </button>
-            <span className="mlbb-meta-pill">{getMapDisplayLabel(roomMapId, isIconic)}</span>
-            <span className="mlbb-meta-pill accent">
-              👤 {humanRoster.length}/{totalCap}
+          <div className="ui-topbar-group">
+            <span className="ui-pill">{getMapDisplayLabel(roomMapId, isIconic)}</span>
+            <span className="ui-pill accent">
+              {humanRoster.length}/{totalCap} คน
             </span>
-            <button type="button" className="mlbb-glass-btn danger compact" onClick={() => leaveRoom()}>
-              ออกจากห้อง
-            </button>
           </div>
         </header>
 
         {error && (
-          <div className="mlbb-alert-toast inline" role="alert">
-            <span>⚠️ {error}</span>
-            <button type="button" className="mlbb-glass-btn compact" onClick={() => setError('')}>
+          <div className="ui-alert" role="alert">
+            <span>{error}</span>
+            <button type="button" className="ui-btn" style={{ height: 28 }} onClick={() => setError('')}>
               ปิด
             </button>
           </div>
         )}
 
-        {/* MLBB SYMMETRICAL VS LINEUP STAGE (Inspired by Reference Images 2 & 3!) */}
-        <section className="mlbb-vs-stage" aria-label="รายชื่อทีมในห้อง">
-          <div className="mlbb-vs-wing blue">
-            <div className="mlbb-wing-head blue">
-              <span>{isPractice ? '👤 ผู้เล่น' : '🔵 BLUE TEAM'}</span>
+        {/* Symmetrical VS Stage */}
+        <section className="clean-vs-stage" aria-label="รายชื่อทีมในห้อง">
+          <div className="clean-wing">
+            <div className="clean-wing-head blue">
+              <span>{isPractice ? 'ผู้เล่น' : 'BLUE TEAM'}</span>
               <span>
                 {leftList.length}/{isPractice ? 1 : sideCap}
               </span>
             </div>
-            <div className="mlbb-banner-row">
+            <div className="clean-slot-row">
               {leftSlots.map((idx) =>
                 renderBannerSlot(
                   leftList[idx],
@@ -245,23 +227,18 @@ export function RoomLobbyPage() {
             </div>
           </div>
 
-          <div className="mlbb-vs-medallion" aria-hidden="true">
-            <div className="mlbb-vs-orb">
-              <span>VS</span>
-            </div>
-            <div className="mlbb-vs-sub">
-              {isPractice ? 'TRAINING' : `เป้า ${goalKills} KILLS`}
-            </div>
+          <div className="clean-vs-badge" aria-hidden="true">
+            VS
           </div>
 
-          <div className="mlbb-vs-wing red">
-            <div className="mlbb-wing-head red">
-              <span>{isPractice ? '🎯 หุ่นซ้อม (DUMMY)' : '🔴 RED TEAM'}</span>
+          <div className="clean-wing">
+            <div className="clean-wing-head red">
+              <span>{isPractice ? 'หุ่นซ้อม (DUMMY)' : 'RED TEAM'}</span>
               <span>
                 {rightList.length}/{isPractice ? dummyRoster.length : sideCap}
               </span>
             </div>
-            <div className="mlbb-banner-row">
+            <div className="clean-slot-row">
               {rightSlots.map((idx) =>
                 renderBannerSlot(
                   rightList[idx],
@@ -274,119 +251,127 @@ export function RoomLobbyPage() {
           </div>
         </section>
 
-        {/* CENTER ACTION BAR: Start Game / Ready + Practice Map Toggle */}
-        <div className="mlbb-vs-action-strip waiting-footer-bar">
-          <div className="mlbb-vs-action-left waiting-my-hero">
-            <span className="mlbb-meta-pill accent">
-              {isIconic
-                ? `🎲 ${me?.characterName ?? 'Gojo / Sukuna'}`
-                : `🎭 ฮีโร่ของคุณ: ${me?.characterName ?? myHeroDef?.displayName ?? 'ป๊ะ'}`}
-            </span>
+        {/* Action Strip: Voice + Map Switch (Practice) + Ready / Start */}
+        <div className="ui-topbar waiting-footer-bar">
+          <div className="ui-topbar-group waiting-my-hero">
+            <button
+              type="button"
+              className={`ui-btn ${voiceMicEnabled ? 'success' : ''}`}
+              onClick={() => void toggleVoiceMic()}
+              title={voiceMicEnabled ? 'ปิดไมค์' : 'เปิดไมค์'}
+            >
+              <IconMic size={15} off={!voiceMicEnabled} />
+              <span>{voiceMicEnabled ? 'ไมค์เปิด' : 'ไมค์ปิด'}</span>
+            </button>
+
+            <button
+              type="button"
+              className={`ui-btn ${voiceSpeakerEnabled ? 'active' : 'danger'}`}
+              onClick={toggleVoiceSpeaker}
+              title={voiceSpeakerEnabled ? 'ปิดเสียงเพื่อน' : 'เปิดฟังเพื่อน'}
+            >
+              <IconHeadphones size={15} off={!voiceSpeakerEnabled} />
+              <span>{voiceSpeakerEnabled ? 'ลำโพงเปิด' : 'ลำโพงปิด'}</span>
+            </button>
 
             {isPractice && (
-              <div className="mlbb-map-switch">
-                <button
-                  type="button"
-                  className={`mlbb-glass-btn compact ${roomMapId === 'shibuya' ? 'active' : ''}`}
-                  onClick={() => selectRoomMap('shibuya')}
-                >
-                  🏙️ ชิบูย่า
-                </button>
-                <button
-                  type="button"
-                  className={`mlbb-glass-btn compact ${roomMapId === 'konoha' ? 'active' : ''}`}
-                  onClick={() => selectRoomMap('konoha')}
-                >
-                  🍃 โคโนฮะ
-                </button>
-                <button
-                  type="button"
-                  className={`mlbb-glass-btn compact ${roomMapId === 'sisaket_island' ? 'active' : ''}`}
-                  onClick={() => selectRoomMap('sisaket_island')}
-                >
-                  🏝️ เกาะกลางน้ำ
-                </button>
-                <button
-                  type="button"
-                  className={`mlbb-glass-btn compact ${roomMapId === 'scp_site' ? 'active' : ''}`}
-                  onClick={() => selectRoomMap('scp_site')}
-                >
-                  🧪 สถานี SCP
-                </button>
+              <div className="ui-topbar-group" style={{ gap: 6 }}>
+                {(
+                  [
+                    ['shibuya', 'ชิบูย่า'],
+                    ['konoha', 'โคโนฮะ'],
+                    ['sisaket_island', 'เกาะศรีสะเกษ'],
+                    ['scp_site', 'สถานี SCP'],
+                  ] as const
+                ).map(([mId, label]) => (
+                  <button
+                    key={mId}
+                    type="button"
+                    className={`ui-btn ${roomMapId === mId ? 'active' : ''}`}
+                    style={{ height: 30, fontSize: 12, padding: '0 10px' }}
+                    onClick={() => selectRoomMap(mId)}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
-            )}
-
-            {!me?.isHost && (
-              <button
-                type="button"
-                className={`mlbb-glass-btn ${me?.ready ? 'active' : ''}`}
-                onClick={toggleReady}
-              >
-                {me?.ready ? '✓ พร้อมแล้ว' : '⚡ กดพร้อม'}
-              </button>
             )}
           </div>
 
-          {me?.isHost ? (
-            <button
-              type="button"
-              className="mlbb-gold-cta compact waiting-start-btn"
-              disabled={!isReadyToStart}
-              onClick={startMatch}
-            >
-              {isReadyToStart
-                ? isPractice
-                  ? '🎯 เริ่มฝึกซ้อม'
-                  : '⚔️ เริ่มเกมเลย!'
-                : `รอผู้เล่นครบ (${humanRoster.length}/${totalCap})`}
-            </button>
-          ) : (
-            <div className="mlbb-wait-host-note">รอหัวหน้าห้องกดเริ่มเกม...</div>
-          )}
+          <div className="ui-topbar-group">
+            {!me?.isHost && (
+              <button
+                type="button"
+                className={`ui-btn ${me?.ready ? 'success' : 'primary'}`}
+                onClick={toggleReady}
+              >
+                {me?.ready ? 'พร้อมแล้ว' : 'กดพร้อม'}
+              </button>
+            )}
+
+            {me?.isHost ? (
+              <button
+                type="button"
+                className="ui-btn cta-gold waiting-start-btn"
+                disabled={!isReadyToStart}
+                onClick={startMatch}
+              >
+                <IconPlay size={15} />
+                <span>
+                  {isReadyToStart
+                    ? isPractice
+                      ? 'เริ่มฝึกซ้อม'
+                      : 'เริ่มเกม'
+                    : `รอผู้เล่นครบ (${humanRoster.length}/${totalCap})`}
+                </span>
+              </button>
+            ) : (
+              <span className="ui-card-sub">รอหัวหน้าห้องกดเริ่มเกม...</span>
+            )}
+          </div>
         </div>
 
-        {/* BOTTOM PANEL: Live 3D Hero Preview + In-Room Hero Picker */}
-        <section className="mlbb-lobby-draft-deck" aria-label="เลือกตัวละครพร้อมโมเดล 3D">
+        {/* Bottom Panel: Compact 3D Preview + Searchable Hero Grid */}
+        <section className="clean-lobby-draft" aria-label="เลือกตัวละคร">
           {myHeroDef && (
-            <div className="mlbb-draft-3d-spotlight">
-              <Hero3dPreview character={myHeroDef} size="md" />
-              <div className="mlbb-draft-hero-meta">
-                <div className="mlbb-draft-meta-top">
+            <div className="ui-card" style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+              <Hero3dPreview character={myHeroDef} size="md" frameless />
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
                   <div>
-                    <h2 className="mlbb-draft-hero-name">
-                      {myHeroDef.displayName} <span>• {myHeroDef.animeTitle}</span>
+                    <h2 style={{ margin: 0, fontSize: 18, fontWeight: 800 }}>
+                      {myHeroDef.displayName}
                     </h2>
-                    <div className="mlbb-draft-hero-stats">
-                      ❤️ HP {myHeroDef.maxHp} • ⚡ Speed {myHeroDef.moveSpeed} •{' '}
-                      {myHeroDef.classIcon ? `${myHeroDef.classIcon} ${myHeroDef.className}` : myHeroDef.roleTag}
+                    <div className="ui-card-sub">
+                      {myHeroDef.animeTitle} · HP {myHeroDef.maxHp} · Speed {myHeroDef.moveSpeed}
                     </div>
-                    {myHeroDef.classTraitLabel && (
-                      <div
-                        className="mlbb-draft-class-note"
-                        style={{ color: myHeroDef.classColor || '#7dd3fc' }}
-                      >
-                        ✦ {myHeroDef.classTraitLabel}
-                      </div>
-                    )}
                   </div>
                   <button
                     type="button"
-                    className="mlbb-glass-btn compact"
+                    className="ui-btn icon-only"
+                    style={{ height: 30, width: 30 }}
+                    title="ทดลองเสียงพากย์"
                     onClick={() => {
                       soundEngine.unlock()
                       soundEngine.speakCharacterQuote(myHeroDef.id, myHeroDef.voiceLine)
                     }}
                   >
-                    🔊 เสียงพากย์
+                    <IconVolume size={14} />
                   </button>
                 </div>
+
+                {myHeroDef.classTraitLabel && (
+                  <div className="ui-card-sub" style={{ fontSize: 12 }}>
+                    {myHeroDef.classIcon} {myHeroDef.classTraitLabel}
+                  </div>
+                )}
 
                 <div className="mlbb-draft-skills-row">
                   {myHeroDef.skills.map((sk) => (
                     <div key={sk.slot} className="mlbb-mini-skill-chip" title={sk.description}>
                       <img src={sk.iconUrl || `/skills/${myHeroDef.id}_${sk.slot}.png`} alt={sk.name} />
                       <span>
-                        <strong>{sk.keyHint}</strong> {sk.name}
+                        <strong>{sk.keyHint}</strong> {sk.name.split(' ')[0]}
                       </span>
                     </div>
                   ))}
@@ -404,60 +389,20 @@ export function RoomLobbyPage() {
           )}
 
           {!isIconic ? (
-            <div className="mlbb-draft-grid-wrap room-hero-draft-box">
-              <div className="mlbb-draft-grid-head">เลือกฮีโร่ลงสนาม ({characters.length} ตัว • 5 ประเภท)</div>
-              <div className="mlbb-class-filter-bar compact" role="tablist" aria-label="กรองสายฮีโร่ในห้อง">
-                {HERO_CLASS_FILTERS.map((cls) => (
-                  <button
-                    key={cls.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={classFilter === cls.id}
-                    className={`mlbb-class-pill compact ${classFilter === cls.id ? 'active' : ''}`}
-                    style={{ '--class-accent': cls.color } as React.CSSProperties}
-                    title={cls.traitSummary}
-                    onClick={() => setClassFilter(cls.id)}
-                  >
-                    <span>{cls.icon}</span>
-                    <span>{cls.shortName}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="mlbb-hero-pick-grid">
-                {(classFilter === 'all' ? characters : characters.filter((c) => c.heroClass === classFilter)).map(
-                  (c) => {
-                    const isPicked = me?.characterId === c.id
-                    return (
-                      <button
-                        key={c.id}
-                        type="button"
-                        className={`mlbb-hero-pick-tile inline-hero-chip ${isPicked ? 'active' : ''}`}
-                        style={{ '--hero-accent': c.color } as React.CSSProperties}
-                        onClick={() => handlePickHeroInRoom(c.id)}
-                      >
-                        <div className="mlbb-pick-thumb-wrap">
-                          <img src={c.imageUrl} alt={c.displayName} className="mlbb-pick-thumb" />
-                          {c.classIcon && (
-                            <span
-                              className="mlbb-hero-class-pip"
-                              style={{ borderColor: c.classColor || '#38bdf8' }}
-                              title={c.className}
-                            >
-                              {c.classIcon}
-                            </span>
-                          )}
-                          {c.adminOnly && <span className="moba-crown-tag">👑</span>}
-                        </div>
-                        <span className="mlbb-pick-name">{c.displayName}</span>
-                      </button>
-                    )
-                  },
-                )}
-              </div>
+            <div className="ui-card room-hero-draft-box">
+              <HeroPickerPanel
+                characters={characters}
+                selectedId={me?.characterId ?? ''}
+                compactTabs
+                maxHeight={220}
+                onSelect={handlePickHeroInRoom}
+              />
             </div>
           ) : (
-            <div className="mlbb-iconic-lock-note">
-              <span>⚡ โหมด ICONIC ระบบสุ่มตัวละคร Gojo vs Sukuna ให้อัตโนมัติทั้ง 2 ฝั่ง</span>
+            <div className="ui-card" style={{ justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+              <span className="ui-card-sub">
+                โหมด ICONIC ระบบจะสุ่ม Gojo และ Sukuna ให้อัตโนมัติทั้ง 2 ฝั่ง
+              </span>
             </div>
           )}
         </section>

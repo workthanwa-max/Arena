@@ -1,11 +1,26 @@
-import { memo, useEffect, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { animateHeroPose3D, buildHeroRig3D, disposeHeroRig3D, type HeroRig3D } from '../game/hero3dBuilder'
 import type { CharacterDef, PlayerState } from '../types/game'
 
+export type HeroShowcaseMode = '3d' | 'art'
+
+const SHOWCASE_STORAGE_KEY = 'arenavv_hero_showcase_mode'
+const SHOWCASE_SYNC_EVENT = 'arenavv:showcase-mode-change'
+
+function readSavedShowcaseMode(): HeroShowcaseMode {
+  try {
+    return window.localStorage.getItem(SHOWCASE_STORAGE_KEY) === 'art' ? 'art' : '3d'
+  } catch {
+    return '3d'
+  }
+}
+
 interface Hero3dPreviewProps {
   character: CharacterDef
-  size?: 'lg' | 'md' | 'sm'
+  size?: 'hero' | 'lg' | 'md' | 'sm'
+  frameless?: boolean
+  allowViewToggle?: boolean
   className?: string
 }
 
@@ -49,11 +64,38 @@ function makePreviewPlayer(ch: CharacterDef): PlayerState {
 export const Hero3dPreview = memo(function Hero3dPreview({
   character,
   size = 'lg',
+  frameless = false,
+  allowViewToggle,
   className = '',
 }: Hero3dPreviewProps) {
+  const showToggle = allowViewToggle ?? size !== 'sm'
+  const [viewMode, setViewMode] = useState<HeroShowcaseMode>(readSavedShowcaseMode)
+  const viewModeRef = useRef<HeroShowcaseMode>(viewMode)
+  viewModeRef.current = viewMode
+
+  useEffect(() => {
+    const onSync = (ev: Event) => {
+      const next = (ev as CustomEvent<HeroShowcaseMode>).detail
+      if (next === '3d' || next === 'art') setViewMode(next)
+    }
+    window.addEventListener(SHOWCASE_SYNC_EVENT, onSync)
+    return () => window.removeEventListener(SHOWCASE_SYNC_EVENT, onSync)
+  }, [])
+
+  const selectViewMode = (next: HeroShowcaseMode) => {
+    setViewMode(next)
+    try {
+      window.localStorage.setItem(SHOWCASE_STORAGE_KEY, next)
+    } catch {
+      // ignore storage errors
+    }
+    window.dispatchEvent(new CustomEvent<HeroShowcaseMode>(SHOWCASE_SYNC_EVENT, { detail: next }))
+  }
+
   const hostRef = useRef<HTMLDivElement | null>(null)
   const sceneApiRef = useRef<{
     scene: THREE.Scene
+    camera: THREE.PerspectiveCamera
     rimLight: THREE.DirectionalLight
     pedestalRingMat: THREE.MeshBasicMaterial
     pedestalInnerMat: THREE.MeshBasicMaterial
@@ -61,6 +103,8 @@ export const Hero3dPreview = memo(function Hero3dPreview({
     yaw: number
     targetSpinBoost: number
   } | null>(null)
+  const sizeRef = useRef(size)
+  sizeRef.current = size
 
   // Mount Three.js studio stage once per preview container
   useEffect(() => {
@@ -87,8 +131,13 @@ export const Hero3dPreview = memo(function Hero3dPreview({
 
     const scene = new THREE.Scene()
     const camera = new THREE.PerspectiveCamera(34, width / height, 10, 600)
-    camera.position.set(0, 50, 128)
-    camera.lookAt(0, 27, 0)
+    if (sizeRef.current === 'hero') {
+      camera.position.set(0, 48, 152)
+      camera.lookAt(0, 29, 0)
+    } else {
+      camera.position.set(0, 50, 128)
+      camera.lookAt(0, 27, 0)
+    }
 
     // Studio 3-point esports showroom lighting
     const hemi = new THREE.HemisphereLight(0xe0f2fe, 0x0b1630, 1.55)
@@ -141,6 +190,7 @@ export const Hero3dPreview = memo(function Hero3dPreview({
 
     const api = {
       scene,
+      camera,
       rimLight,
       pedestalRingMat,
       pedestalInnerMat,
@@ -201,37 +251,39 @@ export const Hero3dPreview = memo(function Hero3dPreview({
       const dt = Math.min(0.05, Math.max(0.001, (nowMs - lastTs) / 1000))
       lastTs = nowMs
 
-      if (!dragging) {
-        api.yaw += dt * (0.58 + api.targetSpinBoost)
-      }
-      api.targetSpinBoost *= Math.pow(0.08, dt)
-      outerRing.rotation.y = -nowMs * 0.0008
-      innerRing.rotation.y = nowMs * 0.0013
-
-      const rig = api.rig
-      if (rig) {
-        rig.modelPivot.rotation.y = api.yaw
-        rig.leftArm.rotation.x = Math.sin(nowMs * 0.0024) * 0.08
-        rig.rightArm.rotation.x = -Math.sin(nowMs * 0.0024) * 0.08
-        animateHeroPose3D(rig, nowMs, false)
-
-        if (rig.capePivot) {
-          rig.capePivot.rotation.x = 0.14 + Math.sin(nowMs * 0.006) * 0.07
+      if (viewModeRef.current === '3d') {
+        if (!dragging) {
+          api.yaw += dt * (0.58 + api.targetSpinBoost)
         }
-        if (rig.companionGroup) {
-          if (rig.characterId === 'kaem') {
-            rig.companionGroup.position.y = 22 + Math.abs(Math.sin(nowMs * 0.006)) * 8
-          } else if (rig.characterId === 'frame') {
-            rig.companionGroup.position.y = 44 + Math.sin(nowMs * 0.0055) * 5
+        api.targetSpinBoost *= Math.pow(0.08, dt)
+        outerRing.rotation.y = -nowMs * 0.0008
+        innerRing.rotation.y = nowMs * 0.0013
+
+        const rig = api.rig
+        if (rig) {
+          rig.modelPivot.rotation.y = api.yaw
+          rig.leftArm.rotation.x = Math.sin(nowMs * 0.0024) * 0.08
+          rig.rightArm.rotation.x = -Math.sin(nowMs * 0.0024) * 0.08
+          animateHeroPose3D(rig, nowMs, false)
+
+          if (rig.capePivot) {
+            rig.capePivot.rotation.x = 0.14 + Math.sin(nowMs * 0.006) * 0.07
+          }
+          if (rig.companionGroup) {
+            if (rig.characterId === 'kaem') {
+              rig.companionGroup.position.y = 22 + Math.abs(Math.sin(nowMs * 0.006)) * 8
+            } else if (rig.characterId === 'frame') {
+              rig.companionGroup.position.y = 44 + Math.sin(nowMs * 0.0055) * 5
+            }
+          }
+          if (rig.extraOrbitalGroup) {
+            rig.extraOrbitalGroup.visible = true
+            rig.extraOrbitalGroup.rotation.y = nowMs * 0.0035
           }
         }
-        if (rig.extraOrbitalGroup) {
-          rig.extraOrbitalGroup.visible = true
-          rig.extraOrbitalGroup.rotation.y = nowMs * 0.0035
-        }
-      }
 
-      renderer.render(scene, camera)
+        renderer.render(scene, camera)
+      }
       rafId = window.requestAnimationFrame(animate)
     }
     rafId = window.requestAnimationFrame(animate)
@@ -261,6 +313,18 @@ export const Hero3dPreview = memo(function Hero3dPreview({
       }
     }
   }, [])
+
+  useEffect(() => {
+    const api = sceneApiRef.current
+    if (!api) return
+    if (size === 'hero') {
+      api.camera.position.set(0, 48, 152)
+      api.camera.lookAt(0, 29, 0)
+    } else {
+      api.camera.position.set(0, 50, 128)
+      api.camera.lookAt(0, 27, 0)
+    }
+  }, [size])
 
   // Swap only the 3D HeroRig whenever character changes (instant, zero WebGL context churn)
   useEffect(() => {
@@ -301,13 +365,70 @@ export const Hero3dPreview = memo(function Hero3dPreview({
     api.targetSpinBoost = 1.35
   }, [character])
 
+  const artUrl = character.imageUrl || `/characters/${character.id}.png`
+  const glowColor = character.color || '#38BDF8'
+
   return (
     <div
-      className={`hero-3d-preview-box size-${size} ${className}`}
-      aria-label={`โมเดล 3D ของ ${character.displayName}`}
+      className={`hero-3d-preview-box size-${size} ${frameless ? 'frameless' : ''} ${className}`}
+      aria-label={viewMode === '3d' ? `โมเดล 3D ของ ${character.displayName}` : `รูปตัวละคร ${character.displayName}`}
     >
-      <div ref={hostRef} className="hero-3d-canvas-host" />
-      <span className="hero-3d-drag-hint">⟲ ลากหมุน 3D</span>
+      {showToggle && (
+        <div
+          className="hero-showcase-toggle"
+          role="group"
+          aria-label="สลับมุมมองตัวละคร"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className={`hero-showcase-toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
+            aria-pressed={viewMode === '3d'}
+            onClick={() => selectViewMode('3d')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+              <line x1="12" y1="22.08" x2="12" y2="12" />
+            </svg>
+            <span>3D</span>
+          </button>
+          <button
+            type="button"
+            className={`hero-showcase-toggle-btn ${viewMode === 'art' ? 'active' : ''}`}
+            aria-pressed={viewMode === 'art'}
+            onClick={() => selectViewMode('art')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="3" width="18" height="18" rx="3" />
+              <circle cx="8.5" cy="8.5" r="1.5" />
+              <polyline points="21 15 16 10 5 21" />
+            </svg>
+            <span>รูปโชว์</span>
+          </button>
+        </div>
+      )}
+
+      <div ref={hostRef} className={`hero-3d-canvas-host ${viewMode === 'art' ? 'is-hidden' : ''}`} />
+
+      {viewMode === 'art' && (
+        <div className="hero-showcase-art-stage">
+          <div className="hero-showcase-art-glow" style={{ background: glowColor }} />
+          <div
+            key={character.id}
+            className="hero-showcase-art-card"
+            style={{
+              borderColor: glowColor,
+              boxShadow: `0 22px 48px -12px rgba(2, 6, 23, 0.78), 0 0 28px ${glowColor}55`,
+            }}
+          >
+            <img src={artUrl} alt={character.displayName} className="hero-showcase-art-img" />
+            <div className="hero-showcase-art-vignette" />
+          </div>
+        </div>
+      )}
+
+      {!frameless && viewMode === '3d' && <span className="hero-3d-drag-hint">⟲ ลากหมุน 3D</span>}
     </div>
   )
 })

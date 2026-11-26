@@ -4,6 +4,8 @@
  * alongside procedural soft MOBA battlefield background music and distinct per-skill SFX.
  */
 
+import { ROSTER28_SPECS } from '../game/roster28Meta'
+
 export interface CharacterVoiceConfig {
   quote: string
   lang: string
@@ -177,6 +179,43 @@ export const CHARACTER_VOICES: Record<string, CharacterVoiceConfig> = {
     pitch: 0.88,
     rate: 0.95,
   },
+  aizen: {
+    quote: 'いつから鏡花水月を使っていないと錯覚していた？',
+    lang: 'ja-JP',
+    audioUrl: '/voices/aizen.mp3?v=jp1',
+    playbackRate: 0.97,
+    pitch: 0.86,
+    rate: 0.95,
+  },
+  toriko: {
+    quote: 'この世の全ての食材に感謝を込めて、いただきます！',
+    lang: 'ja-JP',
+    audioUrl: '/voices/toriko.mp3?v=jp1',
+    playbackRate: 1.03,
+    pitch: 0.98,
+    rate: 1.05,
+  },
+  frieren: {
+    quote: '魔王を倒した魔法使い、フリーレンだ。',
+    lang: 'ja-JP',
+    audioUrl: '/voices/frieren.mp3?v=jp1',
+    playbackRate: 0.98,
+    pitch: 1.0,
+    rate: 0.96,
+  },
+  ...Object.fromEntries(
+    ROSTER28_SPECS.map((s) => [
+      s.id,
+      {
+        quote: s.voiceQuote,
+        lang: s.voiceLang,
+        audioUrl: `/voices/${s.id}.mp3?v=jp1`,
+        playbackRate: 1.0,
+        pitch: 0.96,
+        rate: 1.0,
+      },
+    ]),
+  ),
 }
 
 export interface SkillVoiceClip {
@@ -189,7 +228,7 @@ export interface SkillVoiceClip {
 /** Authentic per-hero, per-skill voice callouts played immediately when heroes unleash their abilities. */
 export const SKILL_VOICE_MAP: Record<string, SkillVoiceClip> = {
   pa_1: { url: '/voices/skills/pa_1.mp3?v=sk1', text: 'ゲート・オブ・バビロン！', lang: 'ja-JP', playbackRate: 1.02 },
-  pa_2: { url: '/voices/skills/pa_2.mp3?v=sk1', text: '天の鎖、エルキドゥ！', lang: 'ja-JP', playbackRate: 1.0 },
+  pa_2: { url: '/voices/skills/pa_2.mp3?v=sk1', text: 'ゲート・オブ・バビロン！開け、王の財宝！', lang: 'ja-JP', playbackRate: 1.04 },
   pa_3: { url: '/voices/skills/pa_3.mp3?v=sk1', text: 'エヌマ・エリシュ！', lang: 'ja-JP', playbackRate: 0.98 },
   boy_1: { url: '/voices/skills/boy_1.mp3?v=sk1', text: '気弾連射！', lang: 'ja-JP', playbackRate: 1.04 },
   boy_2: { url: '/voices/skills/boy_2.mp3?v=sk1', text: '龍拳爆発！', lang: 'ja-JP', playbackRate: 1.03 },
@@ -249,6 +288,28 @@ export const SKILL_VOICE_MAP: Record<string, SkillVoiceClip> = {
   diablo_1: { url: '/voices/skills/diablo_1.mp3?v=sk1', text: '絶望の時間！', lang: 'ja-JP', playbackRate: 0.98 },
   diablo_2: { url: '/voices/skills/diablo_2.mp3?v=sk1', text: '誘惑世界！', lang: 'ja-JP', playbackRate: 0.96 },
   diablo_3: { url: '/voices/skills/diablo_3.mp3?v=sk1', text: 'エンド・オブ・ワールド！', lang: 'ja-JP', playbackRate: 0.95 },
+  aizen_1: { url: '/voices/skills/aizen_1.mp3?v=sk1', text: '破道の九十、黒棺！', lang: 'ja-JP', playbackRate: 0.97 },
+  aizen_2: { url: '/voices/skills/aizen_2.mp3?v=sk1', text: '砕けろ、鏡花水月！', lang: 'ja-JP', playbackRate: 0.98 },
+  aizen_3: { url: '/voices/skills/aizen_3.mp3?v=sk1', text: '崩玉よ、私を更なる高みへ！', lang: 'ja-JP', playbackRate: 0.96 },
+  toriko_1: { url: '/voices/skills/toriko_1.mp3?v=sk1', text: 'フォーク！ナイフ！', lang: 'ja-JP', playbackRate: 1.05 },
+  toriko_2: { url: '/voices/skills/toriko_2.mp3?v=sk1', text: 'レッグナイフ！', lang: 'ja-JP', playbackRate: 1.04 },
+  toriko_3: { url: '/voices/skills/toriko_3.mp3?v=sk1', text: 'アルティメットルーティーン！', lang: 'ja-JP', playbackRate: 1.01 },
+  frieren_1: { url: '/voices/skills/frieren_1.mp3?v=sk1', text: '一般攻撃魔法、ゾルトラーク。', lang: 'ja-JP', playbackRate: 0.99 },
+  frieren_2: { url: '/voices/skills/frieren_2.mp3?v=sk1', text: '防御魔法。', lang: 'ja-JP', playbackRate: 0.98 },
+  frieren_3: { url: '/voices/skills/frieren_3.mp3?v=sk1', text: '古き魔法よ、星を穿て。', lang: 'ja-JP', playbackRate: 0.97 },
+  ...Object.fromEntries(
+    ROSTER28_SPECS.flatMap((s) =>
+      s.skills.map((sk, idx) => [
+        `${s.id}_${idx + 1}`,
+        {
+          url: `/voices/skills/${s.id}_${idx + 1}.mp3?v=sk1`,
+          text: sk.voiceText,
+          lang: s.voiceLang,
+          playbackRate: 1.0,
+        },
+      ]),
+    ),
+  ),
 }
 
 interface BgmChordBar {
@@ -1112,6 +1173,18 @@ class SoundEngine {
         this.playTone(110, 48, 0.36, 'sawtooth', 0.26)
         this.playTone(580, 1160, 0.2, 'sine', 0.2, 0.05)
         break
+      case 'aizen':
+        this.playTone(185, 92, 0.38, 'sine', 0.24)
+        this.playTone(960, 480, 0.26, 'triangle', 0.16, 0.05)
+        break
+      case 'toriko':
+        this.playTone(140, 62, 0.3, 'sawtooth', 0.26)
+        this.playNoise(0.18, 920, 'lowpass', 0.24)
+        break
+      case 'frieren':
+        this.playTone(660, 1320, 0.24, 'sine', 0.2)
+        this.playTone(990, 1480, 0.28, 'triangle', 0.14, 0.06)
+        break
       default:
         this.playTone(520, 780, 0.14, 'sine', 0.18)
         this.playTone(780, 1040, 0.16, 'sine', 0.14, 0.06)
@@ -1133,7 +1206,10 @@ class SoundEngine {
         this.playNoise(0.08, 2800, 'highpass', 0.16)
         break
       case 'atk_gilga_flash':
-        this.playTone(980, 1520, 0.15, 'sine', 0.2)
+      case 'gate_portal':
+        this.playTone(980, 1680, 0.24, 'triangle', 0.24)
+        this.playTone(1420, 2120, 0.22, 'sine', 0.16, 0.05)
+        this.playNoise(0.18, 2800, 'highpass', 0.16)
         break
       case 'enkidu_chain':
       case 'enkidu_tether':
@@ -1141,9 +1217,11 @@ class SoundEngine {
         this.playNoise(0.16, 1900, 'bandpass', 0.24)
         break
       case 'enuma_elish':
-        this.playTone(110, 260, 0.52, 'sawtooth', 0.3)
-        this.playTone(62, 48, 0.56, 'sine', 0.34)
-        this.playNoise(0.48, 1200, 'bandpass', 0.26)
+        // Gilgamesh EA Star of Creation: deep dimensional tear rumble + spinning sword resonance + crimson blast roar
+        this.playTone(92, 240, 0.95, 'sawtooth', 0.34)
+        this.playTone(54, 38, 1.35, 'sine', 0.38)
+        this.playTone(320, 640, 0.72, 'triangle', 0.2, 0.08)
+        this.playNoise(1.25, 1100, 'bandpass', 0.3)
         break
       case 'atk_goku_fist':
         this.playTone(170, 52, 0.16, 'sine', 0.34)
@@ -1462,11 +1540,17 @@ class SoundEngine {
       case 'jinwoo_dagger_rush':
       case 'jinwoo_dagger_dash':
       case 'jinwoo_shadow_slash':
+      case 'jinwoo_dagger_flurry':
+      case 'igris_leap_slash':
+      case 'igris_fire_slash':
         this.playNoise(0.14, 3100, 'highpass', 0.24)
         this.playTone(1320, 560, 0.16, 'triangle', 0.22)
         break
       case 'jinwoo_rulers_hand':
       case 'jinwoo_arise':
+      case 'igris_slash_impact':
+      case 'igris_fireball':
+      case 'igris_fire_burst':
         this.playTone(145, 52, 0.52, 'sawtooth', 0.34)
         this.playTone(420, 880, 0.36, 'sine', 0.22, 0.05)
         this.playNoise(0.38, 1200, 'bandpass', 0.26)
@@ -1475,6 +1559,9 @@ class SoundEngine {
       case 'atk_naruto_rasen':
       case 'naruto_rasengan':
       case 'naruto_rasengan_burst':
+      case 'naruto_bijuudama':
+      case 'naruto_bijuudama_boom':
+      case 'naruto_bijuudama_beam':
         this.playNoise(0.24, 2100, 'bandpass', 0.28)
         this.playTone(320, 920, 0.22, 'sawtooth', 0.22)
         break
@@ -1544,6 +1631,79 @@ class SoundEngine {
         this.playTone(130, 42, 0.58, 'sawtooth', 0.36)
         this.playTone(620, 210, 0.42, 'triangle', 0.24, 0.05)
         this.playNoise(0.42, 920, 'bandpass', 0.3)
+        break
+      case 'aizen_basic_orb':
+      case 'aizen_hypnosis_mirage':
+        this.playTone(420, 210, 0.18, 'sine', 0.22)
+        this.playTone(840, 620, 0.14, 'triangle', 0.14, 0.03)
+        break
+      case 'aizen_black_coffin':
+      case 'aizen_black_coffin_burst':
+        this.playTone(98, 44, 0.52, 'sawtooth', 0.34)
+        this.playNoise(0.32, 780, 'lowpass', 0.28)
+        break
+      case 'aizen_kyoka_decoy':
+      case 'aizen_kyoka_beam':
+        this.playNoise(0.16, 3600, 'highpass', 0.24)
+        this.playTone(1240, 520, 0.22, 'triangle', 0.2)
+        break
+      case 'aizen_hogyoku_wave':
+      case 'aizen_hogyoku_aura':
+      case 'aizen_hogyoku_beam':
+        this.playTone(190, 480, 0.48, 'sawtooth', 0.3)
+        this.playTone(720, 1440, 0.36, 'sine', 0.22, 0.05)
+        break
+      case 'toriko_basic_punch':
+      case 'toriko_gourmet_surge':
+        this.playTone(180, 72, 0.18, 'sawtooth', 0.26)
+        this.playNoise(0.12, 1100, 'lowpass', 0.22)
+        break
+      case 'toriko_fork_thrust':
+      case 'toriko_knife_barrage':
+        this.playNoise(0.14, 2400, 'bandpass', 0.24)
+        this.playTone(540, 260, 0.16, 'triangle', 0.22)
+        break
+      case 'toriko_leg_knife':
+      case 'toriko_leg_knife_arc':
+        this.playNoise(0.2, 2100, 'highpass', 0.26)
+        this.playTone(320, 110, 0.24, 'sawtooth', 0.28)
+        break
+      case 'toriko_ultimate_routine':
+      case 'toriko_ultimate_fist':
+        this.playTone(92, 32, 0.6, 'sawtooth', 0.38)
+        this.playNoise(0.45, 580, 'lowpass', 0.34)
+        break
+      case 'frieren_basic_bolt':
+      case 'frieren_arcane_pulse':
+        this.playTone(880, 1280, 0.14, 'sine', 0.2)
+        break
+      case 'frieren_zoltraak':
+        this.playTone(460, 1420, 0.36, 'sawtooth', 0.28)
+        this.playNoise(0.24, 2600, 'bandpass', 0.22)
+        break
+      case 'frieren_mana_barrier':
+        this.playTone(520, 1040, 0.28, 'sine', 0.24)
+        this.playTone(780, 1560, 0.24, 'triangle', 0.16, 0.04)
+        break
+      case 'frieren_supreme_circle':
+      case 'frieren_supreme_beam':
+        this.playTone(260, 780, 0.56, 'sine', 0.32)
+        this.playTone(520, 1560, 0.48, 'triangle', 0.24, 0.06)
+        this.playNoise(0.42, 1800, 'bandpass', 0.26)
+        break
+      default:
+        if (kind.includes('slash') || kind.includes('sword') || kind.includes('blade') || kind.includes('claw') || kind.includes('chop')) {
+          this.playNoise(0.14, 2400, 'highpass', 0.22)
+          this.playTone(720, 320, 0.16, 'triangle', 0.2)
+        } else if (kind.includes('punch') || kind.includes('fist') || kind.includes('impact') || kind.includes('divide') || kind.includes('rock') || kind.includes('tnt')) {
+          this.playTone(135, 42, 0.32, 'sawtooth', 0.3)
+          this.playNoise(0.22, 720, 'lowpass', 0.26)
+        } else if (kind.includes('beam') || kind.includes('unibeam') || kind.includes('laser') || kind.includes('atomic') || kind.includes('sun') || kind.includes('nirvana')) {
+          this.playTone(260, 820, 0.38, 'sawtooth', 0.26)
+          this.playNoise(0.28, 1600, 'bandpass', 0.22)
+        } else {
+          this.playTone(520, 840, 0.18, 'sine', 0.2)
+        }
         break
     }
   }
