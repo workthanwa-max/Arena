@@ -1,7 +1,45 @@
 import * as THREE from 'three'
 import type { BeamEffect, GraphicsQuality, PlayerState, Projectile, ZoneEffect } from '../types/game'
 import type { AimPreviewPayload } from './core/eventBus'
+import { type FeelTier, GameFeelController } from './gameFeelController'
 import { ArcaneAimTextureCache } from './magicCircleBuilder'
+import { stepVfxChoreography } from './vfxAnimator'
+import {
+  buildRoster28SculptedProjectile,
+  buildSkillBeamArchetype,
+  resolveSkillFeelTier,
+} from './vfxArchetypes'
+import {
+  type BasicVfxGeos,
+  buildUniqueBasicBeam,
+  buildUniqueBasicProjectile,
+  createBasicVfxGeos,
+  disposeBasicVfxGeos,
+} from './vfxBasicAttacks'
+import {
+  createSculptedVfxGeos,
+  disposeSculptedVfxGeos,
+  type SculptedVfxGeos,
+} from './vfxGeometries'
+import {
+  createSharedShaderGeos,
+  disposeSharedShaderGeos,
+  enhanceProjectileWithShader,
+  resolveVfxSignature,
+  type SharedShaderGeos,
+} from './vfxHeroSignatures'
+import { VfxInstancedPool } from './vfxInstancedPool'
+import {
+  CORE23_BESPOKE_BEAM_KINDS,
+  CORE23_BESPOKE_ZONE_KINDS,
+} from './vfxCore23Enhance'
+import {
+  buildCore23SculptedBeam,
+  buildCore23SculptedZone,
+} from './vfxCore23Sculpted'
+import { VfxShaderLibrary } from './vfxShaders'
+import { VfxTextureAtlas } from './vfxTextures'
+import { buildHeroZoneLandmark } from './vfxZoneLandmarks'
 
 interface Particle3D {
   mesh: THREE.Mesh
@@ -148,6 +186,14 @@ export class Vfx3dManager {
   private aimLineMat: THREE.MeshBasicMaterial
   private aimSniperLaserMat: THREE.MeshBasicMaterial
   private lastAimTexKey = ''
+  private shaderLib = new VfxShaderLibrary()
+  private textures = new VfxTextureAtlas()
+  private shaderGeos: SharedShaderGeos
+  private basicGeos: BasicVfxGeos
+  private sculptedGeos: SculptedVfxGeos
+  private instancedPool: VfxInstancedPool
+  private feel: GameFeelController
+  private cachedShakeOffset = new THREE.Vector3()
 
   constructor(scene: THREE.Scene, quality: GraphicsQuality = 'pixel') {
     this.quality = quality
@@ -157,6 +203,11 @@ export class Vfx3dManager {
     this.lineScale = quality === 'pixel' ? 1.38 : quality === 'fine_pixel' ? 1.18 : 1.0
     this.detailMult = quality === 'ultra' ? 1.25 : quality === 'hd' ? 1.0 : quality === 'fine_pixel' ? 0.9 : 0.78
     this.sharedGlintArmsGeo = buildMergedStarArmsGeo(quality !== 'pixel')
+    this.shaderGeos = createSharedShaderGeos()
+    this.basicGeos = createBasicVfxGeos()
+    this.sculptedGeos = createSculptedVfxGeos()
+    this.instancedPool = new VfxInstancedPool(quality)
+    this.feel = new GameFeelController(quality)
 
     this.sharedRingGeo.rotateX(-Math.PI / 2)
     this.sharedDiscGeo.rotateX(-Math.PI / 2)
@@ -167,6 +218,8 @@ export class Vfx3dManager {
 
     scene.add(this.group)
     scene.add(this.aimGroup)
+    scene.add(this.instancedPool.getObject3D())
+    scene.add(this.feel.getObject3D())
 
     this.aimOuterMat = new THREE.MeshBasicMaterial({
       color: 0xffffff,
@@ -320,11 +373,17 @@ export class Vfx3dManager {
 
     let m = this.matPool.pop()
     const isDarkCore = color === 0x020617 || color === 0x09090b || color === 0x111827 || color === 0x180205 || color === 0x0b0518 || color === 0x120306
-    const useAdditive = !isDarkCore && opacity <= 0.96
+    // Anti-Neon Discipline: only soft outer halos (opacity <= 0.42) use AdditiveBlending;
+    // solid structures, slashes, pillars, and shrines use crisp NormalBlending so overlapping meshes never blow out to neon white!
+    const useAdditive = !isDarkCore && opacity <= 0.42
     const isTrans = opacity < 1 || useAdditive
     const wantSide = doubleSide ? THREE.DoubleSide : THREE.FrontSide
     const wantDepth = opacity >= 0.99 && !doubleSide && !useAdditive
     if (m) {
+      if (m.map) {
+        m.map = null
+        m.needsUpdate = true
+      }
       m.color.setHex(color)
       m.transparent = isTrans
       m.opacity = opacity
@@ -359,7 +418,11 @@ export class Vfx3dManager {
       if (ch.children.length > 0) {
         this.recycleMeshesRecursive(ch)
       }
-      if (ch instanceof THREE.Mesh && this.meshPool.length < 640) {
+      if (
+        ch instanceof THREE.Mesh &&
+        !(ch.material instanceof THREE.ShaderMaterial) &&
+        this.meshPool.length < 640
+      ) {
         this.meshPool.push(ch)
       }
     }
@@ -370,7 +433,17 @@ export class Vfx3dManager {
     this.recycleMeshesRecursive(grp)
     const lookup = grp.userData.matLookup as Map<number, THREE.MeshBasicMaterial> | undefined
     if (lookup) lookup.clear()
+    const shaderMats = grp.userData.shaderMats as THREE.ShaderMaterial[] | undefined
+    if (shaderMats) {
+      for (const sm of shaderMats) {
+        this.shaderLib.releaseMaterial(sm)
+      }
+      shaderMats.length = 0
+    }
     const mats = grp.userData.mats as THREE.MeshBasicMaterial[] | undefined
+    if (grp.userData.choreoTracks) {
+      ;(grp.userData.choreoTracks as unknown[]).length = 0
+    }
     if (!mats) return
     for (const m of mats) {
       if (this.matPool.length < 256) {
@@ -382,8 +455,43 @@ export class Vfx3dManager {
     mats.length = 0
   }
 
+  private collectGroupMats(grp: THREE.Group): void {
+    const seen = new Set<THREE.MeshBasicMaterial>()
+    const existing = grp.userData.mats as THREE.MeshBasicMaterial[] | undefined
+    const list: THREE.MeshBasicMaterial[] = existing ? [...existing] : []
+    for (const m of list) seen.add(m)
+    grp.traverse((ch) => {
+      if (ch instanceof THREE.Mesh && ch.material instanceof THREE.MeshBasicMaterial && !seen.has(ch.material)) {
+        seen.add(ch.material)
+        if (ch.material.userData.baseOpacity === undefined) {
+          ch.material.userData.baseOpacity = ch.material.opacity
+        }
+        list.push(ch.material)
+      }
+    })
+    grp.userData.mats = list
+  }
+
+  setFeelListener(x: number, z: number): void {
+    this.feel.setListenerPosition(x, z)
+  }
+
+  triggerFeel(tier: FeelTier, x: number, y: number, z: number, colorHex: number): void {
+    this.feel.triggerFeedback(tier, x, y, z, colorHex)
+  }
+
+  getCameraShakeOffset(): THREE.Vector3 {
+    return this.cachedShakeOffset
+  }
+
   spawnImpact(x: number, z: number, color: number, count = 10): void {
     const scaledCount = Math.max(3, Math.round(count * this.detailMult))
+    this.instancedPool.emitBurst(x, 22, z, color, 0xffffff, scaledCount, 175, 'spark')
+    if (scaledCount >= 8) {
+      this.instancedPool.emitBurst(x, 20, z, color, color, Math.max(3, Math.floor(scaledCount * 0.45)), 135, 'shard')
+      this.instancedPool.emitShockRing(x, 4, z, color, 0.7, 3.4, 0.28)
+      this.feel.flashLight(x, 28, z, color, 1.9, 190, 0.16)
+    }
     const baseSize = this.quality === 'pixel' ? 6.6 : this.quality === 'fine_pixel' ? 5.6 : 5.0
     const len = this.particles.length
     for (let i = 0; i < scaledCount; i++) {
@@ -450,6 +558,9 @@ export class Vfx3dManager {
   }
 
   stepParticles(dt: number): void {
+    this.shaderLib.update(dt)
+    this.instancedPool.update(dt)
+    this.cachedShakeOffset.copy(this.feel.update(dt))
     if (this.activeParticleCount > 0) {
       const baseSize = this.quality === 'pixel' ? 6.6 : this.quality === 'fine_pixel' ? 5.6 : 5.0
       for (const p of this.particles) {
@@ -1078,7 +1189,36 @@ export class Vfx3dManager {
 
       let st = this.projMeshes.get(pr.id)
       if (!st) {
-        const grp = this.buildProjectileGroup(pr)
+        const sig = resolveVfxSignature(pr.kind, hexNum(pr.color, 0x38bdf8), hexNum(pr.accentColor, 0xffffff))
+        const basicGrp = buildUniqueBasicProjectile(
+          pr,
+          this.basicGeos,
+          this.shaderLib,
+          this.textures,
+          this.shaderGeos.groundPlane,
+        )
+        let grp: THREE.Group
+        if (basicGrp) {
+          grp = basicGrp
+          this.collectGroupMats(grp)
+        } else {
+          const r28Proj = buildRoster28SculptedProjectile(
+            pr,
+            this.basicGeos,
+            this.sculptedGeos,
+            this.shaderLib,
+            this.textures,
+            this.shaderGeos.groundPlane,
+          )
+          if (r28Proj) {
+            grp = r28Proj
+            this.collectGroupMats(grp)
+          } else {
+            grp = this.buildProjectileGroup(pr)
+            enhanceProjectileWithShader(grp, sig, pr.radius, this.shaderLib, this.shaderGeos)
+          }
+          this.instancedPool.emitBurst(pr.x, 24, pr.y, sig.outerHex, sig.coreHex, 4, 100, sig.particleKind)
+        }
         this.group.add(grp)
         st = { grp, rx: pr.x, rz: pr.y }
         this.projMeshes.set(pr.id, st)
@@ -1120,496 +1260,6 @@ export class Vfx3dManager {
     }
   }
 
-  private buildBeamGroup(b: BeamEffect): THREE.Group {
-    const grp = new THREE.Group()
-    const col = hexNum(b.color, 0x38bdf8)
-    const acc = hexNum(b.accentColor, 0xffffff)
-    const dx = b.x2 - b.x1
-    const dz = b.y2 - b.y1
-    const len = Math.max(12, Math.hypot(dx, dz))
-    const yaw = Math.atan2(dx, dz)
-
-    if (
-      b.kind === 'atk_zoro_sweep' ||
-      b.kind === 'atk_zenitsu_slash' ||
-      b.kind === 'atk_aiouan_paw' ||
-      b.kind === 'atk_thanos_gauntlet' ||
-      b.kind === 'atk_jinwoo_dagger' ||
-      b.kind === 'igris_fire_slash' ||
-      b.kind === 'atk_sanji_kick' ||
-      b.kind === 'atk_naruto_punch' ||
-      b.kind === 'atk_naruto_rasen'
-    ) {
-      // Dramatic Triple-Layered 3D Crescent Slash Arc + Tier Voxels/Crystals + Katana Star Glints!
-      const rad = b.kind === 'atk_zoro_sweep' ? 132 : 116
-      const c0 = this.allocMesh(this.sharedSlashGeo, this.mkMat(grp, col, 0.45, true))
-      c0.scale.setScalar(rad * 1.12)
-      c0.position.set(b.x1, 20, b.y1)
-      c0.rotation.y = yaw
-      const c1 = this.allocMesh(this.sharedSlashGeo, this.mkMat(grp, col, 0.8, true))
-      c1.scale.setScalar(rad * 0.85)
-      c1.position.set(b.x1, 22, b.y1)
-      c1.rotation.y = yaw
-      const c2 = this.allocMesh(this.sharedSlashGeo, this.mkMat(grp, acc, 0.98, true))
-      c2.scale.setScalar(rad)
-      c2.position.set(b.x1, 24, b.y1)
-      c2.rotation.y = yaw
-      grp.add(c0, c1, c2)
-      if (b.kind === 'atk_zenitsu_slash') {
-        this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 0xfacc15, 0x7dd3fc, 13, 5, b.x1)
-      } else if (b.kind === 'atk_zoro_sweep') {
-        this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 0x10b981, 0xc084fc, 10, 4, b.x1)
-      } else if (b.kind === 'atk_jinwoo_dagger') {
-        this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 0x7c3aed, 0x38bdf8, 11, 4, b.x1)
-      } else if (b.kind === 'igris_fire_slash') {
-        this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 0xef4444, 0xa855f7, 14, 5, b.x1)
-      } else if (b.kind === 'atk_sanji_kick') {
-        this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 0xf97316, 0x38bdf8, 10, 4, b.x1)
-      }
-      this.addTierMotes3D(grp, b.x2, 24, b.y2, 28, 4, col, acc)
-      this.addStarGlint(grp, b.x2, 26, b.y2, 24, acc)
-      return grp
-    }
-
-    if (
-      b.kind === 'jinwoo_dagger_rush' ||
-      b.kind === 'jinwoo_dagger_dash' ||
-      b.kind === 'igris_leap_slash' ||
-      b.kind === 'sanji_sky_kick' ||
-      b.kind === 'sanji_skywalk' ||
-      b.kind === 'sanji_ifrit_kick' ||
-      b.kind === 'sanji_ifrit_rush' ||
-      b.kind === 'ben10_xlr8_blitz'
-    ) {
-      // Blazing High-Speed Dash Strike Corridor + Afterimage Ghosts + Twin Dagger / Greatsword X-Slashes!
-      const isIfrit = b.kind === 'sanji_ifrit_kick' || b.kind === 'sanji_ifrit_rush' || b.kind === 'igris_leap_slash'
-      const isDagger = b.kind === 'jinwoo_dagger_dash' || b.kind === 'jinwoo_dagger_rush'
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, isIfrit ? 26 : 20, col, 0.66)
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, isIfrit ? 10 : 8, 0xffffff, 0.99)
-      this.addJaggedBolt3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, col, acc, isIfrit ? 20 : 16, 6, b.x1 + b.y2)
-      if (isDagger || b.kind === 'igris_leap_slash') {
-        this.addJaggedBolt3D(grp, b.x1, 22, b.y1, b.x2, 22, b.y2, acc, 0xf97316, 14, 5, b.x2)
-        for (let s = 1; s <= 3; s++) {
-          const t = s / 3.2
-          const sl = this.allocMesh(this.sharedSlashGeo, this.mkMat(grp, s % 2 === 0 ? acc : col, 0.92, true))
-          sl.scale.setScalar(b.kind === 'igris_leap_slash' ? 96 : 78)
-          sl.position.set(b.x1 + dx * t, 24 + (s % 2) * 5, b.y1 + dz * t)
-          sl.rotation.y = yaw + (s % 2 === 0 ? 0.45 : -0.45)
-          sl.rotation.z = (s % 2 === 0 ? 1 : -1) * 0.36
-          grp.add(sl)
-        }
-      }
-      for (let i = 1; i <= 3; i++) {
-        const t = i / 4
-        this.spawnDashGhost(b.x1 + dx * t, b.y1 + dz * t, yaw, col)
-      }
-      this.addRing3D(grp, b.x2, 3, b.y2, isIfrit ? 88 : 64, acc, 0.96, 0.28)
-      this.addTierMotes3D(grp, b.x2, 26, b.y2, isIfrit ? 54 : 38, 6, col, acc)
-      this.addStarGlint(grp, b.x2, 28, b.y2, isIfrit ? 42 : 32, acc)
-      return grp
-    }
-
-    if (b.kind === 'naruto_rasengan') {
-      // Spinning Azure/Golden Kurama Rasengan Spiral Charge + Shockwave Cone!
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 16, col, 0.52)
-      const orb = this.allocMesh(this.sharedSphereGeo, this.mkMat(grp, col, 0.88))
-      orb.scale.setScalar(26)
-      orb.position.set(b.x2, 26, b.y2)
-      const core = this.allocMesh(this.sharedSphereGeo, this.mkMat(grp, 0xffffff, 0.99))
-      core.scale.setScalar(14)
-      core.position.set(b.x2, 26, b.y2)
-      const ringA = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, acc, 0.96))
-      ringA.scale.setScalar(34)
-      ringA.position.set(b.x2, 26, b.y2)
-      ringA.rotation.x = 0.7
-      const ringB = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, col, 0.92))
-      ringB.scale.setScalar(42)
-      ringB.position.set(b.x2, 26, b.y2)
-      ringB.rotation.y = 0.9
-      grp.add(orb, core, ringA, ringB)
-      this.addRing3D(grp, b.x2, 3, b.y2, 68, col, 0.94, 0.26)
-      this.addTierMotes3D(grp, b.x2, 26, b.y2, 46, 6, col, acc)
-      this.addStarGlint(grp, b.x2, 28, b.y2, 36, 0xffffff)
-      return grp
-    }
-
-    if (b.kind === 'luffy_pistol' || b.kind === 'atk_luffy_punch' || b.kind === 'luffy_gatling_fist') {
-      // Stretched Rubber Arm + Red-Black Busoshoku Haki Impact Fist + Shock Rings!
-      const isPistol = b.kind === 'luffy_pistol'
-      this.addSegment3D(grp, b.x1, 25, b.y1, b.x2, 25, b.y2, isPistol ? 14 : 9, 0xfde0c4, 0.88)
-      this.addSegment3D(grp, b.x1, 25, b.y1, b.x2, 25, b.y2, isPistol ? 22 : 14, 0xef4444, 0.38)
-      const fist = this.allocMesh(this.sharedSphereGeo, this.mkMat(grp, 0x18181b, 0.98))
-      fist.scale.setScalar(isPistol ? 26 : 16)
-      fist.position.set(b.x2, 25, b.y2)
-      const hakiHalo = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0xef4444, 0.96))
-      hakiHalo.scale.setScalar(isPistol ? 32 : 20)
-      hakiHalo.position.set(b.x2, 25, b.y2)
-      hakiHalo.rotation.y = yaw
-      grp.add(fist, hakiHalo)
-      if (isPistol) {
-        this.addJaggedBolt3D(grp, b.x1, 25, b.y1, b.x2, 25, b.y2, 0x09090b, 0xef4444, 14, 5, b.x1)
-      }
-      this.addRing3D(grp, b.x2, 3, b.y2, isPistol ? 64 : 38, 0xef4444, 0.94, 0.25)
-      this.addStarGlint(grp, b.x2, 26, b.y2, isPistol ? 34 : 20, 0xfacc15)
-      return grp
-    }
-
-    if (b.kind === 'atk_sukuna_cleave') {
-      // Sukuna "Hachi" (Cleave): Caster Claw Crescent + Triple Cross-Hatched Razor Slashes + Ground Spiderweb Fracture!
-      const claw = this.allocMesh(this.sharedSlashGeo, this.mkMat(grp, 0xdc2626, 0.88, true))
-      claw.scale.setScalar(98)
-      claw.position.set(b.x1, 24, b.y1)
-      claw.rotation.y = yaw
-      grp.add(claw)
-
-      const tx = b.x2
-      const tz = b.y2
-      for (const [ox, oz, oy] of [
-        [54, 44, 34],
-        [54, -44, 24],
-        [-50, 14, 30],
-      ] as const) {
-        this.addSegment3D(grp, tx - ox, 20, tz - oz, tx + ox, oy, tz + oz, 10.5, 0x09090b, 0.94)
-        this.addSegment3D(grp, tx - ox, 22, tz - oz, tx + ox, oy + 2, tz + oz, 5.2, 0xef4444, 0.98)
-        this.addSegment3D(grp, tx - ox, 24, tz - oz, tx + ox, oy + 4, tz + oz, 2.5, 0xffffff, 0.99)
-      }
-      // Spiderweb ground cleave fracture under target
-      this.addRing3D(grp, tx, 2.5, tz, 56, 0xdc2626, 0.94, 0.24)
-      for (let s = 0; s < 6; s++) {
-        const a = (s * Math.PI) / 3
-        this.addSegment3D(grp, tx, 3, tz, tx + Math.cos(a) * 60, 3, tz + Math.sin(a) * 60, 3.2, 0x09090b, 0.9)
-      }
-      this.addTierMotes3D(grp, tx, 22, tz, 34, 5, 0xdc2626, 0xffffff)
-      this.addStarGlint(grp, tx, 28, tz, 28, 0xfb7185)
-      return grp
-    }
-
-    if (b.kind === 'atk_gojo_punch') {
-      // Gojo Lapse-Blue Spatial Vacuum Fist + Black Flash (Kokusen) Crimson-Black Lightning Sparks!
-      this.addSegment3D(grp, b.x1, 25, b.y1, b.x2, 25, b.y2, 18, 0x38bdf8, 0.56)
-      this.addSegment3D(grp, b.x1, 25, b.y1, b.x2, 25, b.y2, 7.5, 0xffffff, 0.99)
-      const shockCone = this.allocMesh(this.sharedConeGeo, this.mkMat(grp, 0x38bdf8, 0.72))
-      shockCone.rotation.x = Math.PI / 2
-      shockCone.scale.set(30, 50, 30)
-      shockCone.position.set(b.x2, 25, b.y2)
-      shockCone.rotation.y = yaw
-      grp.add(shockCone)
-      this.addRing3D(grp, b.x2, 3, b.y2, 58, 0x38bdf8, 0.96, 0.26)
-      this.addRing3D(grp, b.x2, 4, b.y2, 36, 0xa855f7, 0.94, 0)
-      for (let k = 0; k < 4; k++) {
-        const a = yaw + (k - 1.5) * 0.85
-        const r = 66
-        this.addJaggedBolt3D(
-          grp,
-          b.x2,
-          25,
-          b.y2,
-          b.x2 + Math.cos(a) * r,
-          12 + (k % 2) * 24,
-          b.y2 + Math.sin(a) * r,
-          k % 2 === 0 ? 0x09090b : 0x38bdf8,
-          k % 2 === 0 ? 0xef4444 : 0xffffff,
-          12,
-          4,
-          b.x2 + k * 7,
-        )
-      }
-      this.addTierMotes3D(grp, b.x2, 25, b.y2, 32, 5, 0x38bdf8, 0xef4444)
-      this.addStarGlint(grp, b.x2, 26, b.y2, 30, 0x38bdf8)
-      return grp
-    }
-
-    if (b.kind === 'gojo_cast_red' || b.kind === 'gojo_cast_blue') {
-      const isBlue = b.kind === 'gojo_cast_blue'
-      const mainHex = isBlue ? 0x38bdf8 : 0xef4444
-      for (let i = 1; i <= 3; i++) {
-        const t = i / 3
-        const ring = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, i === 3 ? 0xffffff : mainHex, 0.94))
-        ring.scale.setScalar(isBlue ? (4 - i) * 9.5 : i * 9.5)
-        ring.position.set(b.x1 + dx * t, 26, b.y1 + dz * t)
-        ring.rotation.y = yaw
-        grp.add(ring)
-      }
-      this.addJaggedBolt3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, mainHex, 0xffffff, 11, 4, b.x1)
-      this.addTierMotes3D(grp, b.x2, 26, b.y2, 24, 4, mainHex, 0xffffff)
-      this.addStarGlint(grp, b.x2, 26, b.y2, 26, mainHex)
-      return grp
-    }
-
-    if (b.kind === 'infinite_void_open') {
-      // Descending Cosmic Pillar of Unlimited Void + Six-Eyes Rings!
-      this.addJaggedBolt3D(grp, b.x2, 340, b.y2, b.x2, 6, b.y2, 0x38bdf8, 0xffffff, 22, 7, b.x2)
-      for (let i = 0; i < 4; i++) {
-        this.addRing3D(grp, b.x2, 6 + i * 55, b.y2, 134 - i * 22, i % 2 === 0 ? 0x38bdf8 : 0xc084fc, 0.94, 0.16)
-      }
-      this.addTierMotes3D(grp, b.x2, 36, b.y2, 72, 8, 0x38bdf8, 0xc084fc)
-      this.addStarGlint(grp, b.x2, 42, b.y2, 50, 0xffffff)
-      return grp
-    }
-
-    if (b.kind === 'hollow_purple_blast') {
-      // Overlapping Red (赫) & Blue (蒼) Venn Rings snapping into Imaginary-Mass Purple (茈)!
-      const mx = (b.x1 + b.x2) * 0.5
-      const mz = (b.y1 + b.y2) * 0.5
-      const redRing = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0xef4444, 0.96))
-      redRing.scale.setScalar(70)
-      redRing.position.set(mx - 34, 34, mz)
-      const blueRing = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0x38bdf8, 0.96))
-      blueRing.scale.setScalar(70)
-      blueRing.position.set(mx + 34, 34, mz)
-      const purpleRing = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0xc084fc, 0.99))
-      purpleRing.scale.setScalar(98)
-      purpleRing.position.set(mx, 34, mz)
-      grp.add(redRing, blueRing, purpleRing)
-      for (let k = 0; k < 6; k++) {
-        const a = (k * Math.PI) / 3
-        this.addJaggedBolt3D(grp, mx, 34, mz, mx + Math.cos(a) * 185, 14, mz + Math.sin(a) * 185, 0x9333ea, 0xffffff, 18, 5, k)
-      }
-      this.addTierMotes3D(grp, mx, 34, mz, 84, 8, 0xa855f7, 0xffffff)
-      this.addStarGlint(grp, mx, 38, mz, 58, 0xf0abfc)
-      return grp
-    }
-
-    if (b.kind === 'atk_gilga_flash') {
-      for (const [px, pz] of [[b.x1, b.y1], [b.x2, b.y2]] as const) {
-        this.addRing3D(grp, px, 22, pz, 26, 0xfacc15, 0.96, 0.28)
-        this.addStarGlint(grp, px, 24, pz, 18, 0xfef08a)
-      }
-      return grp
-    }
-
-    if (b.kind === 'atk_simo_rifle' || b.kind === 'simo_snipe_off' || b.kind === 'simo_backflip_shot') {
-      // Simo Hayha M/28-30 Frost Rifle Shot / Off-Center Glancing Shot / Backflip Disengage Shot
-      const isBackflip = b.kind === 'simo_backflip_shot'
-      this.addSegment3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, isBackflip ? 14 : 9.5, col, 0.7)
-      this.addSegment3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, isBackflip ? 5.5 : 3.8, 0xffffff, 0.99)
-      this.addRing3D(grp, b.x1 + dx * 0.06, 26, b.y1 + dz * 0.06, isBackflip ? 26 : 16, 0xfef08a, 0.94, 0)
-      this.addRing3D(grp, b.x2, 3, b.y2, isBackflip ? 50 : 32, col, 0.94, 0.24)
-      this.addTierMotes3D(grp, b.x2, 24, b.y2, isBackflip ? 34 : 22, 4, col, 0xffffff)
-      this.addStarGlint(grp, b.x2, 26, b.y2, isBackflip ? 30 : 20, 0xe0f2fe)
-      return grp
-    }
-
-    if (b.kind === 'simo_snipe_max') {
-      // Simo Hayha 100% Charged Elsu Snipe (50% Enemy HP!): Blazing Supersonic Crimson-Frost Rail + 7 Sonic Boom Rings!
-      this.addSegment3D(grp, b.x1, 27, b.y1, b.x2, 27, b.y2, 25, 0xef4444, 0.62)
-      this.addSegment3D(grp, b.x1, 27, b.y1, b.x2, 27, b.y2, 13, 0x38bdf8, 0.88)
-      this.addSegment3D(grp, b.x1, 27, b.y1, b.x2, 27, b.y2, 5.5, 0xffffff, 0.99)
-      for (let r = 1; r <= 7; r++) {
-        const t = r / 7.5
-        const ring = this.allocMesh(
-          this.sharedTorusGeo,
-          this.mkMat(grp, r % 2 === 0 ? 0x38bdf8 : 0xef4444, 0.95),
-        )
-        ring.scale.setScalar(18 + r * 3.5)
-        ring.position.set(b.x1 + dx * t, 27, b.y1 + dz * t)
-        ring.rotation.y = yaw
-        grp.add(ring)
-      }
-      this.addRing3D(grp, b.x2, 3, b.y2, 76, 0xef4444, 0.96, 0.3)
-      this.addTierMotes3D(grp, b.x2, 27, b.y2, 52, 7, 0x38bdf8, 0xef4444)
-      this.addStarGlint(grp, b.x1, 27, b.y1, 34, 0xfef08a)
-      this.addStarGlint(grp, b.x2, 28, b.y2, 48, 0xffffff)
-      return grp
-    }
-
-    if (b.kind === 'basic_lock_reticle' || b.kind === 'aiouan_lock_beam') {
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 3.4, acc, 0.78)
-      this.addRing3D(grp, b.x2, 3, b.y2, 36, col, 0.95, 0.24)
-      this.addTierMotes3D(grp, b.x2, 22, b.y2, 22, 3, col, acc)
-      this.addStarGlint(grp, b.x2, 28, b.y2, 20, acc)
-      return grp
-    }
-
-    if (b.kind === 'killua_leap_arc') {
-      const steps = 8
-      let lx = b.x1
-      let ly = 24
-      let lz = b.y1
-      for (let i = 1; i <= steps; i++) {
-        const t = i / steps
-        const nx = b.x1 + dx * t
-        const ny = 24 + Math.sin(t * Math.PI) * 95
-        const nz = b.y1 + dz * t
-        this.addSegment3D(grp, lx, ly, lz, nx, ny, nz, 8.5, col, 0.78)
-        this.addSegment3D(grp, lx, ly, lz, nx, ny, nz, 3.8, acc, 0.99)
-        lx = nx
-        ly = ny
-        lz = nz
-      }
-      this.addTierMotes3D(grp, b.x2, 20, b.y2, 32, 4, col, acc)
-      return grp
-    }
-
-    if (b.kind === 'narukami_strike' || b.kind === 'black_lightning_strike' || b.kind === 'aiouan_timestop_burst') {
-      // Sky-Descending Jagged Lightning Strike from High Heavens (Y=380 -> Y=0)
-      this.addJaggedBolt3D(grp, b.x2, 360, b.y2, b.x2, 4, b.y2, col, acc, 22, 7, b.x2 + b.y2)
-      this.addRing3D(grp, b.x2, 3, b.y2, 78, acc, 0.96, 0.3)
-      this.addRing3D(grp, b.x2, 4, b.y2, 48, 0xffffff, 0.94, 0)
-      this.addTierMotes3D(grp, b.x2, 24, b.y2, 48, 6, col, acc)
-      this.addStarGlint(grp, b.x2, 22, b.y2, 30, acc)
-      return grp
-    }
-
-    if (b.kind === 'gilga_sky_sword') {
-      // Overhead Golden Gate Portal at Y=240 + Plunging Divine Sword
-      const portal = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0xfacc15, 0.95))
-      portal.rotation.x = Math.PI / 2
-      portal.scale.setScalar(28)
-      portal.position.set(b.x2, 240, b.y2)
-      grp.add(portal)
-      this.addSegment3D(grp, b.x2, 240, b.y2, b.x2, 10, b.y2, 8.5, 0xfacc15, 0.96)
-      this.addSegment3D(grp, b.x2, 240, b.y2, b.x2, 10, b.y2, 3.8, 0xffffff, 0.99)
-      this.addRing3D(grp, b.x2, 3, b.y2, 44, 0xfacc15, 0.92, 0.24)
-      this.addTierMotes3D(grp, b.x2, 18, b.y2, 28, 4, 0xfacc15, 0xfef08a)
-      return grp
-    }
-
-    if (b.kind === 'zenitsu_hekireki' || b.kind === 'zenitsu_rokuren' || b.kind === 'shishi_sonson' || b.kind === 'zenitsu_murad_slash') {
-      // High-Impact Dash Corridor + Sonic Silhouettes + Jagged Thunder + Katana Glints
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 19, col, 0.5)
-      this.addSegment3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, 7.5, 0xffffff, 0.99)
-      this.addJaggedBolt3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, col, acc, 18, 7, b.x1 + b.y2)
-      if (b.kind !== 'zenitsu_murad_slash') {
-        const copies = b.kind === 'zenitsu_rokuren' ? 4 : 3
-        for (let i = 1; i <= copies; i++) {
-          const t = i / (copies + 1)
-          const gx = b.x1 + dx * t
-          const gz = b.y1 + dz * t
-          this.spawnDashGhost(gx, gz, yaw, col)
-        }
-        this.addRing3D(grp, b.x2, 3, b.y2, b.kind === 'zenitsu_rokuren' ? 80 : 60, acc, 0.94, 0.22)
-      }
-      this.addTierMotes3D(grp, (b.x1 + b.x2) * 0.5, 26, (b.y1 + b.y2) * 0.5, 36, 5, col, acc)
-      this.addStarGlint(grp, b.x1, 26, b.y1, 20, col)
-      this.addStarGlint(grp, b.x2, 26, b.y2, 30, acc)
-      return grp
-    }
-
-    if (b.kind === 'atk_killua_spark' || b.kind === 'lightning_arc' || b.kind === 'narukami_radial_beam' || b.kind === 'thunder_slam_burst') {
-      this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, col, acc, 15, 6, b.x1 * 0.1)
-      this.addRing3D(grp, b.x2, 3, b.y2, 34, acc, 0.88, 0)
-      this.addTierMotes3D(grp, b.x2, 22, b.y2, 20, 3, col, acc)
-      return grp
-    }
-
-    if (b.kind === 'enuma_elish') {
-      // Gilgamesh EA (Enuma Elish): Full-map Crimson-Gold Spatial Rupture Beam that grows wider over 5 seconds!
-      const w = Math.max(24, b.width * 0.56) * this.lineScale
-      grp.userData.baseWidth = b.width
-      grp.userData.isEnumaElish = true
-
-      const enumaPivot = new THREE.Group()
-      enumaPivot.position.set((b.x1 + b.x2) * 0.5, 28, (b.y1 + b.y2) * 0.5)
-      enumaPivot.rotation.y = yaw
-      grp.add(enumaPivot)
-      grp.userData.enumaPivot = enumaPivot
-
-      const voidSheath = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, 0x450a0a, 0.54))
-      voidSheath.scale.set(w * 1.65, w * 1.65, len)
-      const crimsonBody = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, 0xef4444, 0.78))
-      crimsonBody.scale.set(w * 1.1, w * 1.1, len)
-      const goldInner = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, 0xfacc15, 0.94))
-      goldInner.scale.set(w * 0.52, w * 0.52, len)
-      const whiteCore = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, 0xffffff, 0.99))
-      whiteCore.scale.set(w * 0.24, w * 0.24, len)
-      enumaPivot.add(voidSheath, crimsonBody, goldInner, whiteCore)
-
-      const ringCount = 10
-      const spinRings: THREE.Mesh[] = []
-      for (let r = 0; r < ringCount; r++) {
-        const zLocal = ((r + 0.5) / ringCount - 0.5) * len * 0.94
-        const ringCol = r % 3 === 0 ? 0xfacc15 : r % 3 === 1 ? 0xef4444 : 0x09090b
-        const ring = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, ringCol, 0.96))
-        ring.scale.setScalar(w * (1.05 + (r % 3) * 0.22))
-        ring.position.set(0, 0, zLocal)
-        enumaPivot.add(ring)
-        spinRings.push(ring)
-      }
-      grp.userData.eaSpinRings = spinRings
-
-      // Origin EA Sword Abyssal Whirl Ring + Terminal Horizon Flash
-      const eaMuzzle = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, 0xfacc15, 0.98))
-      eaMuzzle.scale.setScalar(w * 1.25)
-      eaMuzzle.position.set(b.x1, 28, b.y1)
-      eaMuzzle.rotation.y = yaw
-      grp.add(eaMuzzle)
-
-      this.addJaggedBolt3D(grp, b.x1, 30, b.y1, b.x2, 30, b.y2, 0xef4444, 0xfacc15, w * 0.85, 8, b.x1)
-      this.addJaggedBolt3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, 0x7f1d1d, 0xffffff, w * 0.65, 7, b.y2 + 37)
-      this.addStarGlint(grp, b.x1, 28, b.y1, 44, 0xef4444)
-      this.addStarGlint(grp, b.x2, 28, b.y2, 54, 0xfacc15)
-      return grp
-    }
-
-    // Mega Beams & Shock Corridors (Kamehameha, Saitama Serious Punch, Mind Beam, Way Big Cosmic Ray!)
-    const w = Math.max(8, b.width * 0.56) * this.lineScale
-    const auraSheath = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, col, 0.28))
-    auraSheath.scale.set(w * 1.48, w * 1.48, len)
-    auraSheath.position.set((b.x1 + b.x2) * 0.5, 25, (b.y1 + b.y2) * 0.5)
-    auraSheath.rotation.y = yaw
-
-    const outer = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, col, 0.64))
-    outer.scale.set(w, w, len)
-    outer.position.set((b.x1 + b.x2) * 0.5, 25, (b.y1 + b.y2) * 0.5)
-    outer.rotation.y = yaw
-
-    const inner = this.allocMesh(this.sharedCylGeo, this.mkMat(grp, acc, 0.99))
-    inner.scale.set(w * 0.48, w * 0.48, len)
-    inner.position.set((b.x1 + b.x2) * 0.5, 25, (b.y1 + b.y2) * 0.5)
-    inner.rotation.y = yaw
-    grp.add(auraSheath, outer, inner)
-
-    if (
-      b.kind === 'kamehameha' ||
-      b.kind === 'enuma_elish' ||
-      b.kind === 'saitama_serious_punch' ||
-      b.kind === 'goku_dragon_rush' ||
-      b.kind === 'thanos_mind_beam' ||
-      b.kind === 'ben10_cosmic_ray' ||
-      b.kind === 'frieren_zoltraak' ||
-      b.kind === 'frieren_supreme_beam' ||
-      b.kind === 'toriko_leg_knife' ||
-      b.kind === 'toriko_ultimate_fist' ||
-      b.kind === 'aizen_black_coffin_burst' ||
-      b.kind === 'aizen_hogyoku_beam' ||
-      b.kind === 'diavolo_crimson_punch' ||
-      b.kind === 'naruto_bijuudama_beam' ||
-      b.width >= 60 ||
-      b.kind.includes('unibeam') ||
-      b.kind.includes('dimension_slash') ||
-      b.kind.includes('atomic') ||
-      b.kind.includes('crimson_beam')
-    ) {
-      for (let r = 1; r <= 6; r++) {
-        const t = r / 6.5
-        const ring = this.allocMesh(this.sharedTorusGeo, this.mkMat(grp, r % 2 === 0 ? 0xffffff : acc, 0.95))
-        ring.scale.setScalar(w * (0.95 + r * 0.16))
-        ring.position.set(b.x1 + dx * t, 25, b.y1 + dz * t)
-        ring.rotation.y = yaw
-        grp.add(ring)
-      }
-      // Twin Coiling Plasma Bolt Helices + Ground Impact Shockwave Ring along Mega Beam!
-      this.addJaggedBolt3D(grp, b.x1, 26, b.y1, b.x2, 26, b.y2, col, 0xffffff, w * 0.72, 6, b.x1)
-      this.addJaggedBolt3D(grp, b.x1, 24, b.y1, b.x2, 24, b.y2, acc, 0xffffff, w * 0.58, 5, b.y2 + 19)
-      this.addRing3D(grp, b.x2, 3, b.y2, w * 2.1, acc, 0.95, 0.28)
-      this.addTierMotes3D(grp, b.x2, 26, b.y2, w * 1.55, 7, col, acc)
-      this.addStarGlint(grp, b.x1, 26, b.y1, 28, col)
-      this.addStarGlint(grp, b.x2, 26, b.y2, 42, acc)
-    } else if (b.kind === 'aiouan_ora_rush') {
-      const fistGeo = this.isPixelTier ? this.sharedBoxGeo : this.sharedSphereGeo
-      for (let f = 1; f <= 6; f++) {
-        const t = f / 6
-        const fist = this.allocMesh(fistGeo, this.mkMat(grp, f % 2 === 0 ? 0xfacc15 : 0xc084fc, 0.96))
-        fist.scale.setScalar(12)
-        fist.position.set(b.x1 + dx * t + (f % 2 === 0 ? 12 : -12), 25 + (f % 2 === 0 ? 6 : -6), b.y1 + dz * t)
-        grp.add(fist)
-      }
-      this.addStarGlint(grp, b.x2, 26, b.y2, 26, 0xfacc15)
-    }
-    return grp
-  }
-
   syncBeams(list: BeamEffect[], dt: number): void {
     const aliveIds = new Set<string>()
     const nowSec = performance.now() * 0.001
@@ -1626,7 +1276,54 @@ export class Vfx3dManager {
 
       let grp = this.beamMeshes.get(b.id)
       if (!grp) {
-        grp = this.buildBeamGroup(b)
+        const sig = resolveVfxSignature(b.kind, hexNum(b.color, 0x38bdf8), hexNum(b.accentColor, 0xffffff))
+        const basicGrp = buildUniqueBasicBeam(
+          b,
+          this.basicGeos,
+          this.textures,
+          this.shaderGeos.groundPlane,
+        )
+        if (basicGrp) {
+          grp = basicGrp
+          this.collectGroupMats(grp)
+          if (b.kind !== 'basic_lock_reticle') {
+            this.instancedPool.emitBurst(b.x2, 24, b.y2, sig.coreHex, sig.outerHex, 4, 120, 'spark')
+          }
+        } else {
+          const isCore23Bespoke = b.kind ? CORE23_BESPOKE_BEAM_KINDS.has(b.kind) : false
+          if (isCore23Bespoke) {
+            grp = buildCore23SculptedBeam(
+              b,
+              sig,
+              this.basicGeos,
+              this.sculptedGeos,
+              this.shaderLib,
+              this.textures,
+              this.shaderGeos.groundPlane,
+            )
+          } else {
+            grp = buildSkillBeamArchetype(
+              b,
+              sig,
+              this.basicGeos,
+              this.sculptedGeos,
+              this.shaderLib,
+              this.textures,
+              this.shaderGeos.groundPlane,
+            )
+          }
+          this.collectGroupMats(grp)
+          const feelTier = resolveSkillFeelTier(b.kind, b.width, false)
+          if (b.kind !== 'dash_afterimage') {
+            const burstCount = feelTier === 'cataclysm' ? 14 : feelTier === 'heavy' ? 10 : 6
+            this.instancedPool.emitBurst(b.x1, 25, b.y1, sig.coreHex, sig.outerHex, Math.max(4, Math.floor(burstCount * 0.6)), 145, sig.particleKind)
+            this.instancedPool.emitBurst(b.x2, 25, b.y2, sig.outerHex, sig.coreHex, burstCount, 185, 'spark')
+            if (feelTier === 'heavy' || feelTier === 'cataclysm') {
+              this.instancedPool.emitShockRing(b.x2, 4, b.y2, sig.outerHex, 0.75, 4.2, 0.34)
+            }
+            this.feel.triggerFeedback(feelTier, b.x2, 24, b.y2, sig.outerHex)
+          }
+        }
         this.group.add(grp)
         this.beamMeshes.set(b.id, grp)
       }
@@ -1645,10 +1342,20 @@ export class Vfx3dManager {
         }
       }
 
+      const beamProgress = 1 - Math.max(0, Math.min(1, b.life / Math.max(0.05, b.maxLife)))
+      stepVfxChoreography(grp, beamProgress, dt, nowSec)
+
       const mats = grp.userData.mats as THREE.MeshBasicMaterial[] | undefined
       if (mats) {
         for (const m of mats) {
           m.opacity = ((m.userData.baseOpacity as number) ?? 0.85) * alpha
+        }
+      }
+      const shaderMats = grp.userData.shaderMats as THREE.ShaderMaterial[] | undefined
+      if (shaderMats) {
+        for (const sm of shaderMats) {
+          sm.uniforms.uOpacity.value = ((sm.userData.baseOpacity as number) ?? 0.9) * alpha
+          sm.uniforms.uProgress.value = beamProgress
         }
       }
     }
@@ -2733,7 +2440,55 @@ export class Vfx3dManager {
 
       let grp = this.zoneMeshes.get(meshKey)
       if (!grp) {
-        grp = this.buildZoneGroup(z, isWindup)
+        const sig = resolveVfxSignature(z.kind, hexNum(z.color, 0x38bdf8), hexNum(z.accentColor, 0xfef08a))
+        const isMapPickup = z.kind === 'scp_medkit_orb' || z.kind === 'aegis_core_orb'
+        const isCore23Bespoke = z.kind ? CORE23_BESPOKE_ZONE_KINDS.has(z.kind) : false
+        if (isMapPickup) {
+          grp = this.buildZoneGroup(z, isWindup)
+        } else if (isCore23Bespoke) {
+          grp = buildCore23SculptedZone(
+            z,
+            isWindup,
+            sig,
+            this.basicGeos,
+            this.sculptedGeos,
+            this.shaderLib,
+            this.textures,
+            this.shaderGeos.groundPlane,
+          )
+          this.collectGroupMats(grp)
+          if (!isWindup) {
+            const feelTier = resolveSkillFeelTier(z.kind, z.radius, true)
+            const burstCount = feelTier === 'cataclysm' ? 14 : feelTier === 'heavy' ? 10 : 6
+            this.instancedPool.emitBurst(z.x, 18, z.y, sig.outerHex, sig.coreHex, burstCount, 165, sig.particleKind)
+            if (feelTier === 'heavy' || feelTier === 'cataclysm') {
+              this.instancedPool.emitShockRing(z.x, 4, z.y, sig.coreHex, 0.9, Math.max(3.2, z.radius / 28), 0.38)
+            }
+            this.feel.triggerFeedback(feelTier, z.x, 20, z.y, sig.outerHex)
+          }
+        } else {
+          grp = buildHeroZoneLandmark(
+            z,
+            isWindup,
+            sig,
+            this.basicGeos,
+            this.sculptedGeos,
+            this.shaderLib,
+            this.textures,
+            this.shaderGeos.groundPlane,
+            this.shaderGeos.domeHemi,
+          )
+          this.collectGroupMats(grp)
+          if (!isWindup) {
+            const feelTier = resolveSkillFeelTier(z.kind, z.radius, true)
+            const burstCount = feelTier === 'cataclysm' ? 14 : feelTier === 'heavy' ? 10 : 6
+            this.instancedPool.emitBurst(z.x, 18, z.y, sig.outerHex, sig.coreHex, burstCount, 165, sig.particleKind)
+            if (feelTier === 'heavy' || feelTier === 'cataclysm') {
+              this.instancedPool.emitShockRing(z.x, 4, z.y, sig.coreHex, 0.9, Math.max(3.2, z.radius / 28), 0.38)
+            }
+            this.feel.triggerFeedback(feelTier, z.x, 20, z.y, sig.outerHex)
+          }
+        }
         this.group.add(grp)
         this.zoneMeshes.set(meshKey, grp)
       }
@@ -2758,8 +2513,9 @@ export class Vfx3dManager {
       } else if (z.kind === 'scp_medkit_orb' || z.kind === 'aegis_core_orb') {
         grp.rotation.y = animTime * 0.0028
         grp.position.y = Math.sin(animTime * 0.0045 + z.x) * 4.5
-      } else if (z.kind !== 'zenitsu_honoo_no_kami') {
-        grp.rotation.y = animTime * (isWindup ? 0.004 : 0.002)
+      } else {
+        // Keep zone landmarks anchored cleanly; only explicitly registered sub-meshes spin!
+        grp.rotation.y = 0
       }
       if (!isWindup && z.kind === 'thanos_infinity_snap') {
         const exp = 0.3 + (1 - ratio) * 1.45
@@ -2773,10 +2529,22 @@ export class Vfx3dManager {
           }
         }
       }
+      const zoneProgress = 1 - ratio
+      stepVfxChoreography(grp, zoneProgress, dt, animTime * 0.001)
+
       const mats = grp.userData.mats as THREE.MeshBasicMaterial[] | undefined
       if (mats) {
         for (const m of mats) {
           m.opacity = ((m.userData.baseOpacity as number) ?? 0.75) * fade
+        }
+      }
+      const shaderMats = grp.userData.shaderMats as THREE.ShaderMaterial[] | undefined
+      if (shaderMats) {
+        for (const sm of shaderMats) {
+          sm.uniforms.uOpacity.value = ((sm.userData.baseOpacity as number) ?? 0.8) * fade
+          if (sm.userData.isShockwaveProgress) {
+            sm.uniforms.uProgress.value = Math.min(1, (1 - ratio) * 1.45)
+          }
         }
       }
     }
@@ -2812,6 +2580,13 @@ export class Vfx3dManager {
     this.aimLineMat.dispose()
     this.aimSniperLaserMat.dispose()
     this.aimSigilGeo.dispose()
+    this.shaderLib.dispose()
+    this.textures.dispose()
+    this.instancedPool.dispose()
+    this.feel.dispose()
+    disposeSharedShaderGeos(this.shaderGeos)
+    disposeBasicVfxGeos(this.basicGeos)
+    disposeSculptedVfxGeos(this.sculptedGeos)
     this.sharedGlintArmsGeo.dispose()
     this.sharedSphereGeo.dispose()
     this.sharedOctaGeo.dispose()

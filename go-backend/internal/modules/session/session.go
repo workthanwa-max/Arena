@@ -37,6 +37,7 @@ type InboundMessage struct {
 	TY          float64 `json:"ty"`
 	TS          int64   `json:"ts"`
 	Emote       string  `json:"emote"`
+	Mode        string  `json:"mode"`
 	Team        string  `json:"team"`
 	MapID       string  `json:"mapId"`
 	CharacterID string  `json:"characterId"`
@@ -246,7 +247,7 @@ func (s *Session) readPump(handler InputHandler) {
 		}
 
 		switch msg.Type {
-		case "input", "skill", "attack", "dash", "rct", "snap", "respawn", "emote", "select_team", "select_map", "select_character", "toggle_ready", "start_match", "return_lobby", "switch_character", "reset_cooldowns", "voice_signal":
+		case "input", "skill", "attack", "dash", "rct", "snap", "respawn", "emote", "select_mode", "select_team", "select_map", "select_character", "toggle_ready", "start_match", "return_lobby", "switch_character", "reset_cooldowns", "voice_signal":
 			handler.HandleInput(s.playerID, msg)
 		case "ping":
 			s.syncer.SendPong(s, msg.TS)

@@ -115,6 +115,7 @@ interface GameStoreState {
   selectedMode: GameMode
   selectedMapId: MapId
   joining: boolean
+  lobbyBooting: boolean
   checkingJoinRoom: boolean
   arenaReady: boolean
   assetsReady: boolean
@@ -204,11 +205,13 @@ interface GameStoreState {
   setAssetsReady: (ready: boolean) => void
   setPreloadStatus: (pct: number, stage: string) => void
   startPracticeMode: (charIdOverride?: string, mapOverride?: MapId) => Promise<void>
+  ensureLobbyRoom: (modeOverride?: GameMode, mapOverride?: MapId) => Promise<void>
   createAndJoinRoom: (mode?: GameMode, mapId?: MapId) => Promise<void>
   prepareJoinRoom: (roomIdOverride?: string) => Promise<void>
   confirmPendingJoin: (charIdOverride?: string) => Promise<void>
   joinRoom: (roomIdOverride?: string, charIdOverride?: string, skipRoomCheck?: boolean) => Promise<void>
   leaveRoom: (targetView?: ScreenView) => void
+  selectRoomMode: (mode: GameMode) => void
   selectTeam: (team: 'blue' | 'red') => void
   selectRoomMap: (mapId: MapId) => void
   selectRoomCharacter: (characterId: string) => void
@@ -330,6 +333,8 @@ let uiSyncTimer: number | null = null
 let saitamaTimer: number | null = null
 let domainClashTimer: number | null = null
 let snapOverlayTimer: number | null = null
+let pendingAutoStartMatch = false
+let silentLobbyJoin = false
 let basicAttackBufferTimer: number | null = null
 let lastBasicSentAtMs = 0
 let lastHudSig = ''
@@ -674,9 +679,10 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   roomInput: getInitialRoomFromURL(),
   pendingJoinRoom: null,
   recentRooms: [],
-  selectedMode: 'ffa',
+  selectedMode: 'tdm_3v3',
   selectedMapId: 'shibuya',
   joining: false,
+  lobbyBooting: false,
   checkingJoinRoom: false,
   arenaReady: false,
   assetsReady: false,
@@ -982,12 +988,19 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   setSelectedCharId: (id) => {
     set({ selectedCharId: id })
     void savePreference('characterId', id)
+    const { connected, matchPhase, roomMode } = get()
+    if (connected && matchPhase === 'waiting' && roomMode !== 'iconic') {
+      activeTransport?.sendReliableJson({ type: 'select_character', characterId: id })
+    }
   },
 
   equipCharacter: async (id) => {
     set({ selectedCharId: id })
     void savePreference('characterId', id)
-    const { authUser } = get()
+    const { authUser, connected, matchPhase, roomMode } = get()
+    if (connected && matchPhase === 'waiting' && roomMode !== 'iconic') {
+      activeTransport?.sendReliableJson({ type: 'select_character', characterId: id })
+    }
     if (!authUser) return
     try {
       const res = await apiClient.equipCharacter(id)
@@ -1036,32 +1049,84 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
   startPracticeMode: async (charIdOverride, mapOverride) => {
     soundEngine.unlock()
-    const { authUser, selectedMapId, selectedCharId, joinRoom } = get()
+    const { authUser, selectedMapId, selectedCharId, connected, matchPhase, roster, myPlayerId, joinRoom } = get()
     if (!authUser) {
       set({ currentView: 'auth', error: 'กรุณาเข้าสู่ระบบก่อนเริ่มโหมดฝึกซ้อม' })
       return
     }
     const heroId = charIdOverride || selectedCharId || 'pa'
     const mapId = mapOverride ?? selectedMapId
+    const me = roster.find((p) => p.id === myPlayerId)
+    const humanCount = roster.filter((p) => !p.isDummy).length
+
     set({
       error: '',
-      joining: true,
-      arenaReady: false,
       selectedMode: 'practice',
       selectedMapId: mapId,
       selectedCharId: heroId,
       lastDummyDamage: 0,
       totalDummyDamage: 0,
     })
+
+    // Fast-path: already host alone in live waiting lobby -> switch to practice & launch straight into 3D Arena!
+    if (connected && matchPhase === 'waiting' && me?.isHost && humanCount <= 1 && activeTransport?.isOpen()) {
+      activeTransport.sendReliableJson({ type: 'select_mode', mode: 'practice' })
+      activeTransport.sendReliableJson({ type: 'select_map', mapId })
+      activeTransport.sendReliableJson({ type: 'select_character', characterId: heroId })
+      activeTransport.sendReliableJson({ type: 'start_match' })
+      return
+    }
+
+    set({ joining: true, arenaReady: false })
+    pendingAutoStartMatch = true
     try {
       const info = await apiClient.createRoom({ mode: 'practice', mapId })
       window.history.replaceState(null, '', `/?room=${info.roomId}`)
       set({ roomInput: info.roomId })
       await joinRoom(info.roomId, heroId, true)
     } catch (err) {
+      pendingAutoStartMatch = false
       set({
         error: err instanceof Error ? err.message : 'เปิดโหมดทดสอบไม่สำเร็จ',
         joining: false,
+      })
+    }
+  },
+
+  ensureLobbyRoom: async (modeOverride, mapOverride) => {
+    const { authUser, connected, joining, lobbyBooting, selectedMode, selectedMapId, joinRoom } = get()
+    if (!authUser || connected || joining || lobbyBooting) return
+    const mode = modeOverride ?? selectedMode ?? 'tdm_3v3'
+    const mapId = mode === 'iconic' ? 'shibuya' : (mapOverride ?? selectedMapId ?? 'shibuya')
+    set({ lobbyBooting: true, error: '', selectedMode: mode, selectedMapId: mapId })
+
+    try {
+      // If user opened a share link /?room=123456, silently join that room first if still available
+      const urlRoom = getInitialRoomFromURL()
+      if (/^\d{6}$/.test(urlRoom)) {
+        try {
+          const existing = await apiClient.getRoomInfo(urlRoom)
+          if (!existing.isFull && (existing.mode === 'ffa' || existing.phase === 'waiting')) {
+            silentLobbyJoin = true
+            set({ roomInput: existing.roomId })
+            await joinRoom(existing.roomId, undefined, true)
+            return
+          }
+        } catch {
+          // Room no longer active — fall through to create a fresh live main lobby
+        }
+      }
+
+      const info = await apiClient.createRoom({ mode, mapId, waitInLobby: true })
+      window.history.replaceState(null, '', `/?room=${info.roomId}`)
+      set({ roomInput: info.roomId })
+      silentLobbyJoin = true
+      await joinRoom(info.roomId, undefined, true)
+    } catch (err) {
+      silentLobbyJoin = false
+      set({
+        lobbyBooting: false,
+        error: err instanceof Error ? err.message : 'เชื่อมต่อล็อบบี้ไม่สำเร็จ',
       })
     }
   },
@@ -1077,7 +1142,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     const mapId = mapOverride ?? selectedMapId
     set({ error: '', joining: true, arenaReady: false, selectedMode: mode, selectedMapId: mapId })
     try {
-      const info = await apiClient.createRoom({ mode, mapId })
+      const info = await apiClient.createRoom({ mode, mapId, waitInLobby: true })
       window.history.replaceState(null, '', `/?room=${info.roomId}`)
       set({ roomInput: info.roomId })
       await joinRoom(info.roomId, undefined, true)
@@ -1120,20 +1185,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         })
         return
       }
-      if (info.mode === 'iconic') {
-        // ICONIC mode auto-randomizes Gojo vs Sukuna inside the waiting lobby
-        set({ checkingJoinRoom: false })
-        await joinRoom(info.roomId, undefined, true)
-        return
-      }
-      set({
-        checkingJoinRoom: false,
-        pendingJoinRoom: info,
-        roomInput: info.roomId,
-        previousView: get().currentView,
-        currentView: 'join_select',
-        error: '',
-      })
+      // Join straight into the unified Main Lobby (or directly into active FFA match) without detour pages
+      set({ checkingJoinRoom: false, pendingJoinRoom: null, roomInput: info.roomId, error: '' })
+      await joinRoom(info.roomId, undefined, true)
     } catch (err) {
       set({
         error: err instanceof Error ? err.message : 'ไม่พบห้องหมายเลขนี้',
@@ -1171,7 +1225,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       return
     }
 
-    set({ joining: true, arenaReady: false })
+    const isSilent = silentLobbyJoin
+    silentLobbyJoin = false
+    set({ joining: !isSilent, arenaReady: false })
     if (!skipRoomCheck) {
       try {
         await Promise.all([apiClient.getRoomInfo(targetRoomId), prefetchTransportInfo()])
@@ -1179,6 +1235,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         set({
           error: err instanceof Error ? err.message : 'ไม่พบห้องหมายเลขนี้',
           joining: false,
+          lobbyBooting: false,
         })
         return
       }
@@ -1267,7 +1324,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         matchElapsedSec: payload.matchElapsedSec ?? latestMatchMeta.matchElapsedSec,
       }
 
+      const modeChanged = Boolean(payload.mode && payload.mode !== get().roomMode)
       if (payload.map) {
+        const nextMapId = payload.mapId || payload.map.id || get().roomMapId
         gameEventBus.emitInit({
           myPlayerId: myId,
           mapCfg: payload.map,
@@ -1276,9 +1335,26 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           beams: payload.beams ?? [],
           zones: payload.zones ?? [],
         })
-        set({ mapCfg: payload.map, roomMapId: payload.mapId || payload.map.id || get().roomMapId })
-      } else if (payload.mapId && payload.mapId !== get().roomMapId) {
-        set({ roomMapId: payload.mapId })
+        set({
+          mapCfg: payload.map,
+          roomMapId: nextMapId,
+          selectedMapId: nextMapId,
+          roomMode: latestMatchMeta.mode,
+          selectedMode: latestMatchMeta.mode,
+          targetKills: latestMatchMeta.targetKills,
+          roster: sortRosterByKills(nextMap.values()),
+          myTeam: meNext?.team ?? get().myTeam,
+        })
+      } else if (modeChanged || (payload.mapId && payload.mapId !== get().roomMapId)) {
+        set({
+          roomMode: latestMatchMeta.mode,
+          selectedMode: latestMatchMeta.mode,
+          targetKills: latestMatchMeta.targetKills,
+          roomMapId: payload.mapId || get().roomMapId,
+          selectedMapId: payload.mapId || get().selectedMapId,
+          roster: sortRosterByKills(nextMap.values()),
+          myTeam: meNext?.team ?? get().myTeam,
+        })
       }
 
       if ((prevMe?.alive ?? true) !== (meNext?.alive ?? true) && meNext) {
@@ -1441,12 +1517,14 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
           const me = latestPlayers.get(msg.playerId)
           const nextView: ScreenView =
-            hasWaitingLobby(latestMatchMeta.mode) && latestMatchMeta.phase === 'waiting'
+            latestMatchMeta.phase === 'waiting'
               ? 'room_lobby'
               : 'arena'
+          const resolvedMapId = msg.map?.id || msg.mapId || 'shibuya'
 
           set({
             joining: false,
+            lobbyBooting: false,
             connected: true,
             currentView: nextView,
             arenaReady: nextView === 'room_lobby',
@@ -1456,7 +1534,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             myPlayerId: msg.playerId,
             maxPlayers: msg.maxPlayers,
             roomMode: latestMatchMeta.mode,
-            roomMapId: msg.map?.id || msg.mapId || 'shibuya',
+            selectedMode: latestMatchMeta.mode,
+            roomMapId: resolvedMapId,
+            selectedMapId: resolvedMapId,
             matchPhase: latestMatchMeta.phase,
             hostUserId: latestMatchMeta.hostUserId,
             targetKills: latestMatchMeta.targetKills,
@@ -1486,6 +1566,11 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             myDashCooldown: me?.dashCooldownMs ?? 0,
             myRctCooldown: me?.rctCooldownMs ?? 0,
           })
+
+          if (latestMatchMeta.phase === 'waiting' && pendingAutoStartMatch) {
+            pendingAutoStartMatch = false
+            transport.sendReliableJson({ type: 'start_match' })
+          }
 
           gameEventBus.emitInit({
             myPlayerId: msg.playerId,
@@ -1761,6 +1846,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         set({
           connected: false,
           joining: false,
+          lobbyBooting: false,
           arenaReady: false,
           voiceMicEnabled: false,
           voiceSpeaking: false,
@@ -1770,7 +1856,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       },
       onError: (reason) => {
         if (activeTransport !== transport) return
-        set({ error: reason, joining: false })
+        pendingAutoStartMatch = false
+        set({ error: reason, joining: false, lobbyBooting: false })
       },
     })
 
@@ -1798,6 +1885,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       typeof targetView === 'string' ? targetView : authUser ? 'home' : 'auth'
     set({
       joining: false,
+      lobbyBooting: false,
       arenaReady: false,
       assetsReady: false,
       preloadProgress: 0,
@@ -1831,11 +1919,20 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     })
   },
 
+  selectRoomMode: (mode) => {
+    set((prev) => ({
+      selectedMode: mode,
+      selectedMapId: mode === 'iconic' ? 'shibuya' : prev.selectedMapId,
+    }))
+    activeTransport?.sendReliableJson({ type: 'select_mode', mode })
+  },
+
   selectTeam: (team) => {
     activeTransport?.sendReliableJson({ type: 'select_team', team })
   },
 
   selectRoomMap: (mapId) => {
+    set({ selectedMapId: mapId })
     activeTransport?.sendReliableJson({ type: 'select_map', mapId })
   },
 

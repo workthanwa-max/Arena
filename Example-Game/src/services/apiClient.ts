@@ -111,7 +111,7 @@ export const apiClient = {
       body: JSON.stringify({ characterId }),
     }),
 
-  createRoom: (payload: { mode: GameMode; mapId: MapId }) =>
+  createRoom: (payload: { mode: GameMode; mapId: MapId; waitInLobby?: boolean }) =>
     requestJSON<RoomInfo>('/api/rooms', {
       method: 'POST',
       body: JSON.stringify(payload),

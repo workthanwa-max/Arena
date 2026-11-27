@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"sort"
 	"sync"
 	"time"
 
@@ -33,9 +34,10 @@ const (
 
 // CreateRoomOptions configures mode and battlefield map for a new room.
 type CreateRoomOptions struct {
-	Mode       string
-	MapID      string
-	HostUserID string
+	Mode        string
+	MapID       string
+	HostUserID  string
+	WaitInLobby bool
 }
 
 // RoomInfo summarizes public room metadata returned on creation or lookup.
@@ -82,6 +84,7 @@ type Room struct {
 	state           *state.RoomState
 	sessions        map[string]*session.Session // keyed by playerID
 	playerRoles     map[string]string           // keyed by playerID
+	preferredChars  map[string]string           // remembers non-iconic hero per playerID
 	slotSeq         int
 	hadActiveTimers bool
 	iconicFirstGojo bool
@@ -156,7 +159,7 @@ func (m *Manager) CreateRoom(ctx context.Context, opts CreateRoomOptions) (*Room
 	maxPlayers := m.maxPlayers
 	targetKills := 0
 	phase := state.PhaseWaiting
-	if !state.HasWaitingLobby(mode) {
+	if !opts.WaitInLobby && !state.HasWaitingLobby(mode) {
 		phase = state.PhasePlaying
 	}
 	switch mode {
@@ -222,7 +225,8 @@ func (m *Manager) CreateRoom(ctx context.Context, opts CreateRoomOptions) (*Room
 		tickRateHz:      m.tickRateHz,
 		state:           rs,
 		sessions:        make(map[string]*session.Session, maxPlayers),
-		iconicFirstGojo: m.engine.RandomBit(),
+		preferredChars:  make(map[string]string, maxPlayers),
+		iconicFirstGojo: true,
 		engine:          m.engine,
 		players:         m.players,
 		sessMgr:         m.sessMgr,
@@ -700,6 +704,126 @@ func (r *Room) handleCommand(cmd inputCommand) {
 	now := time.Now()
 
 	switch cmd.msg.Type {
+	case "select_mode":
+		if r.state.Phase != state.PhaseWaiting || !p.IsHost {
+			return
+		}
+		nextMode := state.NormalizeMode(cmd.msg.Mode)
+		if nextMode == r.state.Mode {
+			return
+		}
+		nextMaxPlayers := 5
+		nextTargetKills := 0
+		switch nextMode {
+		case state.ModeTDM3v3:
+			nextMaxPlayers = 6
+			nextTargetKills = 50
+		case state.ModeDuel1v1:
+			nextMaxPlayers = 2
+			nextTargetKills = 5
+		case state.ModeIconic:
+			nextMaxPlayers = 2
+			nextTargetKills = 5
+		case state.ModePractice:
+			nextMaxPlayers = 1
+			nextTargetKills = 0
+		}
+		if r.humanPlayerCount() > nextMaxPlayers {
+			if sess, exists := r.sessions[p.ID]; exists {
+				r.syncer.SendError(sess, apperrors.CodeInvalidInput, "จำนวนผู้เล่นในห้องเกินกำหนดสำหรับโหมดนี้")
+			}
+			return
+		}
+		prevMode := r.state.Mode
+		for id, pl := range r.state.Players {
+			if pl.IsDummy {
+				delete(r.state.Players, id)
+			}
+		}
+		r.state.Mode = nextMode
+		r.maxPlayers = nextMaxPlayers
+		r.state.MaxPlayers = nextMaxPlayers
+		r.state.TargetKills = nextTargetKills
+		if nextMode == state.ModeIconic {
+			r.state.MapID = state.MapShibuya
+			r.state.Map = state.MapConfigFor(state.MapShibuya)
+			r.iconicFirstGojo = true
+		}
+
+		humans := make([]*state.PlayerState, 0, len(r.state.Players))
+		for _, pl := range r.state.Players {
+			if !pl.IsDummy {
+				humans = append(humans, pl)
+			}
+		}
+		sort.Slice(humans, func(i, j int) bool {
+			if humans[i].IsHost != humans[j].IsHost {
+				return humans[i].IsHost
+			}
+			return humans[i].ID < humans[j].ID
+		})
+
+		restorePreferred := func(member *state.PlayerState) {
+			if prevMode != state.ModeIconic {
+				return
+			}
+			pref := "pa"
+			if r.preferredChars != nil && r.preferredChars[member.ID] != "" {
+				pref = r.preferredChars[member.ID]
+			}
+			applyCharacterTemplate(member, state.GetCharacter(pref))
+			r.engine.InitHeroState(member)
+		}
+
+		if nextMode == state.ModePractice {
+			seedPracticeDummies(r.state)
+			for _, member := range humans {
+				member.Team = state.TeamBlue
+				restorePreferred(member)
+				member.X, member.Y = practicePlayerSpawn(r.state.MapID)
+			}
+		} else if nextMode == state.ModeFFA {
+			for _, member := range humans {
+				member.Team = state.TeamFFA
+				restorePreferred(member)
+				member.X, member.Y = r.engine.SpawnPositionForTeam(r.state, member.Team)
+			}
+		} else {
+			sideCap := r.maxPerSide()
+			blueAssigned, redAssigned := 0, 0
+			for _, member := range humans {
+				switch {
+				case member.Team == state.TeamBlue && blueAssigned < sideCap:
+					blueAssigned++
+				case member.Team == state.TeamRed && redAssigned < sideCap:
+					redAssigned++
+				case blueAssigned <= redAssigned && blueAssigned < sideCap:
+					member.Team = state.TeamBlue
+					blueAssigned++
+				default:
+					member.Team = state.TeamRed
+					redAssigned++
+				}
+				if nextMode == state.ModeIconic {
+					applyCharacterTemplate(member, state.GetCharacter(r.iconicHeroForTeam(member.Team)))
+					r.engine.InitHeroState(member)
+					if member.Team == state.TeamRed {
+						member.AimDX, member.AimDY = -1.0, 0
+					} else {
+						member.AimDX, member.AimDY = 1.0, 0
+					}
+				} else {
+					restorePreferred(member)
+				}
+				member.X, member.Y = r.engine.SpawnPositionForTeam(r.state, member.Team)
+			}
+		}
+
+		r.refreshSummary()
+		if len(r.sessions) > 0 {
+			r.syncer.BroadcastRoomConfig(r.receivers(), r.state, now)
+		}
+
 	case "select_team":
 		if !state.IsTeamMatchMode(r.state.Mode) || r.state.Phase != state.PhaseWaiting {
 			return
@@ -741,6 +865,10 @@ func (r *Room) handleCommand(cmd inputCommand) {
 			}
 			return
 		}
+		if r.preferredChars == nil {
+			r.preferredChars = make(map[string]string, r.maxPlayers)
+		}
+		r.preferredChars[p.ID] = charDef.ID
 		applyCharacterTemplate(p, charDef)
 		r.engine.InitHeroState(p)
 		if len(r.sessions) > 0 {
@@ -778,7 +906,7 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		}
 
 	case "start_match":
-		if !state.HasWaitingLobby(r.state.Mode) || r.state.Phase != state.PhaseWaiting || !p.IsHost {
+		if r.state.Phase != state.PhaseWaiting || !p.IsHost {
 			return
 		}
 		if state.IsTeamMatchMode(r.state.Mode) {
@@ -821,7 +949,7 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		}
 
 	case "return_lobby":
-		if !state.HasWaitingLobby(r.state.Mode) || r.state.Phase != state.PhaseFinished {
+		if r.state.Phase != state.PhaseFinished {
 			return
 		}
 		r.state.Phase = state.PhaseWaiting
@@ -832,7 +960,7 @@ func (r *Room) handleCommand(cmd inputCommand) {
 		r.state.Beams = r.state.Beams[:0]
 		r.state.Zones = r.state.Zones[:0]
 		if r.state.Mode == state.ModeIconic {
-			r.iconicFirstGojo = r.engine.RandomBit()
+			r.iconicFirstGojo = true
 		}
 		for _, member := range r.state.Players {
 			if member.IsDummy {
@@ -1194,10 +1322,15 @@ func (r *Room) handleJoin(req joinRequest, idleTimer *time.Timer) {
 	}
 
 	charDef := state.GetCharacter(req.characterID)
+	if charDef.AdminOnly && req.userRole != "admin" {
+		charDef = state.GetCharacter("pa")
+	}
+	if r.preferredChars == nil {
+		r.preferredChars = make(map[string]string, r.maxPlayers)
+	}
+	r.preferredChars[playerID] = charDef.ID
 	if r.state.Mode == state.ModeIconic {
 		charDef = state.GetCharacter(r.iconicHeroForTeam(team))
-	} else if charDef.AdminOnly && req.userRole != "admin" {
-		charDef = state.GetCharacter("pa")
 	}
 	if r.playerRoles == nil {
 		r.playerRoles = make(map[string]string, r.maxPlayers)

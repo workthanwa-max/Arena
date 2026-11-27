@@ -46,9 +46,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       225,
 		MoveSpeed:   228,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Ice Make: Lance", Description: "สร้างหอกน้ำแข็งพุ่งทะลุศัตรู 560px (24 dmg + Slow) พร้อม Passive Ice Devil สะสมความเย็นแช่แข็งที่ 3 สแต็ก!", CooldownSec: 3.4, CastRange: 560, AoeRadius: 56, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/gray_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Ice Make: Shield", Description: "กางโล่กำแพงน้ำแข็งอมตะ 1.25 วิ + รอบตัวเป็นเขตน้ำแข็ง 145px Slow และผลักศัตรู", CooldownSec: 6.0, CastRange: 200, AoeRadius: 145, AimType: "self", AccentColor: "#BAE6FD", IconURL: "/skills/gray_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Ice Devil's Rage", Description: "ปลดปล่อยพายุปีศาจน้ำแข็ง 215px ทำดาเมจ 48 dmg + แช่แข็ง Stun 1.25 วิ", CooldownSec: 11.0, CastRange: 480, AoeRadius: 215, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/gray_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Ice Make: Lance", Description: "ยิงหอกน้ำแข็งพัด 3 เล่ม (ตรงกลาง+ซ้ายขวาเจาะทะลุ) สะสมความเย็นแช่แข็งที่ 3 สแต็ก!", CooldownSec: 3.4, CastRange: 560, AoeRadius: 56, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/gray_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Ice Make: Rampart", Description: "ปลดปล่อยคลื่นน้ำแข็งผลักและชะลอศัตรูด้านหน้า — หากศัตรูติด Slow อยู่จะถูกแช่แข็งทันที!", CooldownSec: 6.0, CastRange: 220, AoeRadius: 145, AimType: "cone", AccentColor: "#BAE6FD", IconURL: "/skills/gray_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Ice Devil's Zerø Bow", Description: "ยิงศรน้ำแข็งปีศาจยักษ์เจาะทะลุ ระเบิดเป็นพายุหิมะแช่แข็งต่อเนื่อง!", CooldownSec: 11.0, CastRange: 480, AoeRadius: 215, AimType: "line", AccentColor: "#0284C7", IconURL: "/skills/gray_3.png"},
 		},
 	},
 	{
@@ -84,9 +84,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       220,
 		MoveSpeed:   238,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Shadow Slash", Description: "ฟันคลื่นดาบสไลม์สีม่วงดำ 520px (32 dmg) พร้อม Passive Shadow Master สะสมพลังเงาสูงสุด +30%", CooldownSec: 3.6, CastRange: 520, AoeRadius: 85, AimType: "cone", AccentColor: "#7C3AED", IconURL: "/skills/cid_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Shadow Step", Description: "หายตัวพุ่ง 280px อมตะ 0.65 วิ + สร้างคลื่นเงาระเบิดจุดออกตัว 22 dmg", CooldownSec: 5.2, CastRange: 380, AoeRadius: 115, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/cid_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "I AM ATOMIC", Description: "รวมพลังมหาศาลระเบิดปรมาณูสีม่วงน้ำเงินคลุมพื้นที่ 260px ทำดาเมจ 60 dmg + Stun 1.15 วิ!", CooldownSec: 12.5, CastRange: 440, AoeRadius: 260, AimType: "ground", AccentColor: "#6D28D9", IconURL: "/skills/cid_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Slime Blade Wave", Description: "ตวัดดาบสไลม์พร้อมปล่อยคลื่นเสี้ยวเงาเจาะทะลุ + สะสม Shadow Stack!", CooldownSec: 3.6, CastRange: 520, AoeRadius: 85, AimType: "cone", AccentColor: "#7C3AED", IconURL: "/skills/cid_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Shadow Step", Description: "วาร์ปเข้าเงาโผล่ด้านหลังศัตรูใกล้จุดเล็งแล้วกรีดหลังทันที!", CooldownSec: 5.2, CastRange: 380, AoeRadius: 115, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/cid_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "I AM ATOMIC", Description: "ระเบิดปรมาณู 2 ระลอก: ล้างโปรเจกไทล์+ดึงเข้า ➔ ระเบิดรุนแรงตาม Shadow Stack!", CooldownSec: 12.5, CastRange: 440, AoeRadius: 260, AimType: "ground", AccentColor: "#6D28D9", IconURL: "/skills/cid_3.png"},
 		},
 	},
 	{
@@ -160,9 +160,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       205,
 		MoveSpeed:   234,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Crimson Beam", Description: "ยิงลำแสงวิญญาณสีแดงส้ม 640px (32 dmg + Passive Spirit Blood ดูดเลือด 25% จากทุกการโจมตี!)", CooldownSec: 3.5, CastRange: 640, AoeRadius: 60, AimType: "line", AccentColor: "#F43F5E", IconURL: "/skills/krasue_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Floating Curse", Description: "ลอยตัวหลบการโจมตี (อมตะ 0.9 วิ) พร้อมปล่อยวงคำสาป 150px ลดความเร็วศัตรู", CooldownSec: 5.8, CastRange: 280, AoeRadius: 150, AimType: "self", AccentColor: "#FB923C", IconURL: "/skills/krasue_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Midnight Horror", Description: "ระเบิดพลังวิญญาณกระสือทั่วบริเวณ 225px ทำดาเมจ 50 dmg + ฟื้นเลือดตนเอง +30 HP!", CooldownSec: 11.4, CastRange: 440, AoeRadius: 225, AimType: "ground", AccentColor: "#E11D48", IconURL: "/skills/krasue_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Cursed Lantern Beam", Description: "ยิงลำแสงวิญญาณสีแดงส้ม 640px (32 dmg + Passive Spirit Blood ดูดเลือด 25%!)", CooldownSec: 3.5, CastRange: 640, AoeRadius: 60, AimType: "line", AccentColor: "#F43F5E", IconURL: "/skills/krasue_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Severed Flight", Description: "พุ่งลอยข้ามระยะเร็วมากพร้อมทิ้งหมอกคำสาปเผาไหม้และลดสปีดไว้เบื้องหลัง!", CooldownSec: 5.8, CastRange: 280, AoeRadius: 150, AimType: "line", AccentColor: "#FB923C", IconURL: "/skills/krasue_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Midnight Blood Drain", Description: "เชื่อมสายใยวิญญาณดูดเลือดศัตรูทุกตัวในระยะพร้อมฟื้นเลือดให้กระสือตามจำนวนเป้า!", CooldownSec: 11.4, CastRange: 440, AoeRadius: 225, AimType: "ground", AccentColor: "#E11D48", IconURL: "/skills/krasue_3.png"},
 		},
 	},
 	{
@@ -179,9 +179,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       260,
 		MoveSpeed:   220,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Panda Punch", Description: "ชกหมัดแพนด้า 32 dmg + กระแทก 120px (Passive Inner Peace ลดความเสียหายสูงสุด 32%!)", CooldownSec: 3.6, CastRange: 240, AoeRadius: 120, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/po_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Belly Bounce", Description: "ใช้พุงกระแทกพื้นสร้างคลื่นกระแทกรอบตัว 165px สะท้อนกระเด็น + Stun 0.75 วิ", CooldownSec: 5.5, CastRange: 200, AoeRadius: 165, AimType: "self", AccentColor: "#F8FAFC", IconURL: "/skills/po_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Wuxi Finger Hold", Description: "จับล็อกนิ้วอู๋ซี ระเบิดคลื่นหยินหยางสีทอง 215px ทำดาเมจ 54 dmg + Stun 1.1 วิ!", CooldownSec: 11.5, CastRange: 420, AoeRadius: 215, AimType: "ground", AccentColor: "#EAB308", IconURL: "/skills/po_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Panda Rolling Strike", Description: "กลิ้งตัวพุ่งซัดหมัดแพนด้ากระแทกศัตรูกระเด็น 145px!", CooldownSec: 3.6, CastRange: 260, AoeRadius: 120, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/po_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Belly Bounce Counter", Description: "ตั้งพุงสะท้อน 1.15 วิ — เด้งสะท้อนโปรเจกไทล์ศัตรูกลับไปพร้อมกระแทกศัตรูประชิดปลิว!", CooldownSec: 5.5, CastRange: 200, AoeRadius: 165, AimType: "self", AccentColor: "#F8FAFC", IconURL: "/skills/po_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Wuxi Finger Hold (Skadoosh!)", Description: "ล็อกจับเป้าหมายใกล้สุดแล้วระเบิดคลื่นสีทอง-กลีบดอกท้อซัดศัตรูกระเด็นสุดขอบ!", CooldownSec: 11.5, CastRange: 420, AoeRadius: 235, AimType: "ground", AccentColor: "#EAB308", IconURL: "/skills/po_3.png"},
 		},
 	},
 	{
@@ -198,9 +198,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       225,
 		MoveSpeed:   242,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Nerve Strike", Description: "สกัดจุดชีพจร 28 dmg + Passive Master of Pressure Points ครบ 3 ฮิตทำให้ศัตรู Stun ทันที!", CooldownSec: 3.2, CastRange: 250, AoeRadius: 95, AimType: "cone", AccentColor: "#3B82F6", IconURL: "/skills/tai_lung_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Flying Leap", Description: "กระโจนเสือดาวหิมะไกล 360px ลงกระแทก 135px ทำดาเมจ 26 dmg + Stun 0.65 วิ", CooldownSec: 5.0, CastRange: 380, AoeRadius: 135, AimType: "line", AccentColor: "#60A5FA", IconURL: "/skills/tai_lung_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Thousand Strikes", Description: "รัวหมัดเพลิงฟ้าครามความเร็วสูงต่อเนื่องรอบพื้นที่ 180px รวม 50 dmg!", CooldownSec: 10.8, CastRange: 360, AoeRadius: 180, AimType: "ground", AccentColor: "#1D4ED8", IconURL: "/skills/tai_lung_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Pressure Point Strike", Description: "จี้จุดชีพจรทำให้ศัตรูชะงัก 0.65 วิ + Slow หนัก 2.2 วิ!", CooldownSec: 3.2, CastRange: 250, AoeRadius: 95, AimType: "cone", AccentColor: "#3B82F6", IconURL: "/skills/tai_lung_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Leopard Wall Pounce", Description: "กระโจนเสือดาวระยะไกล 310px ลงกระแทก — หากสังหารได้รีเซ็ตคูลดาวน์บางส่วนทันที!", CooldownSec: 5.0, CastRange: 380, AoeRadius: 135, AimType: "line", AccentColor: "#60A5FA", IconURL: "/skills/tai_lung_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Furious Blue-Flame Barrage", Description: "พุ่งวาร์ปสลับ 4 ทิศทางฟาดกรงเล็บเปลวเพลิงสีน้ำเงินรอบเป้าหมาย!", CooldownSec: 10.8, CastRange: 360, AoeRadius: 180, AimType: "ground", AccentColor: "#1D4ED8", IconURL: "/skills/tai_lung_3.png"},
 		},
 	},
 	{
@@ -217,9 +217,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       245,
 		MoveSpeed:   228,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Jade Whip", Description: "ฟาดโซ่มีดหยกสีเขียวระยะไกล 480px (30 dmg + Slow) พร้อม Passive Chi Collector ดูดพลังเมื่อสังหาร", CooldownSec: 3.6, CastRange: 480, AoeRadius: 72, AimType: "line", AccentColor: "#10B981", IconURL: "/skills/kai_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Spirit Chains", Description: "ขว้างโซ่หยกล่ามศัตรู 520px ดึงเข้าหาตัว + Stun 0.85 วิ + 22 dmg", CooldownSec: 5.8, CastRange: 520, AoeRadius: 64, AimType: "line", AccentColor: "#34D399", IconURL: "/skills/kai_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Army of Jade", Description: "อัญเชิญวงนักรบหยก 210px ไล่โจมตีต่อเนื่อง 4.2 วิ ทำดาเมจรวม 52 dmg!", CooldownSec: 12.0, CastRange: 440, AoeRadius: 210, AimType: "ground", AccentColor: "#059669", IconURL: "/skills/kai_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Dual Jade Blades", Description: "เหวี่ยงใบมีดหยกคู่บูมเมอแรงเจาะทะลุไป-กลับ!", CooldownSec: 3.6, CastRange: 480, AoeRadius: 72, AimType: "line", AccentColor: "#10B981", IconURL: "/skills/kai_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Jade Spirit Chains", Description: "ขว้างโซ่หยกเกี่ยวกระชากศัตรูเข้าหาตัว 190px + ดูด Chi ฟื้นเลือด!", CooldownSec: 5.8, CastRange: 520, AoeRadius: 64, AimType: "line", AccentColor: "#34D399", IconURL: "/skills/kai_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Jombies: Army of Jade", Description: "อัญเชิญวิญญาณนักรบหยก 4 ตนพุ่งไล่ล่าศัตรูพร้อมทุ่งผลึกหยก!", CooldownSec: 12.0, CastRange: 440, AoeRadius: 210, AimType: "ground", AccentColor: "#059669", IconURL: "/skills/kai_3.png"},
 		},
 	},
 	{
@@ -236,9 +236,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       210,
 		MoveSpeed:   234,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Explosive Cards", Description: "ขว้างไพ่จลน์ 3 ใบระเบิดพื้นที่ 18 dmg/ใบ + Passive Kinetic Charge ระเบิดเสริมทุก 3 ฮิต!", CooldownSec: 3.4, CastRange: 580, AoeRadius: 80, AimType: "cone", AccentColor: "#EC4899", IconURL: "/skills/gambit_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Bo Staff", Description: "ควงกระบองเหล็กพุ่งฟาด 280px ทำดาเมจ 26 dmg + กระเด็น 95px", CooldownSec: 5.0, CastRange: 300, AoeRadius: 115, AimType: "line", AccentColor: "#A855F7", IconURL: "/skills/gambit_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Royal Flush", Description: "โปรยสำรับไพ่จลน์ทั่วพื้นที่ 215px ระเบิดพร้อมกันอย่างรุนแรง 54 dmg!", CooldownSec: 11.0, CastRange: 500, AoeRadius: 215, AimType: "ground", AccentColor: "#DB2777", IconURL: "/skills/gambit_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "52-Card Pickup", Description: "ปาไพ่จลน์พัด 3 ใบ ระเบิดและชิ่งกระเด็นใส่ศัตรูใกล้เคียง!", CooldownSec: 3.4, CastRange: 580, AoeRadius: 80, AimType: "cone", AccentColor: "#EC4899", IconURL: "/skills/gambit_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Acrobatic Bo Vault", Description: "ค้ำพลองพุ่งข้ามระยะพร้อมวางไพ่กับดักระเบิดไว้จุดออกตัว!", CooldownSec: 5.0, CastRange: 300, AoeRadius: 115, AimType: "line", AccentColor: "#A855F7", IconURL: "/skills/gambit_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Royal Flush (10-J-Q-K-A)", Description: "ซัดไพ่ 5 ใบเรียงแถวระเบิดลูกโซ่ตามแนวเส้นตรงอย่างต่อเนื่อง!", CooldownSec: 11.0, CastRange: 500, AoeRadius: 215, AimType: "line", AccentColor: "#DB2777", IconURL: "/skills/gambit_3.png"},
 		},
 	},
 	{
@@ -274,9 +274,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       215,
 		MoveSpeed:   228,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Amputate", Description: "ฟันตัดมิติด้วยดาบ Kikoku 520px (32 dmg + Slow) แรงขึ้น +25% เมื่ออยู่ในสถานะ ROOM!", CooldownSec: 3.6, CastRange: 520, AoeRadius: 75, AimType: "line", AccentColor: "#0EA5E9", IconURL: "/skills/law_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Shambles (ROOM)", Description: "กางโดม ROOM สีฟ้า 190px + วาร์ปสลับตำแหน่งพุ่งเข้า/หนีศัตรูทันที", CooldownSec: 5.8, CastRange: 440, AoeRadius: 190, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/law_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Puncture Wille", Description: "แทงดาบทะลุพื้นปล่อยคลื่นกระแทกมหาศาล 225px ทำดาเมจ 56 dmg + Stun 1.15 วิ!", CooldownSec: 12.0, CastRange: 480, AoeRadius: 225, AimType: "ground", AccentColor: "#FACC15", IconURL: "/skills/law_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Amputate", Description: "ฟันคลื่นผ่าตัด — หากอยู่ในโดม ROOM ระยะไกลขึ้น 1.55× และแรงขึ้น!", CooldownSec: 3.6, CastRange: 520, AoeRadius: 75, AimType: "line", AccentColor: "#0EA5E9", IconURL: "/skills/law_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "ROOM: Shambles", Description: "กางโดม ROOM และสลับตำแหน่ง (Swap) กับศัตรูใกล้จุดเล็งทันที!", CooldownSec: 5.8, CastRange: 440, AoeRadius: 195, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/law_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "K-ROOM: Puncture Wille", Description: "เสียบดาบลงพื้นปล่อยคลื่นแผ่นดินไหวแนวยาวเจาะทะลุอมตะ (56 dmg)!", CooldownSec: 12.0, CastRange: 480, AoeRadius: 190, AimType: "line", AccentColor: "#FACC15", IconURL: "/skills/law_3.png"},
 		},
 	},
 	{
@@ -293,9 +293,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       260,
 		MoveSpeed:   224,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Galaxy Impact", Description: "กระโดดชกอากาศระเบิดคลื่นฮาคิ 175px (36 dmg + Slow + Passive Hero of Marines ถึกและแรงเมื่อ HP < 50%)", CooldownSec: 4.2, CastRange: 400, AoeRadius: 175, AimType: "ground", AccentColor: "#DC2626", IconURL: "/skills/garp_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Iron Fist", Description: "พุ่งต่อยด้วยหมัดเหล็กฮาคิสีดำ 240px ทำดาเมจ 30 dmg + กระเด็นไกล", CooldownSec: 5.2, CastRange: 300, AoeRadius: 110, AimType: "line", AccentColor: "#1E293B", IconURL: "/skills/garp_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Galaxy Divide", Description: "ปลดปล่อยหมัดฮาคิสายฟ้าแดงขนาดมหึมา 235px ผ่าสนามรบ 58 dmg + Stun 1.1 วิ!", CooldownSec: 11.8, CastRange: 440, AoeRadius: 235, AimType: "ground", AccentColor: "#EF4444", IconURL: "/skills/garp_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Galaxy Impact", Description: "กระโดดพุ่งลงกระแทกพื้นจุดเป้าหมาย ระเบิดหลุมฮาคิผลักศัตรูกระเด็น!", CooldownSec: 4.2, CastRange: 400, AoeRadius: 175, AimType: "ground", AccentColor: "#DC2626", IconURL: "/skills/garp_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Blue Hole", Description: "พุ่งคว้าทุ่มศัตรูอัดพื้นอย่างรุนแรง (32 dmg + ดึงอัดหลุม + Slow)!", CooldownSec: 5.2, CastRange: 300, AoeRadius: 115, AimType: "line", AccentColor: "#1E293B", IconURL: "/skills/garp_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Galaxy Divide", Description: "ซัดคลื่นหมัดฮาคิผ่าสนามแนวยาว 560px แยกแนวศัตรูกระเด็น (62 dmg)!", CooldownSec: 11.8, CastRange: 540, AoeRadius: 195, AimType: "line", AccentColor: "#EF4444", IconURL: "/skills/garp_3.png"},
 		},
 	},
 	{
@@ -312,9 +312,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       215,
 		MoveSpeed:   228,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Bubble Shot", Description: "ยิงบอลฟองโซดาแรงดันสูงระเบิด 125px (28 dmg + Passive Carbonation เพิ่มดาเมจตามสแต็ก)", CooldownSec: 3.4, CastRange: 540, AoeRadius: 125, AimType: "ground", AccentColor: "#38BDF8", IconURL: "/skills/tansan_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Soda Boost", Description: "ระเบิดฟองความเร็วรอบตัว ฟื้นเลือด +20 HP และวิ่งไว 2.8 วิ (รวมบัฟทีมใกล้เคียง!)", CooldownSec: 6.2, CastRange: 220, AoeRadius: 185, AimType: "self", AccentColor: "#F8FAFC", IconURL: "/skills/tansan_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Carbonation Explosion", Description: "ปลุกพายุโซดายักษ์ 225px พัดผลักศัตรูและทำดาเมจ 50 dmg + Slow 2.0 วิ!", CooldownSec: 11.2, CastRange: 480, AoeRadius: 225, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/tansan_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Fizzy Canister Toss", Description: "ปากระป๋องโซดาชิ่งกระเด้งใส่ศัตรูใกล้เคียงพร้อมแตกฟองซ่า!", CooldownSec: 3.4, CastRange: 540, AoeRadius: 125, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/tansan_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Carbonation Jet Boost", Description: "พุ่งเจ็ทโซดาไปข้างหน้าพร้อมฮีล +24 HP และเร่งความเร็วเพื่อนร่วมทีม!", CooldownSec: 6.2, CastRange: 260, AoeRadius: 185, AimType: "line", AccentColor: "#F8FAFC", IconURL: "/skills/tansan_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Super Mentos Geyser", Description: "ระเบิดเสาน้ำพุโซดาแรงดันสูงดีดศัตรูกระจายรอบทิศพร้อมฟองซ่า 6 ทิศ!", CooldownSec: 11.2, CastRange: 480, AoeRadius: 225, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/tansan_3.png"},
 		},
 	},
 	{
@@ -331,9 +331,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       235,
 		MoveSpeed:   238,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Golden Staff", Description: "ยืดกระบองวิเศษทองคำฟาดระยะไกล 420px (32 dmg + Passive 72 Transformations สร้างเงาร่างทุก 3 ฮิต!)", CooldownSec: 3.5, CastRange: 420, AoeRadius: 72, AimType: "line", AccentColor: "#F59E0B", IconURL: "/skills/wukong_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Cloud Dash", Description: "ขี่เมฆสีทองพุ่งจู่โจม 340px (อมตะชั่วพริบตา 0.5 วิ) ฟาดศัตรู 24 dmg", CooldownSec: 5.0, CastRange: 340, AoeRadius: 115, AimType: "line", AccentColor: "#FEF08A", IconURL: "/skills/wukong_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Great Sage Awakening", Description: "ปลุกพลังราชาวานรเรียกร่างแยกและกระบองยักษ์ถล่มพื้นที่ 225px ทำดาเมจ 54 dmg + Stun 1.0 วิ!", CooldownSec: 11.5, CastRange: 460, AoeRadius: 225, AimType: "ground", AccentColor: "#DC2626", IconURL: "/skills/wukong_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Ruyi Jingu Bang", Description: "ยืดกระบองทองคำแทงไกล — ปลายกระบองทำโบนัสดาเมจและกระเด็นแรงขึ้น!", CooldownSec: 3.5, CastRange: 420, AoeRadius: 72, AimType: "line", AccentColor: "#F59E0B", IconURL: "/skills/wukong_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Cloud Decoy", Description: "ทิ้งร่างแยกเงาระเบิดไว้จุดเดิมแล้วขี่เมฆสีทองพุ่งหนี/จู่โจม!", CooldownSec: 5.0, CastRange: 340, AoeRadius: 115, AimType: "line", AccentColor: "#FEF08A", IconURL: "/skills/wukong_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Great Sage: Giant Staff", Description: "ขยายกระบองยักษ์ฟาดยาว 520px พร้อมเร่งความเร็วและตีไว 4.5 วิ!", CooldownSec: 11.5, CastRange: 500, AoeRadius: 210, AimType: "line", AccentColor: "#DC2626", IconURL: "/skills/wukong_3.png"},
 		},
 	},
 	{
@@ -350,9 +350,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       220,
 		MoveSpeed:   244,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Fire Spear", Description: "พุ่งแทงด้วยหอกอัคคีเจาะทะลุ 380px (30 dmg + Passive Lotus Rebirth เปิดเกราะอมตะเมื่อรับดาเมจหนัก!)", CooldownSec: 3.4, CastRange: 380, AoeRadius: 68, AimType: "line", AccentColor: "#F97316", IconURL: "/skills/nezha_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Wind Fire Wheels", Description: "หมุนกงล้อไฟเพิ่มความเร็ว 2.6 วิ + เผาศัตรูรอบตัว 140px", CooldownSec: 5.4, CastRange: 250, AoeRadius: 140, AimType: "self", AccentColor: "#FEF08A", IconURL: "/skills/nezha_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Lotus Inferno", Description: "อัญเชิญดอกบัวเพลิงยักษ์ 215px ระเบิดแผดเผาศัตรู 52 dmg + Stun 1.0 วิ!", CooldownSec: 11.0, CastRange: 460, AoeRadius: 215, AimType: "ground", AccentColor: "#EA580C", IconURL: "/skills/nezha_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Fire Spear", Description: "พุ่งแทงหอกอัคคีพร้อมปล่อยปลายหอกเพลิงเจาะทะลุ 380px!", CooldownSec: 3.4, CastRange: 380, AoeRadius: 68, AimType: "line", AccentColor: "#F97316", IconURL: "/skills/nezha_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Wind Fire Wheels", Description: "เร่งความเร็ว 3.2 วิ ทิ้งรางเปลวเพลิงลุกไหม้ตามเส้นทางที่วิ่งผ่าน!", CooldownSec: 5.4, CastRange: 250, AoeRadius: 140, AimType: "self", AccentColor: "#FEF08A", IconURL: "/skills/nezha_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Universe Ring & Lotus", Description: "ขว้างห่วงจักรวาลบูมเมอแรงเจาะทะลุไป-กลับ พร้อมเบ่งบานดอกบัวเพลิง!", CooldownSec: 11.0, CastRange: 460, AoeRadius: 215, AimType: "line", AccentColor: "#EA580C", IconURL: "/skills/nezha_3.png"},
 		},
 	},
 	{
@@ -369,9 +369,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       210,
 		MoveSpeed:   226,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Legendary Glare", Description: "จ้องศัตรูด้วยแรงกดดัน King Engine (ทำให้ศัตรู Slow 2.0 วิ + Stun 0.7 วิ + 22 dmg)", CooldownSec: 4.0, CastRange: 440, AoeRadius: 140, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/king_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Lucky Escape", Description: "โชคช่วยหลบหลีก! อมตะ 1.35 วิ พร้อมสไลด์หนีรวดเร็วและฮีล +18 HP", CooldownSec: 5.8, CastRange: 300, AoeRadius: 110, AimType: "line", AccentColor: "#94A3B8", IconURL: "/skills/king_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "S-Class Reputation", Description: "ปลดปล่อยแรงกดดันระดับ S-Class 255px ทำให้ศัตรูชะงัก Stun 1.4 วิ + ดาเมจจิต 40 dmg!", CooldownSec: 11.5, CastRange: 420, AoeRadius: 255, AimType: "ground", AccentColor: "#EAB308", IconURL: "/skills/king_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "King Engine Roar", Description: "ปล่อยคลื่นเสียงหัวใจข่มขวัญ ผลักศัตรูถอยหนีด้วยความหวาดกลัว + Slow 2.4 วิ", CooldownSec: 4.0, CastRange: 440, AoeRadius: 140, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/king_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Lucky Stumble", Description: "สะดุดล้มหลบสกิลแบบดวงดี! หลบชั่วขณะ 0.65 วิ + ฮีล +16 HP + วิ่งหนีไว", CooldownSec: 5.8, CastRange: 300, AoeRadius: 110, AimType: "line", AccentColor: "#94A3B8", IconURL: "/skills/king_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Bluff ➔ Saitama Assist!", Description: "ตั้งการ์ดขู่จนศัตรูชะงัก ➔ หมัดไซตามะพุ่งผ่านสนามซัดศัตรูกระเด็นแทน!!", CooldownSec: 11.5, CastRange: 420, AoeRadius: 255, AimType: "line", AccentColor: "#EAB308", IconURL: "/skills/king_3.png"},
 		},
 	},
 	{
@@ -388,9 +388,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       230,
 		MoveSpeed:   232,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Jajanken Rock", Description: "รวมเน็นที่หมัดชกกระเด็น 38 dmg (Passive Nen Potential สะสมพลังเน็นสูงสุด +30%!)", CooldownSec: 3.8, CastRange: 230, AoeRadius: 115, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/gon_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Jajanken Scissors", Description: "ยิงคมมีดเน็นตัดระยะกลาง 460px ทำดาเมจ 30 dmg + Slow", CooldownSec: 4.8, CastRange: 460, AoeRadius: 68, AimType: "line", AccentColor: "#22C55E", IconURL: "/skills/gon_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Adult Gon", Description: "สลัดร่างโตปลดปล่อยออร่าเน็นสีทองมหึมา 240px ทำดาเมจ 62 dmg + Stun 1.1 วิ + วิ่งไว!", CooldownSec: 12.5, CastRange: 420, AoeRadius: 240, AimType: "ground", AccentColor: "#16A34A", IconURL: "/skills/gon_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Jajanken: Rock", Description: "หมัดเน็นซัดกระเด็นไกลมาก — ถ้าซัดชนขอบสนามได้โบนัส +18 dmg + Stun 0.85 วิ!", CooldownSec: 3.8, CastRange: 230, AoeRadius: 115, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/gon_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Jajanken: Paper & Scissors", Description: "ยิงบอลเน็น Paper ระเบิดระยะไกลพร้อมฟันดาบเน็น Scissors แนวเส้นตรง!", CooldownSec: 4.8, CastRange: 460, AoeRadius: 68, AimType: "line", AccentColor: "#22C55E", IconURL: "/skills/gon_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Vow: Adult Gon", Description: "สังเวยเลือด 18% HP รีเซ็ตคูลดาวน์ Q/E ทันที! พุ่งซัด Execute แรงตามเลือดที่หาย", CooldownSec: 12.5, CastRange: 420, AoeRadius: 210, AimType: "line", AccentColor: "#16A34A", IconURL: "/skills/gon_3.png"},
 		},
 	},
 	{
@@ -407,9 +407,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       255,
 		MoveSpeed:   224,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Diamond Sword", Description: "ฟันด้วยดาบเพชร 32 dmg (Passive Inventory สลับอุปกรณ์เพิ่มดาเมจ/ป้องกันทุกรอบโจมตี!)", CooldownSec: 3.2, CastRange: 230, AoeRadius: 120, AimType: "cone", AccentColor: "#06B6D4", IconURL: "/skills/steve_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Block Builder", Description: "วางกำแพงบล็อกป้องกัน (อมตะ 1.25 วิ + ฟื้นเลือด +14 HP + ผลักศัตรู)", CooldownSec: 5.8, CastRange: 220, AoeRadius: 145, AimType: "self", AccentColor: "#94A3B8", IconURL: "/skills/steve_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Netherite Awakening", Description: "สวมเกราะ Netherite ปาระเบิด TNT ถล่มพื้นที่ 215px ทำดาเมจ 54 dmg + Stun 1.0 วิ!", CooldownSec: 11.4, CastRange: 460, AoeRadius: 215, AimType: "ground", AccentColor: "#EF4444", IconURL: "/skills/steve_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Diamond Sweeping Edge", Description: "ตวัดดาบเพชรกว้างพร้อมแรงผลัก Sweeping Edge (34 dmg)", CooldownSec: 3.2, CastRange: 230, AoeRadius: 125, AimType: "cone", AccentColor: "#06B6D4", IconURL: "/skills/steve_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Obsidian Wall & Golden Apple", Description: "กินแอปเปิ้ลทอง (+24 HP + วิ่งไว) และวางกำแพง Obsidian ผลักและสโลว์ศัตรูด้านหน้า!", CooldownSec: 5.8, CastRange: 220, AoeRadius: 145, AimType: "line", AccentColor: "#94A3B8", IconURL: "/skills/steve_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "TNT Chain Detonation", Description: "วางระเบิด TNT 3 ลูกเรียงแถว ระเบิดลูกโซ่ต่อเนื่องซัดศัตรูปลิว!", CooldownSec: 11.4, CastRange: 460, AoeRadius: 195, AimType: "ground", AccentColor: "#EF4444", IconURL: "/skills/steve_3.png"},
 		},
 	},
 	{
@@ -426,9 +426,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       215,
 		MoveSpeed:   228,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Anywhere Door", Description: "เปิดประตูไปที่ไหนก็ได้! วาร์ปย้ายตำแหน่ง + ปล่อยคลื่น 26 dmg (Passive 4D Pocket สุ่มของวิเศษฮีล/บัฟ!)", CooldownSec: 4.2, CastRange: 380, AoeRadius: 115, AimType: "line", AccentColor: "#EC4899", IconURL: "/skills/doraemon_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Bamboo Copter", Description: "ติดคอปเตอร์ไม้ไผ่บินหนี อมตะ 1.0 วิ + วิ่งไว 2.5 วิ", CooldownSec: 5.6, CastRange: 220, AoeRadius: 130, AimType: "self", AccentColor: "#FACC15", IconURL: "/skills/doraemon_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Time Machine", Description: "เปิดมิติไทม์แมชชีนหยุดศัตรูในพื้นที่ 215px Stun 1.45 วิ + 46 dmg!", CooldownSec: 11.8, CastRange: 480, AoeRadius: 215, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/doraemon_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Air Cannon", Description: "ยิงวงแหวนปืนใหญ่อากาศเจาะทะลุซัดศัตรูกระเด็นไกลมาก!", CooldownSec: 3.8, CastRange: 480, AoeRadius: 95, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/doraemon_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Anywhere Door", Description: "เปิดประตูไปไหนก็ได้วาร์ปไปจุดเป้าหมายทันที ทิ้งประตูชมพูไว้ต้นทาง-ปลายทาง!", CooldownSec: 5.6, CastRange: 420, AoeRadius: 110, AimType: "ground", AccentColor: "#EC4899", IconURL: "/skills/doraemon_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Time Cloth & Small Light", Description: "เปิดคลื่นกาลเวลา ฮีลเพื่อนร่วมทีมในวง +26 HP พร้อมย่อส่วนสโลว์ศัตรู 2.4 วิ!", CooldownSec: 11.8, CastRange: 480, AoeRadius: 215, AimType: "ground", AccentColor: "#0284C7", IconURL: "/skills/doraemon_3.png"},
 		},
 	},
 	{
@@ -445,9 +445,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       240,
 		MoveSpeed:   230,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Dark Cloaked Slash", Description: "ฟันคลื่นคาตานะเวทมืด 440px (32 dmg + Passive Ki Sense สวนกลับแรง +20%)", CooldownSec: 3.5, CastRange: 440, AoeRadius: 78, AimType: "line", AccentColor: "#6B21A8", IconURL: "/skills/yami_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Black Moon", Description: "สร้างสนามแรงโน้มถ่วงมืดรอบตัว 180px ดูดศัตรูเข้ามา + ลดความเร็ว + 24 dmg", CooldownSec: 5.8, CastRange: 240, AoeRadius: 180, AimType: "self", AccentColor: "#111827", IconURL: "/skills/yami_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Dimension Slash", Description: "ผ่าตัดมิติไกล 800px ด้วยดาบดำ-ม่วง ทะลวงทุกสิ่ง 58 dmg + Stun 0.9 วิ!", CooldownSec: 11.8, CastRange: 800, AoeRadius: 74, AimType: "line", AccentColor: "#9333EA", IconURL: "/skills/yami_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Dark Cloaked Avidya Slash", Description: "ฟันคลื่นดาบความมืดเจาะทะลุระยะไกล (32 dmg + Passive Ki Sense)", CooldownSec: 3.5, CastRange: 480, AoeRadius: 78, AimType: "line", AccentColor: "#6B21A8", IconURL: "/skills/yami_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Mana Zone: Black Moon", Description: "กางโดมความมืดรอบตัว — ลบล้างโปรเจกไทล์ศัตรูทั้งหมดที่พุ่งเข้าวงพร้อมดูดศัตรู!", CooldownSec: 5.8, CastRange: 240, AoeRadius: 185, AimType: "self", AccentColor: "#111827", IconURL: "/skills/yami_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Dimension Slash: Equinox", Description: "ฟันผ่ามิติระยะไกลมาก เจาะทะลุสิ่งกีดขวางและทำลายสถานะอมตะ (60 dmg)!", CooldownSec: 11.8, CastRange: 800, AoeRadius: 74, AimType: "line", AccentColor: "#9333EA", IconURL: "/skills/yami_3.png"},
 		},
 	},
 	{
@@ -464,9 +464,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       250,
 		MoveSpeed:   226,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Cruel Sun", Description: "ขว้างลูกไฟดวงอาทิตย์ยักษ์ระเบิด 160px (34 dmg + เผา + Passive Sunshine ทวีคูณพลัง)", CooldownSec: 4.0, CastRange: 520, AoeRadius: 160, AimType: "ground", AccentColor: "#F97316", IconURL: "/skills/escanor_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Divine Sword", Description: "ฟันดาบเพลิงสุริยะคลื่นทอง 380px ทำดาเมจ 32 dmg", CooldownSec: 4.8, CastRange: 380, AoeRadius: 115, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/escanor_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "The One", Description: "เข้าสู่ร่าง The One ออร่าสุริยะ 6 วิ + ฟื้นเลือด +24 HP + ระเบิดแสง 230px (58 dmg + Stun 1.0 วิ)", CooldownSec: 12.2, CastRange: 300, AoeRadius: 230, AimType: "self", AccentColor: "#FEF08A", IconURL: "/skills/escanor_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Cruel Sun", Description: "โยนลูกดวงอาทิตย์ย่อส่วนลอยช้าๆ พุ่งระเบิดแผดเผาเป็นแอ่งเพลิงสุริยะ!", CooldownSec: 4.0, CastRange: 520, AoeRadius: 160, AimType: "line", AccentColor: "#F97316", IconURL: "/skills/escanor_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Divine Sword Escanor", Description: "ฟาดคลื่นดาบสุริยะพร้อมจุดเปลวไฟลุกไหม้บนพื้น!", CooldownSec: 4.8, CastRange: 380, AoeRadius: 115, AimType: "cone", AccentColor: "#FACC15", IconURL: "/skills/escanor_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "High Noon: The One", Description: "เข้าสู่ร่าง The One 6 วิ ดาเมจระเบิดแรงขึ้นตาม Sun Stack + ฮีล + ตีรัว!", CooldownSec: 12.2, CastRange: 300, AoeRadius: 230, AimType: "self", AccentColor: "#FEF08A", IconURL: "/skills/escanor_3.png"},
 		},
 	},
 	{
@@ -483,9 +483,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       235,
 		MoveSpeed:   234,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Full Counter", Description: "ตั้งท่าสะท้อนเวท (อมตะ 1.05 วิ) + ฟาดสะท้อนดาเมจกลับ (+Passive Demon Power สะสมพลังเมื่อโดนตี)", CooldownSec: 4.5, CastRange: 250, AoeRadius: 145, AimType: "self", AccentColor: "#38BDF8", IconURL: "/skills/meliodas_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Hellblaze", Description: "ปล่อยเปลวไฟปีศาจสีดำม่วง 500px (32 dmg + เผา)", CooldownSec: 4.8, CastRange: 500, AoeRadius: 120, AimType: "line", AccentColor: "#7E22CE", IconURL: "/skills/meliodas_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Assault Mode", Description: "ปลดปล่อยพลังปีศาจเต็มรูปแบบทั่วสนาม 240px (54 dmg + Stun 1.0 วิ + ตีไว 5 วิ)", CooldownSec: 12.0, CastRange: 300, AoeRadius: 240, AimType: "self", AccentColor: "#1E1B4B", IconURL: "/skills/meliodas_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Full Counter", Description: "ตั้งท่าสะท้อน 1.35 วิ — สะท้อนทั้งตีประชิดและโปรเจกไทล์กลับแรง 1.8× จริง!", CooldownSec: 4.5, CastRange: 250, AoeRadius: 145, AimType: "self", AccentColor: "#38BDF8", IconURL: "/skills/meliodas_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Hellblaze", Description: "พุ่งฟันเพลิงนรกสีดำม่วงทิ้งบ่อเพลิงคำสาปเผาไหม้ต่อเนื่อง!", CooldownSec: 4.8, CastRange: 440, AoeRadius: 120, AimType: "line", AccentColor: "#7E22CE", IconURL: "/skills/meliodas_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Assault Mode: Trillion Dark", Description: "ปล่อยบอลความมืดโฮมมิ่ง 8 ลูกไล่ถล่มศัตรู พร้อมเข้าโหมด Assault Mode ตีไว 5 วิ!", CooldownSec: 12.0, CastRange: 480, AoeRadius: 220, AimType: "line", AccentColor: "#1E1B4B", IconURL: "/skills/meliodas_3.png"},
 		},
 	},
 	{
@@ -502,9 +502,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       225,
 		MoveSpeed:   242,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Divine Replication", Description: "เลียนแบบท่วงท่าชกสวนความเร็วแสง 32 dmg + โบนัสจากความแรงศัตรู!", CooldownSec: 3.4, CastRange: 250, AoeRadius: 115, AimType: "cone", AccentColor: "#FBBF24", IconURL: "/skills/adam_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Divine Dodge", Description: "หลบเหนือมนุษย์ (อมตะ 1.15 วิ) + พุ่งหลังศัตรูพร้อมความเร็ว 2.0 วิ", CooldownSec: 5.4, CastRange: 300, AoeRadius: 105, AimType: "line", AccentColor: "#F8FAFC", IconURL: "/skills/adam_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "The Ultimate Father", Description: "รัวหมัดสังหารเทพความเร็วไร้จำกัด 190px ต่อเนื่อง 4 จังหวะรวม 54 dmg + Stun 0.9 วิ!", CooldownSec: 11.2, CastRange: 300, AoeRadius: 190, AimType: "ground", AccentColor: "#F59E0B", IconURL: "/skills/adam_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Divine Replication", Description: "ก๊อปปี้ความแรงจากดาเมจล่าสุด (+55%) ชกสวนความเร็วแสง!", CooldownSec: 3.4, CastRange: 250, AoeRadius: 115, AimType: "cone", AccentColor: "#FBBF24", IconURL: "/skills/adam_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Divine Weave", Description: "ก้าวหลบฉับไวพร้อมเปิด Eyes of the Lord เตรียมสวนกลับ", CooldownSec: 4.6, CastRange: 300, AoeRadius: 105, AimType: "line", AccentColor: "#F8FAFC", IconURL: "/skills/adam_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Fist That Surpassed Time", Description: "วาร์ปล็อกเป้าหมาย หยุดเวลา 0.55 วิ แล้วรัวหมัดทองคำ 5 ฮิตปิดฉาก!", CooldownSec: 11.2, CastRange: 360, AoeRadius: 190, AimType: "ground", AccentColor: "#F59E0B", IconURL: "/skills/adam_3.png"},
 		},
 	},
 	{
@@ -521,9 +521,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       220,
 		MoveSpeed:   226,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Chaos Wave", Description: "ยิงคลื่นสั่นสะเทือนสีม่วงดำ 580px (32 dmg + Passive Vibration Control สะสมคลื่นทะลุเกราะ)", CooldownSec: 3.6, CastRange: 580, AoeRadius: 72, AimType: "line", AccentColor: "#6D28D9", IconURL: "/skills/beelzebub_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Defensive Barrier", Description: "สร้างโล่สั่นสะเทือน (อมตะ 1.25 วิ + ผลักศัตรู 130px + Slow)", CooldownSec: 5.8, CastRange: 220, AoeRadius: 150, AimType: "self", AccentColor: "#A78BFA", IconURL: "/skills/beelzebub_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Chaos Unleashed", Description: "ปลดปล่อยลูกบอลความสั่นสะเทือนขั้นสูงระเบิด 240px ทำดาเมจ 58 dmg + Stun 1.15 วิ!", CooldownSec: 12.2, CastRange: 480, AoeRadius: 240, AimType: "ground", AccentColor: "#4C1D95", IconURL: "/skills/beelzebub_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Palmyra: Vibration Blade", Description: "ยิงใบมีดคลื่นสั่นสะเทือนความเร็วสูงเจาะทะลุทุกเป้าหมาย 580px!", CooldownSec: 3.6, CastRange: 580, AoeRadius: 72, AimType: "line", AccentColor: "#6D28D9", IconURL: "/skills/beelzebub_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Gates of Hell", Description: "กางม่านสั่นสะเทือนทำลายโปรเจกไทล์ศัตรูทั้งหมดและผลักศัตรูประชิดปลิว!", CooldownSec: 5.8, CastRange: 220, AoeRadius: 165, AimType: "self", AccentColor: "#A78BFA", IconURL: "/skills/beelzebub_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Original Sin: Chaos", Description: "บีบอัดลูกบอลความโกลาหลดูดศัตรูเข้าศูนย์กลาง ➔ ระเบิดคลื่นสั่นสะเทือน 2 ชั้น!", CooldownSec: 12.2, CastRange: 480, AoeRadius: 240, AimType: "ground", AccentColor: "#4C1D95", IconURL: "/skills/beelzebub_3.png"},
 		},
 	},
 	{
@@ -540,9 +540,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       240,
 		MoveSpeed:   234,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Divine Staff", Description: "แปรสภาพไม้เท้าหกภพฟาด/แทงไกล 360px (32 dmg + Passive Future Sight หลบอัตโนมัติ!)", CooldownSec: 3.5, CastRange: 360, AoeRadius: 96, AimType: "line", AccentColor: "#FACC15", IconURL: "/skills/buddha_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Enlightened Step", Description: "ก้าวย่างรู้แจ้งหลบการโจมตี (อมตะ 1.1 วิ) + สวนกลับแสงทอง 24 dmg", CooldownSec: 5.5, CastRange: 300, AoeRadius: 130, AimType: "line", AccentColor: "#FEF08A", IconURL: "/skills/buddha_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Six Realms: Nirvana", Description: "อัญเชิญมหาศาสตรานิพพานสีทองถล่มพื้นที่ 225px ทำดาเมจ 56 dmg + Stun 1.1 วิ!", CooldownSec: 11.6, CastRange: 460, AoeRadius: 225, AimType: "ground", AccentColor: "#EAB308", IconURL: "/skills/buddha_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Six Realms Staff", Description: "สลับศาสตรา 3 ร่างวนทุกครั้งที่กด: ไม้เท้าผลัก ➔ ขวานฟาดกว้าง ➔ เคียวเจาะเกราะ!", CooldownSec: 3.3, CastRange: 360, AoeRadius: 96, AimType: "line", AccentColor: "#FACC15", IconURL: "/skills/buddha_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Future Sight Step", Description: "เปิดเนตรมองอนาคต 1.7 วิ (หลบการโจมตีอัตโนมัติ) พร้อมก้าวย่างฟันสวน!", CooldownSec: 5.5, CastRange: 300, AoeRadius: 130, AimType: "line", AccentColor: "#FEF08A", IconURL: "/skills/buddha_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Zero: Mahapari Nirvana", Description: "ฟาดคลื่นดาบแสงนิพพานขนาดมหึมาลบล้างสถานะอมตะ พร้อมเบ่งบานธรรมจักร!", CooldownSec: 11.6, CastRange: 460, AoeRadius: 225, AimType: "line", AccentColor: "#EAB308", IconURL: "/skills/buddha_3.png"},
 		},
 	},
 	{
@@ -559,9 +559,9 @@ var roster28Characters = []CharacterDef{
 		MaxHP:       235,
 		MoveSpeed:   236,
 		Skills: []SkillDef{
-			{Slot: 1, KeyHint: "Q", Name: "Power Strike", Description: "โจมตีด้วยพลังพิเศษ 480px (32 dmg + Passive Hidden Potential ยิ่งสู้ยิ่งแรงและเร็วสูงสุด +25%!)", CooldownSec: 3.4, CastRange: 480, AoeRadius: 75, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/cj_palony_1.png"},
-			{Slot: 2, KeyHint: "E", Name: "Phantom Move", Description: "เคลื่อนที่พริบตา 310px พร้อมทิ้งร่างเงาระเบิด 24 dmg + อมตะ 0.75 วิ", CooldownSec: 5.2, CastRange: 320, AoeRadius: 120, AimType: "line", AccentColor: "#F43F5E", IconURL: "/skills/cj_palony_2.png"},
-			{Slot: 3, KeyHint: "R", Name: "Final Awakening", Description: "ปลดปล่อยพลังสูงสุดเต็มพิกัดระเบิดรอบตัว 230px (54 dmg + Stun 1.0 วิ + ตีไว & วิ่งไว 5 วิ)", CooldownSec: 11.5, CastRange: 280, AoeRadius: 230, AimType: "self", AccentColor: "#F43F5E", IconURL: "/skills/cj_palony_3.png"},
+			{Slot: 1, KeyHint: "Q", Name: "Combo Breaker Dash", Description: "พุ่งซัดคอมโบ 2 จังหวะ — หากโจมตีโดนเป้าหมายลดคูลดาวน์ทันที!", CooldownSec: 3.4, CastRange: 420, AoeRadius: 75, AimType: "line", AccentColor: "#38BDF8", IconURL: "/skills/cj_palony_1.png"},
+			{Slot: 2, KeyHint: "E", Name: "Phantom Feint", Description: "วาร์ปหลอกฉากทิ้งระเบิดแฟลชไว้จุดเดิม พร้อมเร่งความเร็ว 2.2 วิ", CooldownSec: 5.2, CastRange: 320, AoeRadius: 120, AimType: "line", AccentColor: "#F43F5E", IconURL: "/skills/cj_palony_2.png"},
+			{Slot: 3, KeyHint: "R", Name: "Maxion Overdrive", Description: "ยิงกระสุนพลังงาน 4 ทิศทางรอบตัว พร้อมปลดล็อก Overdrive ตีรัว 5 วิ!", CooldownSec: 11.5, CastRange: 280, AoeRadius: 220, AimType: "self", AccentColor: "#F43F5E", IconURL: "/skills/cj_palony_3.png"},
 		},
 	},
 }

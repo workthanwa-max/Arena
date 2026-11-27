@@ -384,27 +384,19 @@ export const Hero3dPreview = memo(function Hero3dPreview({
             type="button"
             className={`hero-showcase-toggle-btn ${viewMode === '3d' ? 'active' : ''}`}
             aria-pressed={viewMode === '3d'}
+            title="มุมมองโมเดล 3D"
             onClick={() => selectViewMode('3d')}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-              <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
-              <line x1="12" y1="22.08" x2="12" y2="12" />
-            </svg>
-            <span>3D</span>
+            3D
           </button>
           <button
             type="button"
             className={`hero-showcase-toggle-btn ${viewMode === 'art' ? 'active' : ''}`}
             aria-pressed={viewMode === 'art'}
+            title="มุมมองรูปโชว์ 2D"
             onClick={() => selectViewMode('art')}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="3" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <span>รูปโชว์</span>
+            2D
           </button>
         </div>
       )}

@@ -34,6 +34,8 @@ export interface TacticalBannerSlot {
   /** Action label on hover/focus or bottom hint */
   actionLabel?: string
   disabled?: boolean
+  /** Locked hero slot awaiting another human player (e.g., ICONIC Gojo / Sukuna) */
+  waitingLocked?: boolean
 }
 
 function getHeroPortraitSrc(hero: CharacterDef): string {
@@ -58,6 +60,7 @@ export const TacticalBannerCard: React.FC<{ slot: TacticalBannerSlot }> = ({ slo
     onClick,
     actionLabel,
     disabled,
+    waitingLocked,
   } = slot
 
   const isOccupied = Boolean(character)
@@ -69,6 +72,7 @@ export const TacticalBannerCard: React.FC<{ slot: TacticalBannerSlot }> = ({ slo
         'val-banner-col',
         featured ? 'featured' : '',
         isOccupied ? 'occupied' : 'empty',
+        waitingLocked ? 'waiting-locked' : '',
         `tone-${tone}`,
         clickable ? 'clickable' : '',
       ]
@@ -157,9 +161,11 @@ export const TacticalBannerCard: React.FC<{ slot: TacticalBannerSlot }> = ({ slo
               <div className="val-cream-name" title={playerName || character.displayName}>
                 {playerName || character.displayName}
               </div>
-              <div className="val-cream-sub" title={subLabel || character.animeTitle}>
-                {subLabel || character.animeTitle}
-              </div>
+              {subLabel ? (
+                <div className="val-cream-sub" title={subLabel}>
+                  {subLabel}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </div>

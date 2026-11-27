@@ -1,235 +1,486 @@
-import { useEffect, useRef } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { animateShowroomSwap } from '../animations/gsapPresets'
 import { CHARACTER_VOICES, soundEngine } from '../audio/soundEngine'
 import { Hero3dPreview } from '../components/Hero3dPreview'
-import { HeroClassEmblem } from '../components/HeroClassEmblem'
-import { HeroPickerPanel } from '../components/HeroPickerPanel'
-import { IconArrowLeft, IconSwords, IconTarget, IconVolume } from '../components/Icons'
+import { EmblemCheck, EmblemHome, HeroClassEmblem } from '../components/HeroClassEmblem'
+import { IconClose, IconSearch, IconTarget, IconVolume } from '../components/Icons'
+import { HERO_CLASS_FILTERS, type HeroClassFilter } from '../constants/heroClasses'
 import { useGameStore } from '../store/useGameStore'
 
 export function HeroesPage() {
   const authUser = useGameStore((s) => s.authUser)
   const rawCharacters = useGameStore((s) => s.characters)
-  const allCharacters = rawCharacters.filter((c) => !c.adminOnly || authUser?.role === 'admin')
+  const allCharacters = useMemo(
+    () => rawCharacters.filter((c) => !c.adminOnly || authUser?.role === 'admin'),
+    [rawCharacters, authUser?.role],
+  )
   const viewingCharId = useGameStore((s) => s.viewingCharId)
+  const selectedCharId = useGameStore((s) => s.selectedCharId)
   const inspectCharacter = useGameStore((s) => s.inspectCharacter)
+  const setSelectedCharId = useGameStore((s) => s.setSelectedCharId)
   const startPracticeMode = useGameStore((s) => s.startPracticeMode)
   const setView = useGameStore((s) => s.setView)
-  const goBack = useGameStore((s) => s.goBack)
+  const connected = useGameStore((s) => s.connected)
+
+  const [classFilter, setClassFilter] = useState<HeroClassFilter>('all')
+  const [query, setQuery] = useState('')
+  const [selectedSkillTab, setSelectedSkillTab] = useState<number>(1)
 
   const showroomContentRef = useRef<HTMLDivElement | null>(null)
-  const activeId = viewingCharId || allCharacters[0]?.id || 'pa'
-  const selectedIndex = Math.max(0, allCharacters.findIndex((c) => c.id === activeId))
-  const activeChar = allCharacters[selectedIndex] ?? allCharacters[0]
+  const stripRef = useRef<HTMLDivElement | null>(null)
+  const activeCardRef = useRef<HTMLDivElement | null>(null)
+
+  const filteredCharacters = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return allCharacters.filter((c) => {
+      if (classFilter !== 'all' && c.heroClass !== classFilter) return false
+      if (!q) return true
+      return (
+        c.displayName.toLowerCase().includes(q) ||
+        c.animeTitle.toLowerCase().includes(q) ||
+        c.animeRef.toLowerCase().includes(q) ||
+        (c.className ?? '').toLowerCase().includes(q)
+      )
+    })
+  }, [allCharacters, classFilter, query])
+
+  const activeList = filteredCharacters.length > 0 ? filteredCharacters : allCharacters
+  const activeId = viewingCharId || selectedCharId || activeList[0]?.id || 'pa'
+  const selectedIndex = Math.max(0, activeList.findIndex((c) => c.id === activeId))
+  const activeChar = activeList[selectedIndex] ?? activeList[0]
+  const isEquippedMain = Boolean(activeChar && activeChar.id === selectedCharId)
 
   useEffect(() => {
     animateShowroomSwap(showroomContentRef.current, 1)
   }, [activeChar?.id])
 
+  useEffect(() => {
+    activeCardRef.current?.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' })
+  }, [activeChar?.id, classFilter])
+
   function inspectHero(nextId: string) {
     soundEngine.unlock()
     inspectCharacter(nextId)
     const ch = allCharacters.find((c) => c.id === nextId)
+    setSelectedSkillTab(ch?.skills.length ? 1 : 0)
     soundEngine.speakCharacterQuote(nextId, ch?.voiceLine)
   }
 
   function stepHero(delta: number) {
-    if (allCharacters.length === 0) return
-    const nextIdx = (selectedIndex + delta + allCharacters.length) % allCharacters.length
-    inspectHero(allCharacters[nextIdx].id)
+    if (activeList.length === 0) return
+    const nextIdx = (selectedIndex + delta + activeList.length) % activeList.length
+    inspectHero(activeList[nextIdx].id)
   }
 
-  return (
-    <div className="ui-page heroes-page-wrap">
-      <div className="ui-shell">
-        <header className="ui-topbar heroes-header">
-          <div className="ui-topbar-group">
-            <button
-              type="button"
-              className="ui-btn page-back-btn"
-              onClick={goBack}
-              aria-label="ย้อนกลับ"
-            >
-              <IconArrowLeft size={15} />
-              <span>ย้อนกลับ</span>
-            </button>
-            <h1 className="ui-page-title">คลังฮีโร่ ({allCharacters.length})</h1>
-          </div>
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault()
+        stepHero(-1)
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault()
+        stepHero(1)
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  })
 
-          <div className="ui-topbar-group">
-            {activeChar && (
+  function handleLockIn(charId: string) {
+    soundEngine.unlock()
+    setSelectedCharId(charId)
+    const ch = allCharacters.find((c) => c.id === charId)
+    soundEngine.speakCharacterQuote(charId, ch?.voiceLine)
+  }
+
+  function scrollStrip(dir: -1 | 1) {
+    stripRef.current?.scrollBy({ left: dir * 360, behavior: 'smooth' })
+  }
+
+  const activeSkillDef =
+    selectedSkillTab > 0 ? activeChar?.skills[selectedSkillTab - 1] ?? activeChar?.skills[0] : null
+
+  return (
+    <div
+      className="hs-page heroes-page-wrap"
+      style={{ '--hs-accent': activeChar?.accentColor || '#38bdf8' } as CSSProperties}
+    >
+      {/* TOP BAR */}
+      <header className="hs-topbar heroes-header">
+        <div className="hs-top-left">
+          <button
+            type="button"
+            className="ui-btn page-back-btn"
+            onClick={() => {
+              soundEngine.unlock()
+              setView(connected ? 'room_lobby' : 'home')
+            }}
+            aria-label="กลับหน้าล็อบบี้"
+          >
+            <EmblemHome size={15} />
+            <span>หน้าล็อบบี้</span>
+          </button>
+
+          <span className="hs-counter-pill">
+            {String(selectedIndex + 1).padStart(2, '0')} / {String(activeList.length).padStart(2, '0')}
+          </span>
+
+          <div className="hs-search-box">
+            <span className="hs-search-ico">
+              <IconSearch size={14} />
+            </span>
+            <input
+              type="text"
+              className="hs-search-input"
+              placeholder={`ค้นหาฮีโร่จาก ${allCharacters.length} ตัว...`}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {query && (
               <button
                 type="button"
-                className="ui-btn"
-                onClick={() => {
-                  soundEngine.unlock()
-                  void startPracticeMode(activeChar.id)
-                }}
+                className="hs-search-clear"
+                aria-label="ล้างคำค้นหา"
+                onClick={() => setQuery('')}
               >
-                <IconTarget size={15} />
-                <span>ซ้อม {activeChar.displayName}</span>
+                <IconClose size={12} />
               </button>
             )}
+          </div>
+        </div>
+
+        <div className="hs-top-right">
+          {activeChar && (
             <button
               type="button"
-              className="val-cta-crimson"
-              style={{ height: 36, minWidth: 120, padding: '0 16px', fontSize: 13 }}
+              className="ui-btn"
               onClick={() => {
                 soundEngine.unlock()
-                setView('battle_setup')
+                void startPracticeMode(activeChar.id)
               }}
             >
-              <IconSwords size={15} />
-              <span>สร้างห้อง</span>
+              <IconTarget size={15} />
+              <span>ซ้อม {activeChar.displayName}</span>
             </button>
-          </div>
-        </header>
+          )}
+        </div>
+      </header>
 
-        <main className="clean-heroes-layout">
-          {/* Left: Searchable 5-Class Hero Picker */}
-          <section className="ui-card" aria-label="รายชื่อฮีโร่">
-            <HeroPickerPanel
-              characters={allCharacters}
-              selectedId={activeChar?.id ?? ''}
-              compactTabs
-              maxHeight={520}
-              onSelect={inspectHero}
-            />
-          </section>
-
-          {/* Right: Calm 3D Model Showroom + Stats + 3 Skills */}
-          <section className="ui-card" aria-label="รายละเอียดตัวละคร">
-            {activeChar && (
-              <>
-                <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
-                  <span className="ui-pill">
-                    {String(selectedIndex + 1).padStart(2, '0')} / {String(allCharacters.length).padStart(2, '0')}
+      {/* MAIN 3-COLUMN AGENT SHOWROOM */}
+      <main className="hs-main">
+        {/* LEFT: Hexagonal Vertical Class Filter Rail */}
+        <aside className="hs-hex-rail" role="tablist" aria-label="กรองฮีโร่ตามสาย">
+          <span className="hs-rail-caption">HERO CLASSES</span>
+          {HERO_CLASS_FILTERS.map((cls) => {
+            const count =
+              cls.id === 'all'
+                ? allCharacters.length
+                : allCharacters.filter((c) => c.heroClass === cls.id).length
+            const isActive = classFilter === cls.id
+            return (
+              <button
+                key={cls.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`hs-hex-row ${isActive ? 'active' : ''}`}
+                style={{ '--class-accent': cls.color } as CSSProperties}
+                onClick={() => {
+                  setClassFilter(cls.id)
+                  const nextFirst =
+                    cls.id === 'all'
+                      ? allCharacters[0]
+                      : allCharacters.find((c) => c.heroClass === cls.id)
+                  if (nextFirst && nextFirst.id !== activeChar?.id) {
+                    inspectCharacter(nextFirst.id)
+                  }
+                }}
+              >
+                <span className="hs-hex-badge" aria-hidden="true">
+                  <span className="hs-hex-inner">
+                    <HeroClassEmblem heroClass={cls.id} size={17} />
                   </span>
+                </span>
+                <span className="hs-hex-text">
+                  <span className="hs-hex-top">
+                    <span className="hs-hex-name">{cls.name}</span>
+                    <span className="hs-hex-count">{count}</span>
+                  </span>
+                  <span className="hs-hex-trait">{cls.traitSummary}</span>
+                </span>
+              </button>
+            )
+          })}
+        </aside>
 
-                  <div className="ui-topbar-group" style={{ gap: 6 }}>
-                    <button
-                      type="button"
-                      className="ui-btn icon-only"
-                      style={{ height: 30, width: 30 }}
-                      aria-label="ตัวละครก่อนหน้า"
-                      onClick={() => stepHero(-1)}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      className="ui-btn icon-only"
-                      style={{ height: 30, width: 30 }}
-                      aria-label="ตัวละครถัดไป"
-                      onClick={() => stepHero(1)}
-                    >
-                      ›
-                    </button>
-                  </div>
+        {/* CENTER: Full-Height 3D / 2D Hero Showcase */}
+        <section className="hs-center-stage" aria-label="แสดงโมเดลตัวละคร">
+          <button
+            type="button"
+            className="hs-step-btn prev"
+            aria-label="ฮีโร่ก่อนหน้า"
+            onClick={() => stepHero(-1)}
+          >
+            ‹
+          </button>
+
+          {activeChar && (
+            <div ref={showroomContentRef} className="hs-preview-wrap">
+              <Hero3dPreview character={activeChar} size="hero" frameless allowViewToggle />
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="hs-step-btn next"
+            aria-label="ฮีโร่ถัดไป"
+            onClick={() => stepHero(1)}
+          >
+            ›
+          </button>
+        </section>
+
+        {/* RIGHT: Tactical Inspector + 4-Box Interactive Skill Selector */}
+        <section className="hs-inspector" aria-label="รายละเอียดและสกิลฮีโร่">
+          {activeChar && (
+            <>
+              <div>
+                <div className="hs-role-eyebrow">
+                  <HeroClassEmblem heroClass={activeChar.heroClass ?? 'all'} size={16} />
+                  <span>{activeChar.className || activeChar.roleTag}</span>
                 </div>
+                <h1 className="hs-hero-name">{activeChar.displayName}</h1>
+                <p className="hs-hero-sub">
+                  {activeChar.animeTitle} · {activeChar.animeRef}
+                </p>
+              </div>
 
-                <div ref={showroomContentRef} className="clean-showroom-top">
-                  <Hero3dPreview character={activeChar} size="lg" frameless allowViewToggle />
+              <div className="hs-stats-compact">
+                <div className="hs-stat-line">
+                  <span>HP</span>
+                  <div className="hs-stat-track">
+                    <div
+                      className="hs-stat-fill"
+                      style={{
+                        width: `${Math.min(100, (activeChar.maxHp / 280) * 100)}%`,
+                        background: 'linear-gradient(90deg, #10b981, #34d399)',
+                      }}
+                    />
+                  </div>
+                  <span style={{ textAlign: 'right' }}>{activeChar.maxHp}</span>
+                </div>
+                <div className="hs-stat-line">
+                  <span>SPEED</span>
+                  <div className="hs-stat-track">
+                    <div
+                      className="hs-stat-fill"
+                      style={{
+                        width: `${Math.min(100, (activeChar.moveSpeed / 290) * 100)}%`,
+                        background: 'linear-gradient(90deg, #0284c7, #38bdf8)',
+                      }}
+                    />
+                  </div>
+                  <span style={{ textAlign: 'right' }}>{activeChar.moveSpeed}</span>
+                </div>
+              </div>
 
-                  <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div>
-                      <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>
-                        {activeChar.displayName}
-                      </h2>
-                      <p className="ui-card-sub">
-                        {activeChar.animeTitle} · {activeChar.animeRef}
-                      </p>
+              <div className="hs-action-row">
+                <button
+                  type="button"
+                  className="ui-btn"
+                  style={{ height: 32, fontSize: 12 }}
+                  onClick={() => {
+                    soundEngine.unlock()
+                    soundEngine.speakCharacterQuote(activeChar.id, activeChar.voiceLine)
+                  }}
+                >
+                  <IconVolume size={13} />
+                  <span>ทดลองเสียงพากย์</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={isEquippedMain ? 'ui-btn active' : 'val-cta-crimson'}
+                  style={{ height: 32, minWidth: 120, padding: '0 14px', fontSize: 12 }}
+                  onClick={() => handleLockIn(activeChar.id)}
+                >
+                  {isEquippedMain ? (
+                    <>
+                      <EmblemCheck size={13} />
+                      <span>ฮีโร่หลักปัจจุบัน</span>
+                    </>
+                  ) : (
+                    <span>ตั้งเป็นฮีโร่หลัก</span>
+                  )}
+                </button>
+              </div>
+
+              {/* Horizontal 4-Box Skill Selector (Passive + Q + E + R) */}
+              <div className="hs-skill-tabs" role="tablist" aria-label="เลือกดูรายละเอียดสกิล">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={selectedSkillTab === 0}
+                  className={`hs-skill-tab ${selectedSkillTab === 0 ? 'active' : ''}`}
+                  onClick={() => setSelectedSkillTab(0)}
+                  title="ความสามารถประจำสาย"
+                >
+                  <HeroClassEmblem heroClass={activeChar.heroClass ?? 'all'} size={24} />
+                  <span className="hs-skill-key">CLASS</span>
+                </button>
+
+                {activeChar.skills.slice(0, 3).map((sk, idx) => {
+                  const tabIdx = idx + 1
+                  return (
+                    <button
+                      key={sk.slot}
+                      type="button"
+                      role="tab"
+                      aria-selected={selectedSkillTab === tabIdx}
+                      className={`hs-skill-tab ${selectedSkillTab === tabIdx ? 'active' : ''}`}
+                      onClick={() => setSelectedSkillTab(tabIdx)}
+                      title={sk.name}
+                    >
+                      <img
+                        src={sk.iconUrl || `/skills/${activeChar.id}_${sk.slot}.png`}
+                        alt={sk.name}
+                      />
+                      <span className="hs-skill-key">{sk.keyHint}</span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Active Skill Description Box */}
+              <div className="hs-skill-detail" role="tabpanel">
+                {selectedSkillTab === 0 || !activeSkillDef ? (
+                  <>
+                    <div className="hs-skill-detail-head">
+                      <span className="hs-skill-detail-name">
+                        {activeChar.className || 'PASSIVE TRAIT'}
+                      </span>
+                      <span className="hs-skill-cd">PASSIVE</span>
                     </div>
-
-                    <div className="ui-topbar-group" style={{ gap: 8 }}>
-                      {activeChar.className && (
-                        <span className="ui-pill accent" style={{ gap: 6 }}>
-                          <HeroClassEmblem heroClass={activeChar.heroClass ?? 'all'} size={14} />
-                          <span>{activeChar.className}</span>
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="ui-btn"
-                        style={{ height: 28, fontSize: 12, padding: '0 10px' }}
-                        onClick={() => soundEngine.speakCharacterQuote(activeChar.id, activeChar.voiceLine)}
-                      >
-                        <IconVolume size={13} />
-                        <span>ทดลองเสียงพากย์</span>
-                      </button>
+                    <p className="hs-skill-detail-desc">
+                      {activeChar.classTraitLabel ||
+                        CHARACTER_VOICES[activeChar.id]?.quote ||
+                        'โจมตีปกติแบบล็อกเป้า (J / Spacebar) + Dash (Shift)'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="hs-skill-detail-head">
+                      <span className="hs-skill-detail-name">
+                        [{activeSkillDef.keyHint}] {activeSkillDef.name}
+                      </span>
+                      <span className="hs-skill-cd">CD {activeSkillDef.cooldownSec}s</span>
                     </div>
+                    <p className="hs-skill-detail-desc">{activeSkillDef.description}</p>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+        </section>
+      </main>
 
-                    {(activeChar.classTraitLabel || CHARACTER_VOICES[activeChar.id]?.quote) && (
-                      <p className="ui-card-sub" style={{ lineHeight: 1.45 }}>
-                        {activeChar.classTraitLabel || `“${activeChar.voiceLine || CHARACTER_VOICES[activeChar.id]?.quote}”`}
-                      </p>
+      {/* BOTTOM: Horizontal Hero Portrait Carousel Strip with LOCK IN Card */}
+      <footer className="hs-roster-dock" aria-label="แถบเลือกฮีโร่ทั้งหมด">
+        <div className="hs-roster-inner">
+          <button
+            type="button"
+            className="hs-strip-nav"
+            aria-label="เลื่อนซ้าย"
+            onClick={() => scrollStrip(-1)}
+          >
+            ‹
+          </button>
+
+          <div
+            ref={stripRef}
+            className="hs-roster-strip"
+            role="listbox"
+            aria-label="รายชื่อฮีโร่"
+            onWheel={(e) => {
+              if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && stripRef.current) {
+                stripRef.current.scrollLeft += e.deltaY
+              }
+            }}
+          >
+            {filteredCharacters.length === 0 ? (
+              <div className="ui-card-sub" style={{ padding: '24px 12px', margin: '0 auto' }}>
+                ไม่พบฮีโร่ที่ตรงกับ &ldquo;{query}&rdquo;
+              </div>
+            ) : (
+              filteredCharacters.map((ch) => {
+                const isViewing = ch.id === activeChar?.id
+                const isMain = ch.id === selectedCharId
+                return (
+                  <div
+                    key={ch.id}
+                    ref={isViewing ? activeCardRef : undefined}
+                    role="option"
+                    aria-selected={isViewing}
+                    tabIndex={0}
+                    className={`hs-roster-card ${isViewing ? 'active' : ''} ${isMain ? 'equipped' : ''}`}
+                    onClick={() => inspectHero(ch.id)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        inspectHero(ch.id)
+                      }
+                    }}
+                    title={`${ch.displayName} (${ch.animeTitle})`}
+                  >
+                    <img src={ch.imageUrl} alt={ch.displayName} className="hs-roster-img" loading="lazy" />
+                    <div className="hs-roster-scrim" aria-hidden="true" />
+
+                    {isMain && !isViewing && (
+                      <span className="hs-roster-top-tag">
+                        <EmblemCheck size={9} /> MAIN
+                      </span>
                     )}
 
-                    <div className="spec-bars" style={{ background: 'var(--bg-inset)', border: '1px solid var(--border-hairline)', marginTop: 2 }}>
-                      <div className="spec-row" style={{ color: 'var(--text-primary)' }}>
-                        <span>HP</span>
-                        <div className="spec-track" style={{ background: 'rgba(148,163,184,0.16)' }}>
-                          <div
-                            className="spec-fill"
-                            style={{
-                              width: `${Math.min(100, (activeChar.maxHp / 320) * 100)}%`,
-                              background: '#10b981',
-                            }}
-                          />
-                        </div>
-                        <span>{activeChar.maxHp}</span>
-                      </div>
-                      <div className="spec-row" style={{ color: 'var(--text-primary)' }}>
-                        <span>Speed</span>
-                        <div className="spec-track" style={{ background: 'rgba(148,163,184,0.16)' }}>
-                          <div
-                            className="spec-fill"
-                            style={{
-                              width: `${Math.min(100, (activeChar.moveSpeed / 290) * 100)}%`,
-                              background: '#38bdf8',
-                            }}
-                          />
-                        </div>
-                        <span>{activeChar.moveSpeed}</span>
-                      </div>
+                    <div className="hs-roster-foot">
+                      <span className="hs-roster-name">{ch.displayName}</span>
+                      {isViewing && (
+                        <button
+                          type="button"
+                          className={`hs-lockin-btn ${isMain ? 'locked' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleLockIn(ch.id)
+                          }}
+                        >
+                          {isMain ? (
+                            <>
+                              <EmblemCheck size={10} />
+                              <span>ใช้งานอยู่</span>
+                            </>
+                          ) : (
+                            <span>LOCK IN</span>
+                          )}
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
-
-                {activeChar.skills.length === 0 ? (
-                  <div className="ui-card-sub" style={{ padding: 12, background: 'var(--bg-inset)', borderRadius: 10 }}>
-                    โจมตีปกติแบบล็อกเป้า (J / Spacebar) + Dash (Shift)
-                  </div>
-                ) : (
-                  <div className="clean-skill-grid">
-                    {activeChar.skills.map((sk) => (
-                      <div key={sk.slot} className="clean-skill-card">
-                        <div className="ui-topbar-group" style={{ justifyContent: 'space-between' }}>
-                          <div className="ui-topbar-group" style={{ gap: 8 }}>
-                            <img
-                              src={sk.iconUrl || `/skills/${activeChar.id}_${sk.slot}.png`}
-                              alt={sk.name}
-                              style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}
-                            />
-                            <span className="ui-pill accent" style={{ height: 22, padding: '0 7px' }}>
-                              {sk.keyHint}
-                            </span>
-                          </div>
-                          <span className="ui-card-sub">{sk.cooldownSec}s</span>
-                        </div>
-                        <div className="clean-choice-name" style={{ fontSize: 13 }}>{sk.name}</div>
-                        <div className="ui-card-sub" style={{ fontSize: 11.5, lineHeight: 1.45 }}>
-                          {sk.description}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+                )
+              })
             )}
-          </section>
-        </main>
-      </div>
+          </div>
+
+          <button
+            type="button"
+            className="hs-strip-nav"
+            aria-label="เลื่อนขวา"
+            onClick={() => scrollStrip(1)}
+          >
+            ›
+          </button>
+        </div>
+      </footer>
     </div>
   )
 }

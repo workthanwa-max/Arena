@@ -1,40 +1,64 @@
+@font-face {
+  font-family: 'Rush Driver';
+  src: url('/fonts/RushDriver-Italic.otf') format('opentype');
+  font-style: normal;
+  font-weight: 400 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F;
+}
+
+@font-face {
+  font-family: 'Oswald';
+  src: url('/fonts/Oswald-VariableFont_wght.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0100-024F, U+2000-206F;
+}
+
 :root {
-  /* Abyssal Cobalt Tactical Shield Palette — Reference Pattern Inspired (60-30-10) */
-  --bg-canvas: #060b16;
-  --bg-sky: #0d1b38;
-  --bg-surface: rgba(10, 19, 39, 0.80);
-  --bg-surface-solid: #0a1327;
-  --bg-elevated: rgba(15, 29, 58, 0.92);
-  --bg-inset: rgba(5, 10, 22, 0.74);
-  --bg-inset-subtle: rgba(24, 44, 86, 0.44);
+  /* Slate Surface Tactical UI Palette — Slate Surface · Asphalt · Slate Gray · Beau Blue · Little Boy Blue */
+  --slate-surface: #22272e;
+  --slate-asphalt: #373e47;
+  --slate-gray: #768390;
+  --slate-beau: #cdd9e5;
+  --slate-blue: #539bf5;
 
-  /* Accent Tokens — Crimson Tactics CTA, Cobalt Glow & Honor Gold */
-  --accent-crimson: #ff4655;
-  --accent-crimson-hover: #e11d48;
-  --accent-crimson-soft: rgba(255, 70, 85, 0.16);
-  --banner-cream: #f4f1ea;
-  --banner-cream-warm: #fef9c3;
-  --banner-cream-ink: #0f172a;
-  --tactical-navy-border: rgba(125, 211, 252, 0.24);
+  --bg-canvas: #22272e;
+  --bg-sky: #2d333b;
+  --bg-surface: rgba(45, 51, 59, 0.88);
+  --bg-surface-solid: #2d333b;
+  --bg-elevated: rgba(55, 62, 71, 0.94);
+  --bg-inset: rgba(28, 33, 40, 0.86);
+  --bg-inset-subtle: rgba(55, 62, 71, 0.56);
 
-  /* Typography Contrast (WCAG AA/AAA) */
-  --text-primary: #f1f5f9;
-  --text-secondary: #a5b8d4;
-  --text-muted: #6f85a6;
-  --text-on-accent: #07111e;
+  /* Accent Tokens — Little Boy Blue (#539BF5) + High-Contrast Beau Blue (#CDD9E5) */
+  --accent-crimson: #539bf5;
+  --accent-crimson-hover: #316dca;
+  --accent-crimson-soft: rgba(83, 155, 245, 0.18);
+  --banner-cream: #cdd9e5;
+  --banner-cream-warm: #e6edf3;
+  --banner-cream-ink: #1c2128;
+  --tactical-navy-border: rgba(118, 131, 144, 0.34);
+
+  /* Typography Contrast (WCAG AA/AAA — Beau Blue & White Ink) */
+  --text-primary: #cdd9e5;
+  --text-secondary: rgba(205, 217, 229, 0.76);
+  --text-muted: #768390;
+  --text-on-accent: #ffffff;
 
   /* Crisp Translucent Borders & Soft Depth */
-  --border-hairline: rgba(148, 197, 255, 0.16);
-  --border-strong: rgba(148, 197, 255, 0.32);
-  --border-holo: rgba(56, 189, 248, 0.48);
-  --shadow-ambient: 0 10px 28px rgba(4, 10, 24, 0.32);
-  --shadow-elevated: 0 20px 44px rgba(4, 10, 24, 0.48);
+  --border-hairline: rgba(118, 131, 144, 0.28);
+  --border-strong: rgba(118, 131, 144, 0.52);
+  --border-holo: rgba(83, 155, 245, 0.65);
+  --shadow-ambient: 0 10px 28px rgba(15, 19, 24, 0.42);
+  --shadow-elevated: 0 20px 44px rgba(15, 19, 24, 0.62);
 
-  /* Restrained 10% Accents */
-  --accent-blue: #38bdf8;
-  --accent-blue-hover: #0ea5e9;
-  --accent-cyan: #22d3ee;
-  --accent-blue-soft: rgba(56, 189, 248, 0.16);
+  /* Accents */
+  --accent-blue: #539bf5;
+  --accent-blue-hover: #316dca;
+  --accent-cyan: #6cb6ff;
+  --accent-blue-soft: rgba(83, 155, 245, 0.18);
   --accent-gold: #fbbf24;
   --accent-gold-hover: #f59e0b;
   --signal-green: #10b981;
@@ -59,9 +83,10 @@
   --radius-pill: 9999px;
 
   /* Typography */
-  --font-display: 'Inter', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Noto Sans Thai', sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --font-button: 'Rush Driver', 'Noto Sans Thai', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Oswald', 'Noto Sans Thai', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Oswald', 'Noto Sans Thai', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Oswald', ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
   --text-xs: 0.78rem;
   --text-base: 0.95rem;
   --text-lg: 1.2rem;

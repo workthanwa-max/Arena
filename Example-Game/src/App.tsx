@@ -15,7 +15,6 @@ import { BattleSetupPage } from './pages/BattleSetupPage'
 import { HeroesPage } from './pages/HeroesPage'
 import { HomePage } from './pages/HomePage'
 import { JoinHeroSelectPage } from './pages/JoinHeroSelectPage'
-import { RoomLobbyPage } from './pages/RoomLobbyPage'
 import { preloadMatchAssets } from './services/assetPreloader'
 import { getSimoLiveAimDirection, setSimoSnipeCharging, useGameStore } from './store/useGameStore'
 import './styles/arena.css'
@@ -837,15 +836,13 @@ export function App() {
 
           <BattleResultModal />
         </div>
-      ) : currentView === 'room_lobby' && connected ? (
-        <RoomLobbyPage />
       ) : currentView === 'join_select' ? (
         <JoinHeroSelectPage />
       ) : currentView === 'battle_setup' ? (
         <BattleSetupPage />
       ) : currentView === 'heroes' ? (
         <HeroesPage />
-      ) : currentView === 'home' ? (
+      ) : currentView === 'home' || (currentView === 'room_lobby' && connected) ? (
         <HomePage
           soundMuted={soundMuted}
           isFullscreen={isFullscreen}

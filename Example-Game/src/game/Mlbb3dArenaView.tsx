@@ -1215,13 +1215,14 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
       focusX += (targetFocusX - focusX) * camLerp
       focusZ += (targetFocusZ - focusZ) * camLerp
 
-      let sxOff = 0
-      let szOff = 0
+      vfx.setFeelListener(focusX, focusZ)
+      const feelShake = vfx.getCameraShakeOffset()
+      const sxOff = feelShake.x
+      const syOff = feelShake.y
+      const szOff = feelShake.z
       if (shakePower > 0.2) {
-        sxOff = (Math.random() - 0.5) * shakePower
-        szOff = (Math.random() - 0.5) * shakePower
-        shakePower *= Math.pow(0.06, dt)
-      } else {
+        // Legacy screen-shake events are clamped to subtle micro/medium feedback (single-source-of-truth in Vfx3dManager)
+        vfx.triggerFeel(shakePower >= 18 ? 'medium' : 'micro', focusX, 24, focusZ, 0x539bf5)
         shakePower = 0
       }
 
@@ -1250,8 +1251,8 @@ export const Mlbb3dArenaView = memo(function Mlbb3dArenaView() {
         scene.fog.far = 2250 + curZoomBlend * 4200
       }
 
-      camera.position.set(focusX + sxOff, curCamHeight, focusZ + curCamBackZ + szOff)
-      camera.lookAt(focusX + sxOff, 18, focusZ + szOff)
+      camera.position.set(focusX + sxOff, curCamHeight + syOff, focusZ + curCamBackZ + szOff)
+      camera.lookAt(focusX + sxOff, 18 + syOff * 0.35, focusZ + szOff)
       if (lastPointerScreen.active && (isSimoSnipeZoom || aimPreview.active || curZoomBlend > 0.02)) {
         camera.updateMatrixWorld()
         const worldPt = screenToWorldXZ(lastPointerScreen.sx, lastPointerScreen.sy)

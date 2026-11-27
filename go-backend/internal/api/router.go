@@ -41,9 +41,10 @@ type selectCharacterRequest struct {
 }
 
 type createRoomRequest struct {
-	PlayerName string `json:"playerName"`
-	Mode       string `json:"mode"`
-	MapID      string `json:"mapId"`
+	PlayerName  string `json:"playerName"`
+	Mode        string `json:"mode"`
+	MapID       string `json:"mapId"`
+	WaitInLobby bool   `json:"waitInLobby"`
 }
 
 // NewRouter builds the perimeter HTTP ServeMux with auth guards, security middlewares, and game routes.
@@ -244,9 +245,10 @@ func NewRouter(
 		}
 
 		info, err := roomMgr.CreateRoom(r.Context(), room.CreateRoomOptions{
-			Mode:       strings.TrimSpace(req.Mode),
-			MapID:      strings.TrimSpace(req.MapID),
-			HostUserID: prof.ID,
+			Mode:        strings.TrimSpace(req.Mode),
+			MapID:       strings.TrimSpace(req.MapID),
+			HostUserID:  prof.ID,
+			WaitInLobby: req.WaitInLobby,
 		})
 		if err != nil {
 			log.Error("create room failed", "error", err)
